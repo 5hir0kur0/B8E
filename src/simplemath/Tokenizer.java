@@ -1,6 +1,8 @@
 package simplemath;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 /**
  * This class holds a list of {@code Token}s of an arithmetic expression.
@@ -14,39 +16,11 @@ class Tokenizer {
     private final ArrayList<Token> tokens;
     private ListIterator<Token> tokenIterator;
 
-    private Tokenizer(List<String> tokenStringList, List<TokenType> tokenTypeList) {
-        if (tokenStringList.size() != tokenTypeList.size())
-            throw new IllegalArgumentException("Attempting to construct Tokenizer from lists of different length.");
-
-        this.tokens = new ArrayList<Token>(tokenStringList.size());
-
-        ListIterator<String> tokenStringsIterator = tokenStringList.listIterator();
-        ListIterator<TokenType> typesIterator = tokenTypeList.listIterator();
-        while (tokenIterator.hasNext() && typesIterator.hasNext()) {
-            String tmpString = tokenStringsIterator.next();
-            TokenType tmpType = typesIterator.next();
-            switch (tmpType) {
-                case OPERATOR:
-                    if (tmpString.length() > 1)
-                        throw new IllegalArgumentException("Invalid operator (longer than one char): "+tmpString);
-                    this.tokens.add(new OperatorToken(tmpString.charAt(0)));
-                    break;
-                case NUMBER:
-                    this.tokens.add(new NumberToken(Double.parseDouble(tmpString)));
-                    break;
-                case OPENING_BRACKET:
-                case CLOSING_BRACKET:
-                    this.tokens.add(new Token(tmpType));
-                    break;
-            }
-        }
-        this.tokenIterator = this.tokens.listIterator();
-    }
-
     private Tokenizer(List<Token> tokenList) {
         this.tokens = new ArrayList<>(tokenList.size());
         tokenList.forEach(this.tokens::add);
         this.tokenIterator = tokens.listIterator();
+        checkIntegrity();
     }
 
     /**
@@ -67,7 +41,6 @@ class Tokenizer {
         this.tokens = new ArrayList<>(chars.length / 2);
 
         StringBuilder tmp = new StringBuilder(16);
-        int brackets = 0;
         for (int i = 0; i < chars.length; ++i) {
             if (!Character.isBmpCodePoint(chars[i])) throw new IllegalArgumentException("Only BMP supported.");
             switch (getType(chars[i])) {
@@ -80,11 +53,9 @@ class Tokenizer {
                     tmp.setLength(0);
                     break;
                 case OPENING_BRACKET:
-                    ++brackets;
                     tokens.add(new Token(getType(chars[i])));
                     break;
                 case CLOSING_BRACKET:
-                    --brackets;
                     tokens.add(new Token(getType(chars[i])));
                     break;
                 case OPERATOR:
@@ -92,9 +63,8 @@ class Tokenizer {
                     break;
             }
         }
-        if (brackets != 0)
-            throw new IllegalArgumentException("Invalid use of brackets. (missing opening or closing bracket(s))");
         this.tokenIterator = this.tokens.listIterator();
+        checkIntegrity();
     }
 
     Token next() {
@@ -182,5 +152,70 @@ class Tokenizer {
         if (c == ')') return TokenType.CLOSING_BRACKET;
         if (Misc.isValidOperator(c)) return TokenType.OPERATOR;
         throw new IllegalArgumentException("'"+c+"' is not a valid character for a mathematical expression.");
+    }
+
+    /**
+     * Check whether there are illegal sequences of operators in '{@code tokens}'.
+     * @throws IllegalArgumentException
+     */
+    private void checkIntegrity() throws IllegalArgumentException {
+        resetIndex();
+        if (!tokenIterator.hasNext())
+            throw new IllegalArgumentException("Empty expression.");
+        Token current = null;
+        Token previous;
+        Predicate<Token> isPlusOrMinus = t -> (t.isOperator() && t.getOperator() == '+' || t.getOperator() == '-');
+        int brackets = 0;
+        int numbers = 0;
+        while (tokenIterator.hasNext()) {
+            previous = current;
+            current = tokenIterator.next();
+            if (previous == null) {
+                switch (current.getType()) {
+                    case OPERATOR:
+                        if (!isPlusOrMinus.test(current))
+                            throw new IllegalArgumentException("Illegal start of expression (non-unary operator):"
+                                                               +current.getOperator());
+                        break;
+                    case CLOSING_BRACKET:
+                        throw new IllegalArgumentException("Illegal start of expression (closing bracket)");
+                    case OPENING_BRACKET: ++brackets; break;
+                    case NUMBER: ++numbers; break;
+                }
+                continue;
+            }
+            switch (current.getType()) {
+                case OPERATOR:
+                    if (!isPlusOrMinus.test(current)) {
+                        if (!previous.isNumber() && !previous.isClosingBracket())
+                            throw new IllegalArgumentException("Illegal expression before binary operator "
+                                                               +current.getOperator()+": "+previous);
+                    } else {
+                        if (previous.isOperator())
+                            throw new IllegalArgumentException("Illegal expression: sequence of two operators: "
+                                                               +previous.getOperator()+current.getOperator());
+                    }
+                    break;
+                case OPENING_BRACKET:
+                    if (!previous.isOperator() && !previous.isOpeningBracket())
+                        throw new IllegalArgumentException("Illegal expression (token before opening bracket is not an"
+                                                           +"operator or an opening bracket): "+previous+"(");
+                    ++brackets; break;
+                case CLOSING_BRACKET:
+                    if (previous.isOpeningBracket())
+                        throw new IllegalArgumentException("Illegal sequence of brackets: ()");
+                    else if (previous.isOperator())
+                        throw new IllegalArgumentException("Illegal expression: "+previous.getOperator()+")");
+                    --brackets;
+                    break;
+                case NUMBER: ++numbers; break;
+            }
+        }
+        if (null != current && (current.isOperator() || current.isOpeningBracket()))
+            throw new IllegalArgumentException("Illegal end of expression: "+current);
+        if (brackets != 0) throw new IllegalArgumentException("Illegal use of brackets: number of opening brackets"
+                                                              +"does not match number of closing brackets.");
+        if (numbers == 0) throw new IllegalArgumentException("Illegal expression: no numbers.");
+        resetIndex();
     }
 }
