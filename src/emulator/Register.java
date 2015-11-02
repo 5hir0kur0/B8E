@@ -1,5 +1,7 @@
 package emulator;
 
+import java.beans.PropertyChangeListener;
+
 /**
  * This interface represents a CPU register. It has setters and getters for binary, hex and decimal strings that
  * represent a register value.<br>
@@ -88,4 +90,17 @@ public interface Register {
     default boolean setValueFromHexadecimalString(String newValue) {
         return setValueFromString(NumeralSystem.HEXADECIMAL, newValue);
     }
+
+    /**
+     * Add a listener that is notified whenever the value of the {@code Register} changes.
+     * @param listener The listener to be added. Must not be {@code null}.
+     */
+    void addPropertyChangeListener(PropertyChangeListener listener);
+
+    /**
+     * Remove a change listener.
+     * @see #addPropertyChangeListener(PropertyChangeListener)
+     * @param listener The listener to be removed. Must not be {@code null}.
+     */
+    void removePropertyChangeListener(PropertyChangeListener listener);
 }
