@@ -15,6 +15,13 @@ public class BitAddressableByteRegister extends ByteRegister implements BitAddre
         super(name, initialValue);
     }
 
+    /**
+     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
+     */
+    public BitAddressableByteRegister(String name) {
+        this(name, (byte)0);
+    }
+
     @Override
     public boolean getBit(int index) throws IndexOutOfBoundsException {
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("Index of out of range (getBit()).");

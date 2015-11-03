@@ -26,6 +26,14 @@ public class ByteRegister implements Register {
         this.value = initialValue;
     }
 
+    /**
+     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
+     * @param initialValue the {@code ByteRegister}'s initial value. All values are allowed.
+     */
+    public ByteRegister(String name) {
+        this(name, (byte)0);
+    }
+
     protected void setValue(byte newValue) {
         byte oldValue = this.value;
         this.value = newValue;
