@@ -7,6 +7,8 @@ import java.io.BufferedWriter;
 import java.util.List;
 
 /**
+ * This interface allows a class to assemble
+ * assembler code.
  *
  * @author Noxgrim
  */
@@ -29,7 +31,7 @@ public interface Assembler {
      *
      * @return
      *      whether the assembling was successful.<br>
-     *      This method should return <code>false</code>, if the assemble detected
+     *      This method should return <code>false</code>, if the assembler detected
      *      one or more errors.
      */
     boolean assemble(BufferedReader input, BufferedWriter output, List<AssemblyError> problems);
