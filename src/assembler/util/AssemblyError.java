@@ -44,38 +44,38 @@ public class AssemblyError implements Comparable<AssemblyError> {
      */
     AssemblyError(Type type, int line, String message) {
 
-        Objects.requireNonNull(type, "Type cannot be 'null'.");
-        this.type = type;
+        this.type = Objects.requireNonNull(type, "Type cannot be 'null'.");
 
-        if (line < 0)
+        if ((this.line = line) < 0)
             throw new IllegalArgumentException("The line number cannot be negative.");
-        this.line = line;
 
-        Objects.requireNonNull(message, "The message cannot be 'null'.");
-
-        this.message = message;
+        this.message = Objects.requireNonNull(message, "The message cannot be 'null'.");
     }
 
     /**
      * @return the line where the occurred.
      */
-    public int getLine() {
-        return line;
-    }
+    public int getLine() { return line; }
 
     /**
      * @return the type of the error.
      */
-    public Type getType() {
-        return type;
-    }
+    public Type getType() { return type; }
+
+    /**
+     * @return whether the error type is an error.
+     */
+    public boolean isError() { return type == Type.ERROR; }
+
+    /**
+     * @return whether the error type is a warning.
+     */
+    public boolean isWarning() { return type == Type.WARNING; }
 
     /**
      * @return a detailed description of the error.
      */
-    public String getMessage() {
-        return message;
-    }
+    public String getMessage() { return message; }
 
     /**
      * Compares two assembly errors.
@@ -86,7 +86,19 @@ public class AssemblyError implements Comparable<AssemblyError> {
     public int compareTo(AssemblyError o) {
         if (type != o.type)
             return type.compareTo(o.type);
-        else
+        else if (line != o.line)
             return line - o.line;
+        else
+            return message.compareTo(o.message);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof AssemblyError) {
+            AssemblyError other = (AssemblyError) obj;
+            if (type == other.type && line == other.line)
+                return message.equals(other.message);
+        }
+        return false;
     }
 }
