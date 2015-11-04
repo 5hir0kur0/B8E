@@ -7,7 +7,7 @@ package emulator;
  */
 public interface ROM {
 
-    byte get(int index);
+    byte get(int index) throws IndexOutOfBoundsException;
 
     /**
      * Get a number of {@code Byte}s from memory.
@@ -18,7 +18,7 @@ public interface ROM {
      * @return an array of {@code Byte}s (if a value in the array is {@code null} this means that it does not exist in
      *         memory.
      */
-    Byte[] get(int index, int length);
+    Byte[] get(int index, int length) throws IndexOutOfBoundsException;
 
     int getMinAddress();
 
