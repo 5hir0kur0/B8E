@@ -61,13 +61,16 @@ public class RAM implements ROM {
     public Byte[] get(int index, int length) {
         if (length <= 0)
             throw new IllegalArgumentException("length cannot be smaller than or equal to 0");
+        if (index < 0)
+            throw new IllegalArgumentException("index must not be smaller than 0");
         Byte[] ret = new Byte[length];
         for (int i = 0; i < ret.length; i++) {
-            if (i < minIndex || i > maxIndex) {
+            int tmpIndex = i + index;
+            if (tmpIndex < minIndex || tmpIndex > maxIndex) {
                 ret[i] = null;
                 continue;
             }
-            ret[i] = this.memory[i];
+            ret[i] = this.memory[tmpIndex];
         }
         return ret;
     }
