@@ -75,30 +75,6 @@ public class RAM implements ROM {
         return ret;
     }
 
-    @Override
-    public int getMinAddress() {
-        return this.minIndex;
-    }
-
-    @Override
-    public int getMaxAddress() {
-        return this.maxIndex;
-    }
-
-    @Override
-    public void setMinAddress(int address) {
-        if (address < 0 || address >= this.maxIndex || address >= this.memory.length)
-            throw new IllegalArgumentException("address out of range");
-        this.minIndex = address;
-    }
-
-    @Override
-    public void setMaxAddress(int address) {
-        if (address >= this.memory.length || address <= this.minIndex || address < 0)
-            throw new IllegalArgumentException("address out of range");
-        this.maxIndex = address;
-    }
-
     public void set(int index, byte value) {
         if (index < this.minIndex || index > this.maxIndex)
             throw new IllegalArgumentException("index out of range");

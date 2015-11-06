@@ -109,12 +109,10 @@ public class MC8051 implements Emulator {
                 return ret;
             }
 
-            @Override
             public int getMinAddress() {
                 return 0x80; //the SFR area in the 8051 controller starts at 80h
             }
 
-            @Override
             public int getMaxAddress() {
                 return 0xFF; //the SFR area in the 8051 controller goes up to FFh
             }
@@ -122,16 +120,6 @@ public class MC8051 implements Emulator {
             @Override
             public int getSize() {
                 return 128;
-            }
-
-            @Override
-            public void setMinAddress(int address) {
-                throw new UnsupportedOperationException("attempting to set minimal address of SFR area");
-            }
-
-            @Override
-            public void setMaxAddress(int address) {
-                throw new UnsupportedOperationException("attempting to set maximal address of SFR area");
             }
 
             List<Register> getRegisters() {
@@ -151,16 +139,26 @@ public class MC8051 implements Emulator {
 
         private ROM codeMemory;
 
+        private ByteRegister PCH;
+        private ByteRegister PCL;
+
         /**
+         * @param codeMemory
+         *        The instructions will be read from this object. Must not be {@code null}.
+         *        The size must be 65536 bytes.
          * @param externalRAM
          *        external RAM that can be accessed with the {@code MOVX} command; {@code null} is a valid value and implies,
          *        that there is no external RAM
          */
-        public State8051(RAM externalRAM, ROM codeMemory) {
+        public State8051(ROM codeMemory, RAM externalRAM) {
             this.codeMemory = Objects.requireNonNull(codeMemory, "trying to create MC8051 object without code memory");
+            if (this.codeMemory.getSize() != 65536)
+                throw new IllegalArgumentException("code memory has to be 2^16 bytes long");
             this.sfrs = new SpecialFunctionRegisters();
             this.internalRAM = new RAM(256);
             this.externalRAM = externalRAM;
+            this.PCH = new ByteRegister("PCH");
+            this.PCL = new ByteRegister("PCL");
         }
 
     }
@@ -173,10 +171,11 @@ public class MC8051 implements Emulator {
      *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
      *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
      * @param codeMemory
-     *        The 8051's "code memory".
+     *        The 8051's "code memory". The instructions will be read from this object. Must not be {@code null}.
+     *        The size must be 65536 bytes.
      */
-    public MC8051(RAM externalRAM, ROM codeMemory) {
-        this.state = new State8051(externalRAM, codeMemory);
+    public MC8051(ROM codeMemory, RAM externalRAM) {
+        this.state = new State8051(codeMemory, externalRAM);
     }
 
     /**
@@ -197,7 +196,12 @@ public class MC8051 implements Emulator {
      */
     @Override
     public List<Register> getRegisters() {
-        return this.state.sfrs.getRegisters();
+        List<Register> ret = this.state.sfrs.getRegisters();
+        //the PC is not accessible through the special function register area in the 8051's memory,
+        //thus it is represented as a member of the state class and needs to be added manually to the list of SFRs
+        ret.add(this.state.PCH);
+        ret.add(this.state.PCL);
+        return ret;
     }
 
     @Override
@@ -229,5 +233,48 @@ public class MC8051 implements Emulator {
     @Override
     public boolean hasSecondaryMemory() {
         return this.state.externalRAM != null;
+    }
+
+
+    /**
+     * Get a byte from code memory and increment the PC.
+     * @return the retrieved byte
+     */
+    private byte getCodeByte() {
+        char tmp = (char)(this.state.PCH.getValue() << 8 | this.state.PCL.getValue());
+        byte ret = this.state.codeMemory.get(tmp);
+        ++tmp;
+        this.state.PCH.setValue((byte) (tmp >> 8));
+        this.state.PCL.setValue((byte)tmp);
+        return ret;
+    }
+
+    /**
+     * Get the value of an R register.
+     * @param ordinal
+     *     The R register to be used. E.g. '5' implies R5.
+     * @return R<sup>ordinal</sup>'s value
+     */
+    private byte getR(int ordinal) {
+        if (ordinal < 0 || ordinal > 7)
+            throw new IllegalArgumentException("invalid R register ordinal: "+ordinal);
+        int bank = (this.state.sfrs.PSW.getValue() >> 3) & 0x3;
+        int address = (bank << 3) | ordinal;
+        return this.state.internalRAM.get(address);
+    }
+
+    /**
+     * Set the value of an R register.
+     * @param ordinal
+     *     The R register to be used. E.g. '5' implies R5.
+     * @param newValue
+     *     R<sub>ordinal</sub>'s new value.
+     */
+    private void setR(int ordinal, byte newValue) {
+        if (ordinal < 0 || ordinal > 7)
+            throw new IllegalArgumentException("invalid R register ordinal: "+ordinal);
+        int bank = (this.state.sfrs.PSW.getValue() >> 3) & 0x3;
+        int address = (bank << 3) | ordinal;
+        this.state.internalRAM.set(address, newValue);
     }
 }
