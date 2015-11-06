@@ -20,21 +20,5 @@ public interface ROM {
      */
     Byte[] get(int index, int length) throws IndexOutOfBoundsException;
 
-    int getMinAddress();
-
-    int getMaxAddress();
-
     int getSize();
-
-    /**
-     * @param address The smallest address that can be accessed. Must be bigger than 0 and smaller than size and
-     *                smaller than maxAddress.
-     */
-    void setMinAddress(int address);
-
-    /**
-     * @param address The biggest address that can be accessed. Must be bigger than 0 and bigger than minAddress and
-     *                smaller than size.
-     */
-    void setMaxAddress(int address);
 }
