@@ -5,6 +5,10 @@ package assembler.arc8051;
  */
 public class MC8051Libary {
 
+    /**
+     * Contains all the possible types of a 8051 operand
+     * as an enum.
+     */
     public enum OperandType {
         /**
          * A constant value.<br> In 8051 assembly
@@ -24,6 +28,17 @@ public class MC8051Libary {
          */
         ADDRESS,
         /**
+         * An 'negated' address. In 8051 assembly
+         * language all negated addresses have a
+         * solidus '/' as prefix.<br>
+         * Negated addresses are used in bit operations
+         * to indicate that the  microcomputer first
+         * has to negate the value at the value at the
+         * address before perform the operation itself.
+         *
+         */
+        NEGATED_ADDRESS,
+        /**
          * A name that the 8051 mnemonic knows.<br>
          * Named addresses like "P0.7" don't count because
          * these names don't have specific mnemonics attached
@@ -42,7 +57,10 @@ public class MC8051Libary {
          * An indirect addressed name has '@' prefix.<br>
          * Only R0 and R1 can be used to address indirect.
          */
-        INDIRECT_NAME
+        INDIRECT_NAME;
     }
+
+    /** Used for switch-case comparisons. */
+    private static final OperandType[] types = OperandType.values();
 
 }
