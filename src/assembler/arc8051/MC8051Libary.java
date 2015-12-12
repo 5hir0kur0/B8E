@@ -2,7 +2,7 @@ package assembler.arc8051;
 
 import assembler.util.SimpleAssemblyError;
 import assembler.util.Settings;
-import assembler.util.Settings.ErrorHandling;
+import assembler.util.Settings.Errors.ErrorHandling;
 import assembler.util.SimpleAssemblyError.Type;
 
 
@@ -72,22 +72,18 @@ public class MC8051Libary {
             new Mnemonic8051("acall") {
                 @Override
                 public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
-                    byte[] result;
+                    byte[] result = new byte[0];
                     if (operands[0].getOperandType() == OperandType8051.ADDRESS) {
                         long jump = Long.parseLong(operands[0].getValue()) + 2;
 
                         if ((jump >>> 0xbL & 0x1fL) == (codePoint >>> 0xbL & 0x1fL))
                             result = new byte[]{((byte)(jump >>>0x5L & 0xf00L | 0x11)), (byte)(jump & 0xff)};
-                        else {
+                        else
                             operands[0].setError(new SimpleAssemblyError(Type.ERROR,
                                     "Call address too far far absolute 11 bit addressing!"));
-                            result = new byte[0];
-                        }
-                    } else {
+                    } else
                         operands[0].setError(new SimpleAssemblyError(Type.ERROR,
                                 "Operand needs to be an address!"));
-                        result = new byte[0];
-                    }
 
                     for (int i = 1; i < operands.length; ++i)
                         operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
@@ -95,6 +91,55 @@ public class MC8051Libary {
                     return result;
                 }
             },
+
+            new Mnemonic8051("add") {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                    byte[] result = new byte[0];
+
+                    boolean firstIsA = true;
+
+                    if (!(operands[0].getOperandType() == OperandType8051.NAME &&
+                            operands[0].getValue().equalsIgnoreCase("a"))) {
+                        firstIsA = false;
+                        operands[0].setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+                    }
+
+                    final OperandToken8051 op = operands[firstIsA?1:0];
+                    final OperandType8051 type = op.getOperandType();
+                    switch (op.getOperandType()) {
+                        case CONSTANT:
+                        case ADDRESS: {
+                            int value = Integer.parseInt(op.getValue());
+                            if (value > 0xFF)
+                                op.setError(new SimpleAssemblyError(Type.ERROR, (type == OperandType8051.ADDRESS ?
+                                        "Direct address" : "Constant" ) + "value is too big!"));
+                            else
+                                result = new byte[]{(byte) (type == OperandType8051.ADDRESS ? 0x25:0x24), (byte) value};
+                            break;
+                        }
+                        case INDIRECT_NAME:
+                        case NAME:
+                            if (op.getValue().charAt(0) != 'r') {
+                                int ordinal = Integer.parseInt(op.getValue().substring(1));
+                                if (ordinal > (type == OperandType8051.NAME? 7 : 1))
+                                    op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                else {
+                                    result = new  byte[] {(byte)(ordinal|(type==OperandType8051.NAME?0x48:0x46))};
+                                    break;
+                                }
+                            }
+                        default:
+                            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                    } //TODO Multiple error handling.
+
+                    for (int i = 1; i < operands.length; ++i)
+                        operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
+                                "Too many operands! ADD must have exactly 2 operands.", "Unnecessary operand."));
+                    return result;
+                }
+            }
     };
 
     private static SimpleAssemblyError getErrorFromErrorHandlingSetting(ErrorHandling setting, String errorMessage,
