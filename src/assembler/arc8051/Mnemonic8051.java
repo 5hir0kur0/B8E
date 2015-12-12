@@ -1,6 +1,7 @@
 package assembler.arc8051;
 
 import assembler.Mnemonic;
+import assembler.OperandToken;
 
 /**
  * A mnemonic for a microcomputer with a
@@ -8,7 +9,7 @@ import assembler.Mnemonic;
  *
  * @author Noxgrim
  */
-public abstract class Mnemonic8051 extends Mnemonic<Short> {
+public abstract class Mnemonic8051 extends Mnemonic {
     /**
      * Constructs a new 8051 Mnemonic.
      *
@@ -20,4 +21,11 @@ public abstract class Mnemonic8051 extends Mnemonic<Short> {
     protected Mnemonic8051(String name) {
         super(name);
     }
+
+    @Override
+    public byte[] getInstructionFromOperands(long codePoint, OperandToken... operands) {
+        return getInstructionFromOperands(codePoint, operands);
+    }
+
+    public abstract byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands);
 }

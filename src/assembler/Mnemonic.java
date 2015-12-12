@@ -7,7 +7,7 @@ package assembler;
  *
  * @author Noxgrim
  */
-public abstract class Mnemonic<C extends Number> {
+public abstract class Mnemonic {
 
     /** The name of the mnemonic. e.g: "mov". */
     private final String name;
@@ -42,10 +42,10 @@ public abstract class Mnemonic<C extends Number> {
      *
      * @return
      *      the byte length of the resulting instruction.<br>
-     *      This method calls {@link #getInstructionFromOperands(C codePoint)}
+     *      This method calls {@link #getInstructionFromOperands(long, OperandToken...)}
      *      and returns the length of the resulting array.
      */
-    public int getByteNumber(C codePoint, Operand ... operands) {
+    public int getByteNumber(long codePoint, OperandToken... operands) {
         return getInstructionFromOperands(codePoint).length;
     }
 
@@ -62,5 +62,5 @@ public abstract class Mnemonic<C extends Number> {
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(C codePoint, Operand ... operands);
+    public abstract byte[] getInstructionFromOperands(long codePoint, OperandToken ... operands);
 }
