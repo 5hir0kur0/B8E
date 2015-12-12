@@ -1,6 +1,7 @@
 package assembler.util;
 
 import java.io.File;
+import java.util.Objects;
 
 /**
  * @author Jannik
@@ -37,10 +38,19 @@ public class AssemblyError extends SimpleAssemblyError {
      */
     public AssemblyError(SimpleAssemblyError error, int line,
                          int startToken, int count, File file) {
-        super(error.getType(), error.getMessage());
+        super(Objects.requireNonNull(error, "Source error cannot be 'null'!").getType(), error.getMessage());
 
         if ((this.line = line) < 0)
             throw new IllegalArgumentException("The line number cannot be negative.");
+        if ((this.startToken = startToken) < 0)
+            throw new IllegalArgumentException("The start token index cannot be negative.");
+        if ((this.count = count) < 0)
+            throw new IllegalArgumentException("The count of the affected tokens cannot be negative.");
+        this.file = Objects.requireNonNull(file, "The file of the error cannot be 'null'!");
+
+        this.startToken = startToken;
+        this.line = line;
+        this.count = count;
     }
 
     @Override
