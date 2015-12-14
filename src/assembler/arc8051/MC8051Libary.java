@@ -81,11 +81,11 @@ public class MC8051Libary {
                     if (operands[0].getOperandType() == OperandType8051.ADDRESS) {
                         long jump = Long.parseLong(operands[0].getValue()) + 2;
 
-                        if ((jump >>> 0xbL & 0x1fL) == (codePoint >>> 0xbL & 0x1fL))
-                            result = new byte[]{((byte)(jump >>>0x5L & 0xf00L | 0x11L)), (byte)(jump & 0xffL)};
+                        if ((jump >>> 11L & 0x1fL) == (codePoint >>> 11L & 0x1fL))
+                            result = new byte[]{((byte)(jump >>> 3L & 0xE00L | 0x11L)), (byte)(jump & 0xffL)};
                         else
                             operands[0].setError(new SimpleAssemblyError(Type.ERROR,
-                                    "Call address too far far absolute 11 bit addressing!"));
+                                    "Call address too far absolute 11 bit addressing!"));
                     } else
                         operands[0].setError(new SimpleAssemblyError(Type.ERROR,
                                 "Operand needs to be an address!"));
@@ -216,11 +216,11 @@ public class MC8051Libary {
                     if (operands[0].getOperandType() == OperandType8051.ADDRESS) {
                         long jump = Long.parseLong(operands[0].getValue()) + 2;
 
-                        if ((jump >>> 0xbL & 0x1fL) == (codePoint >>> 0xbL & 0x1fL))
-                            result = new byte[]{((byte)(jump >>>0x5L & 0xf00L | 0x1L)), (byte)(jump & 0xffL)};
+                        if ((jump >>> 11L & 0x1fL) == (codePoint >>> 11L & 0x1fL))
+                            result = new byte[]{((byte)(jump >>> 3L & 0xE00L | 0x01L)), (byte)(jump & 0xffL)};
                         else
                             operands[0].setError(new SimpleAssemblyError(Type.ERROR,
-                                    "Jump address too far far absolute 11 bit addressing!"));
+                                    "Jump address too far absolute 11 bit addressing!"));
                     } else
                         operands[0].setError(new SimpleAssemblyError(Type.ERROR,
                                 "Operand needs to be an address!"));
