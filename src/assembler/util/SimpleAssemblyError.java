@@ -32,13 +32,17 @@ public class SimpleAssemblyError implements Comparable<SimpleAssemblyError> {
      *      its cause.
      *
      * @throws IllegalArgumentException
-     *      if the line number is negative.
+     *      if the message is empty or only contains white
+     *      space.
      */
     public SimpleAssemblyError(Type type, String message) {
 
         this.type = Objects.requireNonNull(type, "Type cannot be 'null'.");
 
-        this.message = Objects.requireNonNull(message, "The message cannot be 'null'.");
+        if (message == null)
+            throw new NullPointerException("The message cannot be 'null'.");
+        if (message.trim().isEmpty())
+            throw new IllegalArgumentException("The message cannot be empty or only white space.");
     }
 
     /**
