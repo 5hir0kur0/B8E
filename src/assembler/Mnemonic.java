@@ -1,7 +1,5 @@
 package assembler;
 
-import java.util.IllegalFormatCodePointException;
-
 /**
  * Represents a mnemonic in an assembler language.
  * This mnemonic can assemble itself, if it knows
@@ -36,7 +34,7 @@ public abstract class Mnemonic {
         if (name == null)
             throw new NullPointerException("'Name' cannot be 'null'!");
         if (name.trim().isEmpty())
-            throw new IllegalArgumentException("Name cannot be empty.");
+            throw new IllegalArgumentException("'Name' cannot be empty.");
         this.name = name.toLowerCase();
         if (minOp < 0)
             throw new IllegalArgumentException("The minimum number of operands cannot be negative.");
