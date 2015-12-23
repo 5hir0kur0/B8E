@@ -108,7 +108,7 @@ public abstract class Mnemonic {
      *      The operands of the mnemonic.
      *
      * @return
-     *      a assembled representation of this mnemonic.
+     *      an assembled representation of this mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
