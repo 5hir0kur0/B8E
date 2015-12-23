@@ -50,6 +50,17 @@ public class MC8051Libary {
          *
          */
         NEGATED_ADDRESS,
+
+        /**
+         * An offset for an address.<br>
+         * All address offsets are labeled by either a '+' or
+         * a '-' prefix.<br>
+         * An address offset is used for relative addressing.
+         * Instead of the absolute address a address generated
+         * form the code point and the address offset is used as
+         * the jump target.
+         */
+        ADDRESS_OFFSET,
         /**
          * A name that the 8051 mnemonic knows.<br>
          * Named addresses like "P0.7" don't count because
@@ -108,6 +119,62 @@ public class MC8051Libary {
                     return bitwiseLogicalOperation((byte) 0x54, (byte) 0x56, (byte) 0x55, (byte) 0x58,
                             (byte) 0xb0, (byte) 0x82, (byte) 0x52, (byte) 0x53, this, operands);
                 }
+            },
+
+            new Mnemonic8051("cjne", 3) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                    byte[] result = new byte[0];
+
+                    OperandToken8051 op1 = operands[0], op2 = operands[1], op3 = operands[2];
+                    OperandType8051 type1 = op1.getOperandType(), type2 = op2.getOperandType(),
+                                    type3 = op3.getOperandType();
+
+                    byte offset;
+                    if (type3 == OperandType8051.ADDRESS) {
+                        long i = getOffset(codePoint, Integer.parseInt(op3.getValue()), 4);
+                        if (i >= -127 && i <= 128)
+                            offset = (byte) i;
+                        else {
+                            op3.setError(new SimpleAssemblyError(Type.ERROR, "Jump is too far for a short jump!"));
+                            return result;
+                        }
+                    } else {
+                        op3.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        return result;
+                    }
+
+                    int  value;
+
+                    if (type2 == OperandType8051.ADDRESS || type2 == OperandType8051.CONSTANT) {
+                        value = Integer.parseInt(op2.getValue());
+                        if (value <= 0xff) {
+                            if (type1 == OperandType8051.NAME || type1 == OperandType8051.INDIRECT_NAME) {
+                                if (op1.getValue().equals("a"))
+                                    result = new byte[]{(byte)(type2 == OperandType8051.CONSTANT ? 0xB4 : 0xB5),
+                                            (byte) value, offset};
+                                else if (op1.getValue().startsWith("r")) {
+                                    int ordinal = Integer.parseInt(op1.getValue().substring(1));
+                                    if (ordinal > (type1 == OperandType8051.NAME? 7 : 1))
+                                        op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                    else {
+                                        result = new  byte[] {(byte)(ordinal
+                                                | (type1==OperandType8051.NAME? 0xB8 : 0xB6)), // Set desired bits to ordinal
+                                                (byte) value, offset};
+                                    }
+                                }
+                            } else
+                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        } else
+                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
+                                    (type2 == OperandType8051.ADDRESS ? "direct address" : "constant") + " too big!"));
+                    } else
+                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                    handleUnnecessaryOperands(this.getName(), false, 0, 3, operands);
+
+                    return result;
+                }
             }
     };
 
@@ -125,7 +192,7 @@ public class MC8051Libary {
      * @param operands the operands of the mnemonic.
      *
      * @return
-     *      a assembled representation of the mnemonic.
+     *      an assembled representation of the mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
@@ -174,12 +241,7 @@ public class MC8051Libary {
                 op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
         } //TODO Multiple error handling.
 
-        final String err = Settings.Errors.IGNORE_OBVIOUS_OPERANDS == ErrorHandling.ERROR ?
-                "Too many operands! " + mnemonic.getName().toUpperCase() + " must have exactly 2 operands." :
-                "Too many operands! " + mnemonic.getName().toUpperCase() + " must have 1 or 2 operands.";
-        for (int i = firstIsA?2:1; i < operands.length; ++i)
-            operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
-                    err, "Unnecessary operand."));
+        handleUnnecessaryOperands(mnemonic.getName(), true, firstIsA ? 0 : 1, 2, operands);
 
         return result;
     }
@@ -202,25 +264,30 @@ public class MC8051Libary {
      * @param operands the operands of the mnemonic.
      *
      * @return
-     *      a assembled representation of the mnemonic.
+     *      an assembled representation of the mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
     private static byte[] absoluteCodeJump(final int opc1,
                                            Mnemonic8051 mnemonic, long codePoint, OperandToken8051 ... operands) {
         byte[] result = new byte[0];
-        if (operands[0].getOperandType() == OperandType8051.ADDRESS) {
-            long jump = Long.parseLong(operands[0].getValue()) + 2;
+        if (operands[0].getOperandType() == OperandType8051.ADDRESS ||
+            operands[0].getOperandType() == OperandType8051.ADDRESS_OFFSET) {
+            long jump = Long.parseLong(operands[0].getValue());
+
+            if (operands[0].getOperandType() == OperandType8051.ADDRESS_OFFSET) {
+                jump = codePoint + jump + 2;
+            }
 
             if ((jump >>> 11L // Shift 11 right to clear changing bits
                  & 0x1fL)     // Clear all bytes but the first five
                 == (codePoint >>> 11L & 0x1fL)) // Compare: If equal an absolute jump is possible.
                 result = new byte[]{((byte)(
                         jump >>> 3L   // Shift jump target 3 bits right to get bytes 3-10 (10 9 8 7 6 5 4 3)
-                        & 0xE00L      // Clear first 5 bits (10 9 8 x x x x x)
+                        & 0xE0L       // Clear first 5 bits (10 9 8 x x x x x)
                         | opc1)),     // Set cleared bits to bit mask (10 9 8 A A A A A)
                         (byte)(
-                        jump & 0xffL) // Clear all bits but the low byte (X X X 7 6 5 4 3 2 1 0)
+                        jump & 0xffL) // Clear all bits but the low byte (x x x 7 6 5 4 3 2 1 0)
                 };
             else
                 operands[0].setError(new SimpleAssemblyError(Type.ERROR,
@@ -229,10 +296,7 @@ public class MC8051Libary {
             operands[0].setError(new SimpleAssemblyError(Type.ERROR,
                     "Operand needs to be an address!"));
 
-        for (int i = 1; i < operands.length; ++i)
-            operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
-                    "Too many operands! " + mnemonic.getName().toUpperCase() + " must have exactly 1 operand.",
-                    "Unnecessary operand."));
+        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
         return result;
 
     }
@@ -254,7 +318,7 @@ public class MC8051Libary {
      * @param operands the operands of the mnemonic.
      *
      * @return
-     *      a assembled representation of the mnemonic.
+     *      an assembled representation of the mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
@@ -355,14 +419,51 @@ public class MC8051Libary {
         }
 
 
-        final String err = Settings.Errors.IGNORE_OBVIOUS_OPERANDS == ErrorHandling.ERROR ?
-                "Too many operands! " + mnemonic.getName().toUpperCase() + " must have exactly 2 operands." :
-                "Too many operands! " + mnemonic.getName().toUpperCase() + " must have 1 or 2 operands.";
-        for (int i = firstIgnored?2:1; i < operands.length; ++i)
+        handleUnnecessaryOperands(mnemonic.getName(), true, firstIgnored ? 1 : 0, 3, operands);
+        return result;
+
+    }
+
+    /**
+     * @param codePoint the position in code memory
+     * @param targetCodePoint the code memory point if the jump target
+     * @param offset
+     *      the offset from the <code>codePoint</code> to the <code>targetCodePoint</code>.
+     *      Can only be positive.
+     * @return
+     *      the calculated offset from the <code>codePoint</code> the <code>targetCodePoint</code>.
+     */
+    private static long getOffset(long codePoint, long targetCodePoint, int offset) {
+        if (offset < 0)
+            throw new IllegalArgumentException("Offset 'offset' cannot be negative!");
+        return targetCodePoint - (codePoint + offset);
+
+    }
+    /**
+     * Adds an ERROR or WARNING to every unnecessary operand of a mnemonic.
+     *
+     * @param mnemonicName the name of the mnemonic.
+     * @param hasObviousOperands whether the mnemonic has unnecessary operands.
+     * @param ignored
+     *      the number of operands that were ignored. If <code>hasObviousOperands</code> is <code>true</code>
+     *      0 is assumed.
+     * @param firstOperand
+     *      the first operand that should be handled. If some operands are ignored their value will be subtracted from
+     *      this value.
+     * @param operands the operands that will be handled.
+     */
+    private static void handleUnnecessaryOperands(String mnemonicName, boolean hasObviousOperands, int ignored,
+                                           int firstOperand, OperandToken8051 ... operands) {
+        if (!hasObviousOperands)
+            ignored = 0;
+        final String err = Settings.Errors.IGNORE_OBVIOUS_OPERANDS != ErrorHandling.ERROR && hasObviousOperands?
+                "Too many operands! " + mnemonicName.toUpperCase() + " must have "+(firstOperand-1)+" or "+firstOperand+
+                        " operands." :
+                "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly "+firstOperand+" operand"+
+                        (firstOperand == 0 ? "":"s")+".";
+        for (int i = firstOperand - ignored; i < operands.length; ++i)
             operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
                     err, "Unnecessary operand."));
-
-        return result;
 
     }
 
