@@ -273,10 +273,11 @@ public class MC8051Libary {
         byte[] result = new byte[0];
         if (operands[0].getOperandType() == OperandType8051.ADDRESS ||
             operands[0].getOperandType() == OperandType8051.ADDRESS_OFFSET) {
+            codePoint+=2;
             long jump = Long.parseLong(operands[0].getValue());
 
             if (operands[0].getOperandType() == OperandType8051.ADDRESS_OFFSET) {
-                jump = codePoint + jump + 2;
+                jump = getFromOffset(codePoint, jump, 0);
             }
 
             if ((jump >>> 11L // Shift 11 right to clear changing bits
@@ -439,6 +440,22 @@ public class MC8051Libary {
         return targetCodePoint - (codePoint + offset);
 
     }
+
+    /**
+     * @param codePoint the position in code memory
+     * @param codeOffset the offset that will be used to generate the target code point
+     * @param offset
+     *      the offset from the <code>codePoint</code> to the code offset source.
+     *      Can only be positive.
+     * @return
+     *      the calculated target code point from the <code>codePoint</code> and the <code>offset</code>.
+     */
+    private static long getFromOffset(long codePoint, long codeOffset, int offset) {
+        if (offset < 0)
+            throw new IllegalArgumentException("Offset 'offset' cannot be negative!");
+        return codePoint+offset + codeOffset;
+    }
+
     /**
      * Adds an ERROR or WARNING to every unnecessary operand of a mnemonic.
      *
