@@ -28,6 +28,15 @@ public class Settings {
          */
         public static ErrorHandling IGNORE_OBVIOUS_OPERANDS = ErrorHandling.ERROR;
 
+        /**
+         * How using of address offsets like
+         * <pre>
+         *     SJMP -02h
+         * </pre>
+         * instead of labels is handled.
+         */
+        public static ErrorHandling ADDRESS_OFFSET_USED = ErrorHandling.WARN;
+
         public enum  ErrorHandling {
             IGNORE, WARN, ERROR;
         }
