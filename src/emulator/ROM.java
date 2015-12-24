@@ -21,4 +21,14 @@ public interface ROM {
     Byte[] get(int index, int length) throws IndexOutOfBoundsException;
 
     int getSize();
+
+    /**
+     * Return {@code true} if the other object is equal to this one.
+     * @see java.lang.Object#equals(java.lang.Object)
+     * @param other
+     *     The other object.
+     * @return
+     *     {@code true} if the objects are equal.
+     */
+    boolean equals(Object other);
 }
