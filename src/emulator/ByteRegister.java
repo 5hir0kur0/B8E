@@ -34,7 +34,7 @@ public class ByteRegister implements Register {
         this(name, (byte)0);
     }
 
-    protected void setValue(byte newValue) {
+    public void setValue(byte newValue) {
         byte oldValue = this.value;
         this.value = newValue;
         changeSupport.firePropertyChange("value", oldValue, newValue);
@@ -84,5 +84,14 @@ public class ByteRegister implements Register {
     @Override
     public String toString() {
         return "ByteRegister[name=\""+this.name+"\";value="+Byte.toUnsignedInt(this.value)+"]";
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (null == other) return false;
+        if (this == other) return true;
+        if (!(other instanceof ByteRegister)) return false;
+        ByteRegister tmp = (ByteRegister) other;
+        return this.value == tmp.value && this.name.equals(tmp.name);
     }
 }

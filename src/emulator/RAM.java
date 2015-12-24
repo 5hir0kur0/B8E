@@ -19,7 +19,7 @@ public class RAM implements ROM {
      * @param maxAddress The biggest address that can be accessed. Must be bigger than 0 and bigger than minAddress and
      *                   smaller than size.
      */
-    RAM(int size, int minAddress, int maxAddress) {
+    public RAM(int size, int minAddress, int maxAddress) {
         if (size <= 0)
             throw new IllegalArgumentException("Cannot create ROM of size smaller than or equal to 0");
         if (minAddress < 0 || minAddress >= size)
@@ -39,7 +39,7 @@ public class RAM implements ROM {
      *
      * @param size The number of bytes in the created object. Must be bigger than 0.
      */
-    RAM(int size) {
+    public RAM(int size) {
         this(size, 0, size - 1);
     }
 
@@ -77,12 +77,29 @@ public class RAM implements ROM {
 
     public void set(int index, byte value) {
         if (index < this.minIndex || index > this.maxIndex)
-            throw new IllegalArgumentException("index out of range");
+            throw new IllegalArgumentException("index out of range: "+index);
         this.memory[index] = value;
     }
 
     @Override
     public int getSize() {
         return this.memory.length;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (null == other) return false;
+        if (this == other) return true;
+        if (!(other instanceof RAM)) return false;
+        RAM tmp = (RAM)other;
+        if (tmp.minIndex != this.minIndex || tmp.maxIndex != this.maxIndex) return false;
+        for (int i = 0; i < this.memory.length; ++i) {
+            try {
+                if (tmp.memory[i] != this.memory[i]) return false;
+            } catch (IndexOutOfBoundsException e) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -53,4 +53,22 @@ public interface Emulator {
     default boolean hasSecondaryMemory() {
         return false;
     }
+
+    /**
+     * Get the code memory.
+     * Not all CPUs may support this.
+     * @return ROM representing the code memory.
+     * @throws UnsupportedOperationException
+     */
+    default ROM getCodeMemory() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("Emulator::getCodeMemory");
+    }
+
+    /**
+     * Return whether the CPU has a code memory module.
+     * @return {@code true} if the CPU has code memory; {@code false} otherwise
+     */
+    default boolean hasCodeMemory() {
+        return false;
+    }
 }
