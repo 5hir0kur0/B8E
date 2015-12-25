@@ -133,7 +133,7 @@ public class MC8051Libary {
                     byte offset;
                     if (type3 == OperandType8051.ADDRESS) {
                         long i = getOffset(codePoint, Integer.parseInt(op3.getValue()), 4);
-                        if (i >= -127 && i <= 128)
+                        if (i >= -128 && i <= 127)
                             offset = (byte) i;
                         else {
                             op3.setError(new SimpleAssemblyError(Type.ERROR, "Jump is too far for a short jump!"));
@@ -175,6 +175,27 @@ public class MC8051Libary {
 
                     return result;
                 }
+            },
+
+            new Mnemonic8051("clr", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                    return bitOperation((byte) 0xE4, (byte) 0xC3, (byte) 0xC2, this, operands);
+                }
+            },
+
+            new Mnemonic8051("cpl", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                    return bitOperation((byte) 0xF4, (byte) 0xB3, (byte) 0xB2, this, operands);
+                }
+            },
+
+            new Mnemonic8051("da", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                    return accumulatorOperation((byte) 0xD4, this, operands);
+                }
             }
     };
 
@@ -197,7 +218,7 @@ public class MC8051Libary {
      *      operands.
      */
     private static byte[] tier1ArithmeticOperation(final byte opc1, final byte opc2, final byte opc3, final byte opc4,
-            Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+                                                   Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
         byte[] result = new byte[0];
 
         boolean firstIsA = true;
@@ -325,7 +346,7 @@ public class MC8051Libary {
      */
     private static byte[] bitwiseLogicalOperation(final byte opc1, final byte opc2, final byte opc3, final byte opc4,
                                                   final byte opc5, final byte opc6, final byte opc7, final byte opc8,
-            Mnemonic8051 mnemonic, OperandToken8051 ... operands)  {
+                                                  Mnemonic8051 mnemonic, OperandToken8051 ... operands)  {
         byte[] result = new  byte[0];
         OperandToken8051 op1 = operands[0];
         boolean firstIgnored = false;
@@ -426,6 +447,83 @@ public class MC8051Libary {
     }
 
     /**
+     * Generates instruction codes for all bit operations (~ =0 =1) because they are all generated the same way with
+     * different opcodes.<br>
+     * This function is used by the <code>CLR</code>, <code>SETB</code> and <code>CPL</code> mnemonics.
+     *
+     * @param opc1 the opcode for the <code>A</code> as operand.
+     * @param opc2 the opcode for the <code>C</code> as operand.
+     * @param opc3 the opcode for the <code>direct address</code> as operand.
+     *
+     * @param mnemonic the mnemonic that uses this method.
+     * @param operands the operands of the mnemonic.
+     *
+     * @return
+     *      an assembled representation of the mnemonic.
+     *      It consists of the opcode and the assembled
+     *      operands.
+     */
+    private static byte[] bitOperation(final byte opc1, final byte opc2, final byte opc3,
+                                       Mnemonic8051 mnemonic, OperandToken8051... operands) {
+        byte[] result = new byte[0];
+
+        OperandToken8051 op = operands[0];
+        OperandType8051 type = op.getOperandType();
+
+        switch (type) {
+            case ADDRESS:
+                int value = Integer.parseInt(op.getValue());
+                if (value > 0xff)
+                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                else
+                    return new byte[] {opc3, (byte) value};
+                break;
+            case NAME:
+                if (op.getValue().equals("a"))
+                    return new byte[]{opc1};
+                else if (op.getValue().equals("c"))
+                    return new byte[]{opc2};
+            default:
+                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+        }
+
+        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
+
+        return result;
+    }
+
+    /**
+     * Generates instruction codes for all operations that are influencing the accumulator because they are all
+     * generated the same way with different opcodes.<br>
+     * This function is used by the <code>DA</code>, <code>RR</code>, <code>RRC</code>, <code>RL</code>, <code>RLC</code>,
+     * <code>RR</code> and <code>SWAP</code> mnemonics.
+     *
+     * @param opc1 the opcode for the instruction.
+     *
+     * @param mnemonic the mnemonic that uses this method.
+     * @param operands the operands of the mnemonic.
+     *
+     * @return
+     *      an assembled representation of the mnemonic.
+     *      It consists of the opcode and the assembled
+     *      operands.
+     */
+    private static byte[] accumulatorOperation(final byte opc1,
+                                               Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+        boolean opIsA = false;
+
+        if (operands.length > 0 && operands[0].getValue().equals("a"))
+            opIsA = true;
+        else
+            operands[0].setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+        // TODO: Correct Error handling (for no operands as well)
+        handleUnnecessaryOperands(mnemonic.getName(), true, opIsA?0:1, 1, operands);
+
+        return new byte[] {opc1};
+    }
+
+    /**
      * @param codePoint the position in code memory
      * @param targetCodePoint the code memory point if the jump target
      * @param offset
@@ -453,7 +551,12 @@ public class MC8051Libary {
     private static long getFromOffset(long codePoint, long codeOffset, int offset) {
         if (offset < 0)
             throw new IllegalArgumentException("Offset 'offset' cannot be negative!");
-        return codePoint+offset + codeOffset;
+        long result =  codePoint+offset + codeOffset;
+
+        if (result >= 0 && result <= 0xffffL)
+            return result;
+        else
+            throw new IllegalArgumentException("Address is out of range! ('" + result + "')");
     }
 
     /**
