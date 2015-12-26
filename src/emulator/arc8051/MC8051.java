@@ -8,6 +8,13 @@ import java.util.Objects;
 /**
  * This class represents the 8051 microcontroller.
  *
+ * NOTE:
+ *   The reason for all the bitwise ANDs is that Java uses signed arithmetic and thus exhibits weird behaviour
+ *   when casting a negative type to a type with a greater bit count (this casting occurs automatically during almost
+ *   all arithmetic operations, like e.g. bit shifting):
+ *   (int)(byte)0x80 = 0xFFFFFF80
+ *   In order to get the correct result, we have to do <result> & 0xFF (in this case)
+ *
  * @author 5hir0kur0
  */
 public class MC8051 implements Emulator {
@@ -77,8 +84,8 @@ public class MC8051 implements Emulator {
         switch (currentInstruction) {
             case       0x00: retValue = nop(); break;
             case       0x01: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x02: break;
-            case       0x03: break;
+            case       0x02: retValue = ljmp(getCodeByte(), getCodeByte()); break;
+            case       0x03: retValue = rr_a(); break;
             case       0x04: break;
             case       0x05: break;
             case       0x06: break;
@@ -336,23 +343,23 @@ public class MC8051 implements Emulator {
     }
 
     @Override
-            public boolean hasNext() {
+    public boolean hasNext() {
         return false;
     }
 
     @Override
-            public RAM getMainMemory() {
+    public RAM getMainMemory() {
         return this.state.internalRAM;
     }
 
     @Override
-            public RAM getSecondaryMemory() throws UnsupportedOperationException {
+    public RAM getSecondaryMemory() throws UnsupportedOperationException {
         if (null == this.state.externalRAM) throw new UnsupportedOperationException("no external RAM");
         return this.state.externalRAM;
     }
 
     @Override
-            public boolean hasSecondaryMemory() {
+    public boolean hasSecondaryMemory() {
         return this.state.externalRAM != null;
     }
 
@@ -362,10 +369,10 @@ public class MC8051 implements Emulator {
      * @return the retrieved byte
      */
     private byte getCodeByte() {
-        char tmp = (char)(this.state.PCH.getValue() << 8 | this.state.PCL.getValue());
+        char tmp = (char)((this.state.PCH.getValue() << 8) & 0xFF00 | this.state.PCL.getValue() & 0xFF);
         byte ret = this.state.codeMemory.get(tmp);
         ++tmp;
-        this.state.PCH.setValue((byte) (tmp >> 8));
+        this.state.PCH.setValue((byte) (tmp >>> 8));
         this.state.PCL.setValue((byte) tmp);
         return ret;
     }
@@ -394,35 +401,84 @@ public class MC8051 implements Emulator {
     private void setR(int ordinal, byte newValue) {
         if (ordinal < 0 || ordinal > 7)
             throw new IllegalArgumentException("invalid R register ordinal: "+ordinal);
-        int bank = (this.state.sfrs.PSW.getValue() >> 3) & 0x3;
+        int bank = (this.state.sfrs.PSW.getValue() >>> 3) & 0x3;
         int address = (bank << 3) | ordinal;
         this.state.internalRAM.set(address, newValue);
     }
 
-    /** no operation */
+    /**
+     * <b>No Operation</b>
+     * @return the number of cycles (1)
+     * */
     private int nop() {
         return 1;
     }
 
     /**
-     * absolute jump
+     * <b>Absolute Jump</b>
      * Set the last 11 bits of the PC.
      * They are encoded in the following way:
-     * Opcode: <code></code>A<sub>10</sub>A<sub>9</sub>A<sub>8</sub>0001</code>
-     * Operand: </code>A<sub>7</sub>A<sub>6</sub>A<sub>5</sub>A<sub>4</sub>A<sub>3</sub>A<sub>2</sub>A<sub>1</sub>A<sub></sub>0
-     * @param current The current opcode.
+     * Opcode: <code>A<sub>10</sub>A<sub>9</sub>A<sub>8</sub>0001</code><br>
+     * Operand: </code>A<sub>7</sub>A<sub>6</sub>A<sub>5</sub>A<sub>4</sub>A<sub>3</sub>A<sub>2</sub>A<sub>1</sub>A<sub></sub>0<br>
+     * <br>
+     * Example:
+     * <code>
+     * &nbsp;&nbsp;&nbsp;&nbsp;instruction&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100001<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;argument&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;a10-8&nbsp;(from&nbsp;instruction)&nbsp;=&nbsp;111<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;a7-&nbsp;0&nbsp;(from&nbsp;argument)&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;==>&nbsp;resulting&nbsp;address&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;11100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;replace&nbsp;last&nbsp;11&nbsp;bits&nbsp;in&nbsp;pc:<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;replaced&nbsp;=&nbsp;1011011100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;[in&nbsp;hex]&nbsp;=&nbsp;0xB722&nbsp;<br>
+     * </code>
+     * @param currentOp The current opcode.
      * @param last8bits The argument (next byte in code memory)
      * @return the number of cycles (2)
      */
-    private int ajmp(byte current, byte last8bits) {
-        char result = (char)(this.state.PCH.getValue() << 8 | this.state.PCL.getValue());
+    private int ajmp(byte currentOp, byte last8bits) {
+
+        char result = (char)((this.state.PCH.getValue() << 8) & 0xFF00 | this.state.PCL.getValue() & 0xFF);
         //result += 2; not necessary because the current pc at the time of the call will be the address after ajmp
         result &= 0xF800; //delete the last 11 bits
         result |= last8bits;
-        current &= 0xE0;
-        result |= current << 3; //copy the three bits of the address encoded in the opcode
+        result |= (currentOp & 0xE0) << 3; //copy the three bits of the address encoded in the opcode
         this.state.PCH.setValue((byte)(result >>> 8));
-        this.state.PCL.setValue((byte)(result & 0x00FF));
+        this.state.PCL.setValue((byte)result);
         return 2;
+    }
+
+    /**
+     * <b>Long Jump</b>
+     * The address is encoded in the following way:
+     * opcode | A<sub>15<sub>-A<sub>8</sub> | A<sub>7</sub>-A<sub>0</sub>
+     * @param arg1 A<sub>15<sub>-A<sub>8</sub>
+     * @param arg2 A<sub>7</sub>-A<sub>0</sub>
+     * @return the number of cycles (2)
+     */
+    private int ljmp(byte arg1, byte arg2) {
+        this.state.PCH.setValue(arg1);
+        this.state.PCL.setValue(arg2);
+        return 2;
+    }
+
+    /**
+     * <b>Rotate Right</b> (rotates the accumulator one bit to the right)
+     * Bit 0 of the accumulator is rotated to bit 7.
+     * @return the number of cycles (1)
+     */
+    private int rr_a() {
+        final int a = this.state.sfrs.A.getValue() & 0xFF;
+        int result = a >>> 1; //rotate a one bit to the right
+        if ((a & 0x1) == 1) { //if bit 0 is set
+           result |= 1 << 7; //set bit 7 in result
+        }
+        this.state.sfrs.A.setValue((byte)result);
+        return 1;
     }
 }

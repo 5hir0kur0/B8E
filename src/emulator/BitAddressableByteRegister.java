@@ -25,12 +25,12 @@ public class BitAddressableByteRegister extends ByteRegister implements BitAddre
     @Override
     public boolean getBit(int index) throws IndexOutOfBoundsException {
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("Index of out of range (getBit()).");
-        return (this.getValue() & 1 << index) >> index == 1;
+        return (this.getValue() & 1 << index) >>> index == 1;
     }
 
     @Override
     public void setBit(boolean newValue, int index) throws IndexOutOfBoundsException {
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("Index of out of range (setBit()).");
-        this.setValue((byte)(newValue ? this.getValue() | 1 << index : this.getValue() & ~(1 << index)));
+        this.setValue((byte)(newValue ? this.getValue() & 0xFF | 1 << index : this.getValue() & ~(1 << index)));
     }
 }
