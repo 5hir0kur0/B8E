@@ -1,5 +1,6 @@
 package emulator.arc8051;
 
+import com.sun.javaws.exceptions.InvalidArgumentException;
 import emulator.*;
 
 import java.util.List;
@@ -7,8 +8,8 @@ import java.util.Objects;
 
 /**
  * This class represents the 8051 microcontroller.
- *
- * NOTE:
+ * <br>
+ * NOTE: <br>
  *   The reason for all the bitwise ANDs is that Java uses signed arithmetic and thus exhibits weird behaviour
  *   when casting a negative type to a type with a greater bit count (this casting occurs automatically during almost
  *   all arithmetic operations, like e.g. bit shifting):
@@ -22,7 +23,7 @@ public class MC8051 implements Emulator {
     State8051 state;
 
     /**
-     * Create a new 8051 microcontroller object.
+     * Create a new 8051 microcontroller object.<br>
      * @param externalRAM
      *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
      *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
@@ -52,12 +53,7 @@ public class MC8051 implements Emulator {
      */
     @Override
     public List<Register> getRegisters() {
-        List<Register> ret = this.state.sfrs.getRegisters();
-        //the PC is not accessible through the special function register area in the 8051's memory,
-        //thus it is represented as a member of the state class and needs to be added manually to the list of SFRs
-        ret.add(this.state.PCH);
-        ret.add(this.state.PCL);
-        return ret;
+        return this.state.getRegisters();
     }
 
     @Override
@@ -74,30 +70,31 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * Execute the next instruction.
+     * Execute the next instruction.<br>
      * @return the number of cycles this instruction takes.
      */
     @Override
     public int next() {
         byte currentInstruction = getCodeByte();
         int retValue = -1;
+        byte previousA = this.state.sfrs.A.getValue();
         switch (currentInstruction) {
             case       0x00: retValue = nop(); break;
             case       0x01: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x02: retValue = ljmp(getCodeByte(), getCodeByte()); break;
             case       0x03: retValue = rr_a(); break;
-            case       0x04: break;
-            case       0x05: break;
-            case       0x06: break;
-            case       0x07: break;
-            case       0x08: break;
-            case       0x09: break;
-            case       0x0a: break;
-            case       0x0b: break;
-            case       0x0c: break;
-            case       0x0d: break;
-            case       0x0e: break;
-            case       0x0f: break;
+            case       0x04: retValue = inc(this.state.sfrs.A); break;
+            case       0x05: retValue = inc(getCodeByte()); break;
+            case       0x06: retValue = inc_r_indirect(true); break;
+            case       0x07: retValue = inc_r_indirect(false); break;
+            case       0x08: retValue = inc_r(0); break;
+            case       0x09: retValue = inc_r(1); break;
+            case       0x0a: retValue = inc_r(2); break;
+            case       0x0b: retValue = inc_r(3); break;
+            case       0x0c: retValue = inc_r(4); break;
+            case       0x0d: retValue = inc_r(5); break;
+            case       0x0e: retValue = inc_r(6); break;
+            case       0x0f: retValue = inc_r(7); break;
             case       0x10: break;
             case       0x11: break;
             case       0x12: break;
@@ -245,7 +242,7 @@ public class MC8051 implements Emulator {
             case (byte)0xa0: break;
             case (byte)0xa1: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0xa2: break;
-            case (byte)0xa3: break;
+            case (byte)0xa3: retValue = inc_dptr(); break;
             case (byte)0xa4: break;
             case (byte)0xa5: break;
             case (byte)0xa6: break;
@@ -339,6 +336,10 @@ public class MC8051 implements Emulator {
             case (byte)0xfe: break;
             case (byte)0xff: break;
         }
+        //TODO put the following in a finally-block and add exception handling
+        //TODO add updateTimers()-Method
+        updateRRegisters();
+        if (previousA != this.state.sfrs.A.getValue()) updateParityFlag();
         return retValue;
     }
 
@@ -365,7 +366,7 @@ public class MC8051 implements Emulator {
 
 
     /**
-     * Get a byte from code memory and increment the PC.
+     * Get a byte from code memory and increment the PC.<br>
      * @return the retrieved byte
      */
     private byte getCodeByte() {
@@ -378,36 +379,67 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * Get the value of an R register.
+     * Get the current address of a R register.
      * @param ordinal
-     *     The R register to be used. E.g. '5' implies R5.
-     * @return R<sup>ordinal</sup>'s value
+     *     the returned register will be R&lt;ordinal&gt;; 0 <= ordinal <= 7
+     * @return the register's address
+     * @throws IllegalArgumentException when given an invalid ordinal
      */
-    private byte getR(int ordinal) {
+    private int getRAddress(int ordinal) throws IllegalArgumentException {
         if (ordinal < 0 || ordinal > 7)
-            throw new IllegalArgumentException("invalid R register ordinal: "+ordinal);
-        int bank = (this.state.sfrs.PSW.getValue() >> 3) & 0x3;
-        int address = (bank << 3) | ordinal;
-        return this.state.internalRAM.get(address);
+            throw new IllegalArgumentException("Invalid R register ordinal: "+ordinal);
+        //PSW: C | AC | F0 | RS1 | RS0 | OV | UD | P
+        //==> RS1 and RS0 control the register bank and are conveniently already located at the correct position
+        return this.state.sfrs.PSW.getValue() & 0b00011000 | ordinal;
     }
 
     /**
-     * Set the value of an R register.
+     * Get the value of an R register.<br>
+     * @param ordinal
+     *     The R register to be used. E.g. '5' implies R5.
+     * @return R<sup>ordinal</sup>'s value
+     * @throws IllegalArgumentException when given an illegal ordinal
+     */
+    private byte getR(int ordinal) {
+        return this.state.internalRAM.get(getRAddress(ordinal));
+    }
+
+    /**
+     * Set the value of an R register.<br>
      * @param ordinal
      *     The R register to be used. E.g. '5' implies R5.
      * @param newValue
      *     R<sub>ordinal</sub>'s new value.
+     * @throws IllegalArgumentException when given an illegal ordinal
      */
     private void setR(int ordinal, byte newValue) {
-        if (ordinal < 0 || ordinal > 7)
-            throw new IllegalArgumentException("invalid R register ordinal: "+ordinal);
-        int bank = (this.state.sfrs.PSW.getValue() >>> 3) & 0x3;
-        int address = (bank << 3) | ordinal;
-        this.state.internalRAM.set(address, newValue);
+        this.state.internalRAM.set(getRAddress(ordinal), newValue);
     }
 
     /**
-     * <b>No Operation</b>
+     * Update the R registers according to the internal RAM.
+     */
+    private void updateRRegisters() {
+        for (int i = 0; i < 8; ++i) {
+            //I inserted the if to prevent unnecessary property change events
+            if (this.state.getR(i).getValue() != getR(i)) this.state.getR(i).setValue(getR(i));
+        }
+    }
+
+    /**
+     * Update the parity flag in the PSW.
+     * It is set so that the number of bits set to one plus the parity flag is even.
+     * NOTE: This algorithm was inspired by
+     * http://www.geeksforgeeks.org/write-a-c-program-to-find-the-parity-of-an-unsigned-integer/
+     */
+    private void updateParityFlag() {
+        boolean parity = false;
+        for (byte b = this.state.sfrs.A.getValue(); b > 0; b = (byte)(b & (b - 1))) parity = !parity;
+        this.state.sfrs.PSW.setBit(parity, 0);
+    }
+
+    /**
+     * <b>No Operation</b><br>
      * @return the number of cycles (1)
      * */
     private int nop() {
@@ -415,27 +447,39 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * <b>Absolute Jump</b>
-     * Set the last 11 bits of the PC.
-     * They are encoded in the following way:
+     * <b>Absolute Jump</b><br>
+     * Set the last 11 bits of the PC.<br>
+     * They are encoded in the following way:<br>
      * Opcode: <code>A<sub>10</sub>A<sub>9</sub>A<sub>8</sub>0001</code><br>
-     * Operand: </code>A<sub>7</sub>A<sub>6</sub>A<sub>5</sub>A<sub>4</sub>A<sub>3</sub>A<sub>2</sub>A<sub>1</sub>A<sub></sub>0<br>
+     * Operand: </code>A<sub>7</sub> - A<sub>0</sub>
      * <br>
      * Example:
-     * <code>
-     * &nbsp;&nbsp;&nbsp;&nbsp;instruction&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100001<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;argument&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
+     * <code><br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * instruction&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100001<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * argument&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
      * &nbsp;&nbsp;&nbsp;&nbsp;<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;a10-8&nbsp;(from&nbsp;instruction)&nbsp;=&nbsp;111<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;a7-&nbsp;0&nbsp;(from&nbsp;argument)&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;==>&nbsp;resulting&nbsp;address&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;11100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * A<sub>10</sub> - A<sub>8</sub> (from instruction) = 111<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * A<sub>7</sub> - A<sub>0</sub> (from argument)
+     * &nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * ==>&nbsp;resulting&nbsp;address&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;11100100010<br>
      * &nbsp;&nbsp;&nbsp;&nbsp;<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;replace&nbsp;last&nbsp;11&nbsp;bits&nbsp;in&nbsp;pc:<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;replaced&nbsp;=&nbsp;1011011100100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;[in&nbsp;hex]&nbsp;=&nbsp;0xB722&nbsp;<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * replace&nbsp;last&nbsp;11&nbsp;bits&nbsp;in&nbsp;pc:<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * result&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * replaced&nbsp;=&nbsp;1011011100100010<br>
+     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * [in&nbsp;hex]&nbsp;=&nbsp;0xB722&nbsp;<br>
      * </code>
      * @param currentOp The current opcode.
      * @param last8bits The argument (next byte in code memory)
@@ -454,8 +498,8 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * <b>Long Jump</b>
-     * The address is encoded in the following way:
+     * <b>Long Jump</b><br>
+     * The address is encoded in the following way:<br>
      * opcode | A<sub>15<sub>-A<sub>8</sub> | A<sub>7</sub>-A<sub>0</sub>
      * @param arg1 A<sub>15<sub>-A<sub>8</sub>
      * @param arg2 A<sub>7</sub>-A<sub>0</sub>
@@ -468,8 +512,8 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * <b>Rotate Right</b> (rotates the accumulator one bit to the right)
-     * Bit 0 of the accumulator is rotated to bit 7.
+     * <b>Rotate Right</b> (rotates the accumulator one bit to the right)<br>
+     * Bit 0 of the accumulator is rotated to bit 7.<br>
      * @return the number of cycles (1)
      */
     private int rr_a() {
@@ -480,5 +524,77 @@ public class MC8051 implements Emulator {
         }
         this.state.sfrs.A.setValue((byte)result);
         return 1;
+    }
+
+    /**
+     * <b>Increment (Register)</b><br>
+     * Increment a register by one.
+     * @param r
+     *     the register
+     * @return the number of cycles (1)
+     */
+    private int inc(ByteRegister r) {
+        r.setValue((byte)(r.getValue() + 1));
+        return 1;
+    }
+
+    /**
+     * <b>Increment (Direct Address)</b><br>
+     * Increment the byte at the direct address by one.
+     * @param directAddress
+     *     the direct address; must be < 0x80 or the address of a SFR
+     * @return the number of cycles (1)
+     * @throws IndexOutOfBoundsException when an address in the SFR memory is used that does not contain an SFR
+     */
+    private int inc(byte directAddress) throws IndexOutOfBoundsException {
+        if ((directAddress & 0xFF) < 0x80) //if the address in in the directly addresable part of the internal RAM
+            this.state.internalRAM.set(directAddress & 0xFF,
+                    (byte) (this.state.internalRAM.get(directAddress & 0xFF) + 1));
+        else {
+            int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
+            if (!this.state.sfrs.hasAddress(directAddress))
+                throw new IndexOutOfBoundsException("Illegal address used at "+pcOfThisInstruction+": "
+                        +(directAddress & 0xFF));
+            inc(this.state.sfrs.get(directAddress & 0xFF));
+        }
+        return 1;
+    }
+
+    /**
+     * <b>Increment (@Ri)</b><br>
+     * Increment the byte at the address contained in R0 or R1.
+     * @param rZero
+     *     {@code false} -> use R1
+     *     {@code true}  -> use R0
+     * @return the number of cycles (1)
+     */
+    private int inc_r_indirect(boolean rZero) {
+        return inc(getR(rZero ? 0 : 1));
+    }
+
+    /**
+     * <b>Increment (DPTR)</b><br>
+     * Increment the data pointer.
+     * @return the number of cycles (2)
+     */
+    private int inc_dptr() {
+        char dptr = (char)(this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF);
+        ++dptr;
+        this.state.sfrs.DPH.setValue((byte)(dptr >>> 8));
+        this.state.sfrs.DPL.setValue((byte)dptr);
+        return 2;
+    }
+
+    /**
+     * <b>Increment (RX)</b>
+     * <br>
+     * Increment the value of the specified R register.
+     * @param ordinal
+     *     specifies the register (->R&lt;ordinal&gt;); 0 <= ordinal <= 7
+     * @return the number of cycles (1)
+     * @throws IllegalArgumentException when given an illegal ordinal
+     */
+    private int inc_r(int ordinal) {
+        return inc((byte)getRAddress(ordinal));
     }
 }
