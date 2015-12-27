@@ -26,6 +26,7 @@ public class State8051 {
         private enum PSWFlags {
             P, UD, OV, RS0, RS1, F0, AC, C;
         }
+        //TODO add flag names for other flag registers
 
         private HashMap<Byte, ByteRegister> specialFunctionRegisters;
 
@@ -150,8 +151,9 @@ public class State8051 {
 
     ROM codeMemory;
 
-    ByteRegister PCH;
-    ByteRegister PCL;
+    ByteRegister PCH, PCL;
+
+    ByteRegister R7, R6, R5, R4, R3, R2, R1, R0;
 
     /**
      * @param codeMemory
@@ -170,6 +172,14 @@ public class State8051 {
         this.externalRAM = externalRAM;
         this.PCH = new ByteRegister("PCH");
         this.PCL = new ByteRegister("PCL");
+        this.R7 = new ByteRegister("R7");
+        this.R6 = new ByteRegister("R6");
+        this.R5 = new ByteRegister("R5");
+        this.R4 = new ByteRegister("R4");
+        this.R3 = new ByteRegister("R3");
+        this.R2 = new ByteRegister("R2");
+        this.R1 = new ByteRegister("R1");
+        this.R0 = new ByteRegister("R0");
     }
 
     @Override
@@ -188,4 +198,41 @@ public class State8051 {
         return true;
     }
 
+    /**
+     * Get a R register by its ordinal.
+     * @param ordinal
+     *     specifies the register (-> R&lt;ordinal&gt;); 0 <= ordinal <= 7
+     * @return the specified register
+     * @throws IllegalArgumentException when given an illegal ordinal
+     */
+    ByteRegister getR(int ordinal) throws IllegalArgumentException {
+        switch (ordinal) {
+            case 7: return this.R7;
+            case 6: return this.R6;
+            case 5: return this.R5;
+            case 4: return this.R4;
+            case 3: return this.R3;
+            case 2: return this.R2;
+            case 1: return this.R1;
+            case 0: return this.R0;
+            default: throw new IllegalArgumentException("Invalid R ordinal: "+ordinal);
+        }
+    }
+
+    List<Register> getRegisters() {
+        List<Register> ret = this.sfrs.getRegisters();
+        //the PC and the R registers are not accessible through the special function register area in the 8051's memory,
+        //thus they are represented as a member of the state class and need to be added manually to the list
+        ret.add(PCH);
+        ret.add(PCL);
+        ret.add(R7);
+        ret.add(R6);
+        ret.add(R5);
+        ret.add(R4);
+        ret.add(R3);
+        ret.add(R2);
+        ret.add(R1);
+        ret.add(R0);
+        return ret;
+    }
 }

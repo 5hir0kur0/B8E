@@ -1,13 +1,12 @@
 package emulator.arc8051;
 
-import emulator.ByteRegister;
 import emulator.FlagRegister;
 import emulator.RAM;
-import emulator.arc8051.MC8051;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Random;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.Assert.*;
 
@@ -25,7 +24,7 @@ public class MC8051Test {
 
     @Test
     public void testGetRegisters() throws Exception {
-        assertTrue(testController.getRegisters() != null && testController.getRegisters().size() == 23);
+        assertTrue(testController.getRegisters() != null && testController.getRegisters().size() == 31);
     }
 
     @Test
@@ -117,11 +116,76 @@ public class MC8051Test {
         final byte[] correctResults = {(byte)0b11000100, 0b00001100,       0b010101};
         for (int i = 0; i < testA.length; ++i) {
             testController.state.sfrs.A.setValue(testA[i]);
-            ram.set(0, RR);
-            testController.state.PCH.setValue((byte)0);
-            testController.state.PCL.setValue((byte)0);
-            assertTrue(testController.next() == 1);
-            assertTrue(testController.state.sfrs.A.getValue() == correctResults[i]);
+            final byte correctResult = correctResults[i];
+            testOpcode(RR, 0, 1, () -> testController.state.sfrs.A.getValue() == correctResult);
         }
+    }
+
+    @Test
+    public void testInc() {
+        System.out.println("__________Testing INC...");
+        byte[] opcodes = {
+                0x04, // INC A
+                0x05, // INC direct
+                0x06, // INC @R0
+                0x07, // INC @R1
+                0x08, // INC R0
+                0x09, // INC R1
+                0x0A, // INC R2
+                0x0B, // INC R3
+                0x0C, // INC R4
+                0x0D, // INC R5
+                0x0E, // INC R6
+                0x0F, // INC R7
+                (byte) 0xA3 // INC DPTR
+        };
+        BooleanSupplier[] checks = {
+                () -> testController.state.sfrs.A.getValue() == 1 && testController.state.sfrs.PSW.getBit(0),
+                () -> testController.state.R0.getValue() == 1,
+                () -> testController.state.R1.getValue() == 1,
+                () -> testController.state.R1.getValue() == 2,
+                () -> testController.state.R0.getValue() == 2,
+                () -> testController.state.R1.getValue() == 3,
+                () -> testController.state.R2.getValue() == 1,
+                () -> testController.state.R3.getValue() == 1,
+                () -> testController.state.R4.getValue() == 1,
+                () -> testController.state.R5.getValue() == 1,
+                () -> testController.state.R6.getValue() == 1,
+                () -> testController.state.R7.getValue() == 1,
+                () -> testController.state.sfrs.DPL.getValue() == 1
+        };
+
+        for (int i = 0; i < opcodes.length; ++i) {
+            System.out.printf("Opcode: %02X%n", opcodes[i] & 0xFF);
+            //testController.state.internalRAM.set(0, (byte)0);
+            testOpcode(opcodes[i], 0, i == 12 ? 2 : 1, checks[i]);
+        }
+    }
+
+    @Test
+    public void testParity() {
+        final byte[] testA = {0b01110000, 0b01111111, 0b00101010, (byte)0b11111111, 0b00000000, 0b00000001};
+        final boolean [] results = {true, true,       true,        false,           false,      true};
+        final byte MOV_A = 0x74;
+        for (int i = 0; i < testA.length; ++i) {
+            final boolean desiredRes = results[i];
+            //TODO uncomment when MOV is implemented
+            //testOpcode(MOV_A, 0, new byte[]{testA[i]}, 1, () -> testController.state.sfrs.PSW.getBit(0) == desiredRes);
+        }
+        assertTrue(!testController.state.sfrs.PSW.getBit(0));
+    }
+
+    private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
+        testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
+    }
+
+    private void testOpcode(byte opcode, int address, byte[] args, int desiredReturn, BooleanSupplier resultCorrect) {
+        final RAM ram = (RAM) testController.getCodeMemory();
+        ram.set(address, opcode);
+        for (int i = 0; i < args.length; ++i) ram.set(address+i+1, args[i]);
+        testController.state.PCH.setValue((byte) (address >>> 8));
+        testController.state.PCL.setValue((byte) address);
+        assertTrue(testController.next() == desiredReturn);
+        assertTrue(resultCorrect.getAsBoolean());
     }
 }
