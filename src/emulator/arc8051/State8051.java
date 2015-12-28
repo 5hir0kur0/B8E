@@ -141,6 +141,20 @@ public class State8051 {
             }
             return true;
         }
+
+        /**
+         * Get the direct address of the specified register.
+         * @param r
+         *     The register whose address will be returned; must be one of the registers contained in this object
+         * @return the direct address
+         * @throws IllegalArgumentException when a register that is not contained in this object is given as a parameter
+         */
+        public byte getAddress(ByteRegister r) throws IllegalArgumentException {
+            for (Byte b : this.specialFunctionRegisters.keySet()) {
+                if (specialFunctionRegisters.get(b) == r) return b;
+            }
+            throw new IllegalArgumentException("Invalid byte register; cannot get address: "+r);
+        }
     }
 
     SpecialFunctionRegisters sfrs;
