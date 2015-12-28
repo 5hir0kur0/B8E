@@ -1,6 +1,7 @@
 package assembler.arc8051;
 
 import assembler.Mnemonic;
+import assembler.MnemonicNameToken;
 import assembler.OperandToken;
 
 /**
@@ -44,8 +45,8 @@ public abstract class Mnemonic8051 extends Mnemonic {
     }
 
     @Override
-    public byte[] getInstructionFromOperands(long codePoint, OperandToken... operands) {
-        return getInstructionFromOperands(codePoint, operands);
+    public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name, OperandToken... operands) {
+        return getInstructionFromOperands(codePoint, name, operands);
     }
 
     /**
@@ -53,6 +54,10 @@ public abstract class Mnemonic8051 extends Mnemonic {
      *      The location of the mnemonic in the program
      *      memory. This can be used by some mnemonics
      *      to perform further calculations.<br>
+     * @param name
+     *      the name token used for this specific call.
+     *      Can be used as cause for an error if no
+     *      operands are present.
      * @param operands
      *      The operands of the mnemonic.
      *
@@ -61,5 +66,6 @@ public abstract class Mnemonic8051 extends Mnemonic {
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands);
+    public abstract byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                      OperandToken8051... operands);
 }

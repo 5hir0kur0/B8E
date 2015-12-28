@@ -25,7 +25,7 @@ public abstract class OperandToken extends Token {
      */
     public OperandToken(Enum type, String value) {
         super(value, TokenType.OPERAND);
-        this.operandType = Objects.requireNonNull(operandType, "'Type' of operand cannot be 'null'!");
+        this.operandType = Objects.requireNonNull(type, "'Type' of operand cannot be 'null'!");
 
     }
 
