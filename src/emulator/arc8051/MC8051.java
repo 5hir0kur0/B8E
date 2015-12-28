@@ -3,6 +3,7 @@ package emulator.arc8051;
 import com.sun.javaws.exceptions.InvalidArgumentException;
 import emulator.*;
 
+import java.beans.PropertyChangeEvent;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,7 +33,7 @@ public class MC8051 implements Emulator {
      *        The size must be 65536 bytes.
      */
     public MC8051(ROM codeMemory, RAM externalRAM) {
-        this.state = new State8051(codeMemory, externalRAM);
+        this(new State8051(codeMemory, externalRAM));
     }
 
     /**
@@ -42,6 +43,7 @@ public class MC8051 implements Emulator {
      */
     public MC8051(State8051 state) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
+        this.state.setRRegisters(generateRRegisters());
     }
 
     /**
@@ -85,16 +87,16 @@ public class MC8051 implements Emulator {
             case       0x03: retValue = rr_a(); break;
             case       0x04: retValue = inc(this.state.sfrs.A); break;
             case       0x05: retValue = inc(getCodeByte()); break;
-            case       0x06: retValue = inc_r_indirect(true); break;
-            case       0x07: retValue = inc_r_indirect(false); break;
-            case       0x08: retValue = inc_r(0); break;
-            case       0x09: retValue = inc_r(1); break;
-            case       0x0a: retValue = inc_r(2); break;
-            case       0x0b: retValue = inc_r(3); break;
-            case       0x0c: retValue = inc_r(4); break;
-            case       0x0d: retValue = inc_r(5); break;
-            case       0x0e: retValue = inc_r(6); break;
-            case       0x0f: retValue = inc_r(7); break;
+            case       0x06: retValue = inc_indirect(this.state.R0); break;
+            case       0x07: retValue = inc_indirect(this.state.R1); break;
+            case       0x08: retValue = inc(this.state.R0); break;
+            case       0x09: retValue = inc(this.state.R1); break;
+            case       0x0a: retValue = inc(this.state.R2); break;
+            case       0x0b: retValue = inc(this.state.R3); break;
+            case       0x0c: retValue = inc(this.state.R4); break;
+            case       0x0d: retValue = inc(this.state.R5); break;
+            case       0x0e: retValue = inc(this.state.R6); break;
+            case       0x0f: retValue = inc(this.state.R7); break;
             case       0x10: break;
             case       0x11: break;
             case       0x12: break;
@@ -338,8 +340,11 @@ public class MC8051 implements Emulator {
         }
         //TODO put the following in a finally-block and add exception handling
         //TODO add updateTimers()-Method
-        updateRRegisters();
-        if (previousA != this.state.sfrs.A.getValue()) updateParityFlag();
+        updateParityFlag();
+        //The value of the R registers can be changed through memory.
+        //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
+        //time, so that it fires property-change-events
+        for (int i = 0; i < 8; ++i) this.state.getR(i).setValue(this.state.getR(i).getValue());
         return retValue;
     }
 
@@ -417,16 +422,6 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * Update the R registers according to the internal RAM.
-     */
-    private void updateRRegisters() {
-        for (int i = 0; i < 8; ++i) {
-            //I inserted the if to prevent unnecessary property change events
-            if (this.state.getR(i).getValue() != getR(i)) this.state.getR(i).setValue(getR(i));
-        }
-    }
-
-    /**
      * Update the parity flag in the PSW.
      * It is set so that the number of bits set to one plus the parity flag is even.
      * NOTE: This algorithm was inspired by
@@ -436,6 +431,70 @@ public class MC8051 implements Emulator {
         boolean parity = false;
         for (byte b = this.state.sfrs.A.getValue(); b > 0; b = (byte)(b & (b - 1))) parity = !parity;
         this.state.sfrs.PSW.setBit(parity, 0);
+    }
+
+    private ByteRegister[] generateRRegisters() {
+        ByteRegister[] rRegisters = new ByteRegister[8];
+        for (int i = 0; i < rRegisters.length; ++i) {
+            final int tmpOrdinal = i;
+            rRegisters[i] = new ByteRegister("R"+i) {
+
+                @Override public void setValue(byte newValue) {
+                    MC8051.this.state.internalRAM.set(getRAddress(tmpOrdinal), newValue);
+                    super.setValue(newValue); //super.setValue() is being called here to fire a property change
+                }
+
+                @Override public byte getValue() {
+                    //the byte from the internal RAM needs to be returned here as the R registers may also be modified
+                    //through it
+                    return MC8051.this.state.internalRAM.get(getRAddress(tmpOrdinal));
+                }
+            };
+        }
+        return rRegisters;
+    }
+
+    /**
+     * Get the value of an address from internal RAM (or the SFR area)
+     * @param address the address to be used
+     * @return the byte at this address
+     * @throws IndexOutOfBoundsException when the address is in the SFR area but is not a valid SFR
+     */
+    private byte getDirectAddress(byte address) throws IndexOutOfBoundsException {
+        if ((address & 0xFF) < 0x80) //if the address in in the directly addressable part of the internal RAM
+            return this.state.internalRAM.get(address & 0xFF);
+        else {
+            if (!this.state.sfrs.hasAddress(address)) {
+                int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
+                throw new IndexOutOfBoundsException("Illegal address used at " + pcOfThisInstruction + ": "
+                        + (address & 0xFF));
+            }
+            return this.state.sfrs.get(address & 0xFF);
+        }
+    }
+
+    /**
+     * Set the value at a direct address from internal RAM (or the SFR area)
+     * @param address the address to be used
+     * @param value the value the byte at this address will be set to
+     * @throws IndexOutOfBoundsException when the address is in the SFR area, but is not a valid SFR (the operation is
+     *         still performed, though; a new temporary SFR is created in this case)
+     */
+    private void setDirectAddress(byte address, byte value) throws IndexOutOfBoundsException {
+        if ((address & 0xFF) < 0x80) //if the address in in the directly addressable part of the internal RAM
+            this.state.internalRAM.set(address & 0xFF, value);
+        else {
+            if (!this.state.sfrs.hasAddress(address)) {
+                //If the program attempts to use a value in the SFR area which does not hold a register,
+                //create a new register and throw an exception (because the program would exhibit undefined behaviour
+                //on real hardware
+                this.state.sfrs.specialFunctionRegisters.put(address, new ByteRegister("TMP_SFR", value));
+                int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
+                throw new IndexOutOfBoundsException("Illegal address used at " + pcOfThisInstruction + ": "
+                        + (address & 0xFF));
+            }
+            this.state.sfrs.specialFunctionRegisters.get(address).setValue(value);
+        }
     }
 
     /**
@@ -547,29 +606,19 @@ public class MC8051 implements Emulator {
      * @throws IndexOutOfBoundsException when an address in the SFR memory is used that does not contain an SFR
      */
     private int inc(byte directAddress) throws IndexOutOfBoundsException {
-        if ((directAddress & 0xFF) < 0x80) //if the address in in the directly addresable part of the internal RAM
-            this.state.internalRAM.set(directAddress & 0xFF,
-                    (byte) (this.state.internalRAM.get(directAddress & 0xFF) + 1));
-        else {
-            int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
-            if (!this.state.sfrs.hasAddress(directAddress))
-                throw new IndexOutOfBoundsException("Illegal address used at "+pcOfThisInstruction+": "
-                        +(directAddress & 0xFF));
-            inc(this.state.sfrs.get(directAddress & 0xFF));
-        }
+        setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) + 1));
         return 1;
     }
 
     /**
      * <b>Increment (@Ri)</b><br>
      * Increment the byte at the address contained in R0 or R1.
-     * @param rZero
-     *     {@code false} -> use R1
-     *     {@code true}  -> use R0
+     * @param r
+     *     the R register to be used; can only be R0 or R1 (this is not checked, though)
      * @return the number of cycles (1)
      */
-    private int inc_r_indirect(boolean rZero) {
-        return inc(getR(rZero ? 0 : 1));
+    private int inc_indirect(ByteRegister r) {
+        return inc(r.getValue());
     }
 
     /**
@@ -583,18 +632,5 @@ public class MC8051 implements Emulator {
         this.state.sfrs.DPH.setValue((byte)(dptr >>> 8));
         this.state.sfrs.DPL.setValue((byte)dptr);
         return 2;
-    }
-
-    /**
-     * <b>Increment (RX)</b>
-     * <br>
-     * Increment the value of the specified R register.
-     * @param ordinal
-     *     specifies the register (->R&lt;ordinal&gt;); 0 <= ordinal <= 7
-     * @return the number of cycles (1)
-     * @throws IllegalArgumentException when given an illegal ordinal
-     */
-    private int inc_r(int ordinal) {
-        return inc((byte)getRAddress(ordinal));
     }
 }
