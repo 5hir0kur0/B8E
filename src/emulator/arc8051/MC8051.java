@@ -21,6 +21,15 @@ import java.util.Objects;
  */
 public class MC8051 implements Emulator {
 
+    private static class BitAddress {
+        public final byte DIRECT_ADDRESS;
+        public final byte BIT_MASK;
+        public BitAddress(byte directAddress, byte bitMask) {
+            this.BIT_MASK = bitMask;
+            this.DIRECT_ADDRESS = directAddress;
+        }
+    }
+
     State8051 state;
 
     /**
@@ -79,7 +88,6 @@ public class MC8051 implements Emulator {
     public int next() {
         byte currentInstruction = getCodeByte();
         int retValue = -1;
-        byte previousA = this.state.sfrs.A.getValue();
         switch (currentInstruction) {
             case       0x00: retValue = nop(); break;
             case       0x01: retValue = ajmp(currentInstruction, getCodeByte()); break;
@@ -87,8 +95,8 @@ public class MC8051 implements Emulator {
             case       0x03: retValue = rr_a(); break;
             case       0x04: retValue = inc(this.state.sfrs.A); break;
             case       0x05: retValue = inc(getCodeByte()); break;
-            case       0x06: retValue = inc_indirect(this.state.R0); break;
-            case       0x07: retValue = inc_indirect(this.state.R1); break;
+            case       0x06: retValue = inc(this.state.R0.getValue()); break;
+            case       0x07: retValue = inc(this.state.R1.getValue()); break;
             case       0x08: retValue = inc(this.state.R0); break;
             case       0x09: retValue = inc(this.state.R1); break;
             case       0x0a: retValue = inc(this.state.R2); break;
@@ -97,7 +105,7 @@ public class MC8051 implements Emulator {
             case       0x0d: retValue = inc(this.state.R5); break;
             case       0x0e: retValue = inc(this.state.R6); break;
             case       0x0f: retValue = inc(this.state.R7); break;
-            case       0x10: break;
+            case       0x10: retValue = jbc(getCodeByte(), getCodeByte()); break;
             case       0x11: break;
             case       0x12: break;
             case       0x13: break;
@@ -113,7 +121,7 @@ public class MC8051 implements Emulator {
             case       0x1d: break;
             case       0x1e: break;
             case       0x1f: break;
-            case       0x20: break;
+            case       0x20: retValue = jb(getCodeByte(), getCodeByte()); break;
             case       0x21: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x22: break;
             case       0x23: break;
@@ -129,7 +137,7 @@ public class MC8051 implements Emulator {
             case       0x2d: break;
             case       0x2e: break;
             case       0x2f: break;
-            case       0x30: break;
+            case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
             case       0x31: break;
             case       0x32: break;
             case       0x33: break;
@@ -145,7 +153,7 @@ public class MC8051 implements Emulator {
             case       0x3d: break;
             case       0x3e: break;
             case       0x3f: break;
-            case       0x40: break;
+            case       0x40: retValue = jc(getCodeByte()); break;
             case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x42: break;
             case       0x43: break;
@@ -161,7 +169,7 @@ public class MC8051 implements Emulator {
             case       0x4d: break;
             case       0x4e: break;
             case       0x4f: break;
-            case       0x50: break;
+            case       0x50: retValue = jnc(getCodeByte()); break;
             case       0x51: break;
             case       0x52: break;
             case       0x53: break;
@@ -498,6 +506,77 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * Decode a bit address into a direct address and a bit mask.
+     * @param bitAddress
+     *     the bit address to be decoded; must be valid
+     * @return a {@code BitAddress} object containing the direct address of the byte containing the specified bit and a
+     *         bit mask for the bit
+     * @throws IllegalArgumentException given an invalid bit address
+     */
+    private BitAddress decodeBitAddress(byte bitAddress) throws IllegalArgumentException {
+        int address = bitAddress & 0xFF; //trying to prevent strange behaviour with negative bytes...
+        int retAddress = -1;
+        byte retBitMask = -1;
+
+        if (address < 0x80) { //the address is in the lower part of the internal RAM
+            final int START_OF_BIT_MEMORY = 0x20;
+            retAddress = START_OF_BIT_MEMORY + address / 8;
+        } else {
+            ByteRegister tmp = null;
+            switch (address - address % 8) {
+                case 0x80: tmp = this.state.sfrs.P0; break; // P0
+                case 0x88: tmp = this.state.sfrs.TCON; break; // TCON
+                case 0x90: tmp = this.state.sfrs.P1; break; // P1
+                case 0x98: tmp = this.state.sfrs.SCON; break; // SCON
+                case 0xA0: tmp = this.state.sfrs.P2; break; // P2
+                case 0xA8: tmp = this.state.sfrs.IE; break; // IE
+                case 0xB0: tmp = this.state.sfrs.P3; break; // P3
+                case 0xB8: tmp = this.state.sfrs.IP; break; // IP
+                case 0xD0: tmp = this.state.sfrs.PSW; break; // PSW
+                case 0xE0: tmp = this.state.sfrs.A; break; // ACC
+                case 0xF0: tmp = this.state.sfrs.B; break; // B
+                default: throw new IndexOutOfBoundsException("Invalid bit address: "+address);
+            }
+            retAddress = this.state.sfrs.getAddress(tmp);
+        }
+
+        retBitMask = (byte)(1 << (address % 8)); // in the bit mask, only the addressed bit will be set
+        return new BitAddress((byte)retAddress, retBitMask);
+    }
+
+    /**
+     * Get the value of a single bit.
+     * @param bitAddress the bit's bit address
+     * @return {@code true} if the bit is 1; {@code false} if it is 0
+     * @see #decodeBitAddress(byte)
+     */
+    boolean getBit(byte bitAddress) {
+        BitAddress tmp = decodeBitAddress(bitAddress);
+        return (getDirectAddress(tmp.DIRECT_ADDRESS) & tmp.BIT_MASK) == tmp.BIT_MASK;
+    }
+
+    /**
+     * Set the value of a single bit.
+     * @param bitAddress the bit's bit address
+     * @param bit the bit's new value; {@code true} -> 1; {@code false} -> 0
+     * @see #decodeBitAddress(byte)
+     */
+    void setBit(boolean bit, byte bitAddress) {
+        BitAddress tmp = decodeBitAddress(bitAddress);
+        byte b = getDirectAddress(tmp.DIRECT_ADDRESS);
+        if (bit) b |= tmp.BIT_MASK & 0xFF;
+        else b &= ~(tmp.BIT_MASK & 0xFF);
+        setDirectAddress(tmp.DIRECT_ADDRESS, b);
+    }
+
+    private void jumpToOffset(byte offset) {
+        char pc = (char)(this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF);
+        pc += offset;
+        this.state.PCH.setValue((byte)(pc >>> 8));
+        this.state.PCL.setValue((byte)pc);
+    }
+
+    /**
      * <b>No Operation</b><br>
      * @return the number of cycles (1)
      * */
@@ -611,17 +690,6 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * <b>Increment (@Ri)</b><br>
-     * Increment the byte at the address contained in R0 or R1.
-     * @param r
-     *     the R register to be used; can only be R0 or R1 (this is not checked, though)
-     * @return the number of cycles (1)
-     */
-    private int inc_indirect(ByteRegister r) {
-        return inc(r.getValue());
-    }
-
-    /**
      * <b>Increment (DPTR)</b><br>
      * Increment the data pointer.
      * @return the number of cycles (2)
@@ -633,4 +701,68 @@ public class MC8051 implements Emulator {
         this.state.sfrs.DPL.setValue((byte)dptr);
         return 2;
     }
+
+    /**
+     * <b>Jump (if) Bit (is set)</b>
+     * Jump by a certain offset if the specified bit is set.
+     * @param bitAddress the bit's address
+     * @param offset the offset to jump by if the bit is set
+     * @return the number of cycles (2)
+     * @see #decodeBitAddress(byte)
+     */
+    private int jb(byte bitAddress, byte offset) {
+        if (getBit(bitAddress)) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if) Bit (is set and) Clear (it)</b>
+     * Jump by a certain offset if the specified bit is set and clear the bit afterwards.
+     * @param bitAddress the bit's address
+     * @param offset the offset to jump by if the bit is set
+     * @return the number of cycles (2)
+     * @see #decodeBitAddress(byte)
+     * @see #jb(byte, byte)
+     */
+    private int jbc(byte bitAddress, byte offset) {
+        jb(bitAddress, offset);
+        setBit(false, bitAddress);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if) Bit (is not set)</b>
+     * Jump by a certain offset if the specified bit is not set.
+     * @param bitAddress the bit's address
+     * @param offset the offset to jump by if the bit is set
+     * @return the number of cycles (2)
+     * @see #decodeBitAddress(byte)
+     */
+    private int jnb(byte bitAddress, byte offset) {
+        if (!getBit(bitAddress)) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if) C (is set)</b>
+     * Jump by a certain offset if the C flag is set.
+     * @param offset the offset to jump by if the C flag is set
+     * @return the number of cycles (2)
+     */
+    private int jc(byte offset) {
+        if (this.state.sfrs.PSW.getBit(7)) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if) C (is not set)</b>
+     * Jump by a certain offset if the C flag is not set.
+     * @param offset the offset to jump by if the C flag is not set
+     * @return the number of cycles (2)
+     */
+    private int jnc(byte offset) {
+        if (!this.state.sfrs.PSW.getBit(7)) jumpToOffset(offset);
+        return 2;
+    }
+
 }
