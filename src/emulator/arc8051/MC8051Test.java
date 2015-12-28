@@ -58,8 +58,7 @@ public class MC8051Test {
     @Test
     public void testNop() {
         System.out.println("__________Test NOP...");
-        assertTrue(testController.next() == 1);
-        assertTrue(testController.state.PCL.getValue() == 1);
+        testOpcode((byte)0, 0, 1, () -> testController.state.PCL.getValue() == 1);
     }
 
     @Test
@@ -70,6 +69,7 @@ public class MC8051Test {
         final Random r = new Random();
         for (byte i = 0; i <= 0b111; ++i) {
             final byte instruction = (byte)(STATIC_AJMP | i << 5);
+            System.out.printf("Opcode: %02X%n", instruction & 0xFF);
             //if this was a byte the result of the left-shift might become negative
             final int pch = r.nextInt(256);
             testController.state.PCH.setValue((byte)pch);
@@ -86,6 +86,7 @@ public class MC8051Test {
         testController.state.PCL.setValue((byte)0xFF);
         ram.set(0xFFF, STATIC_AJMP);
         System.out.println("Testing the base address...");
+        System.out.printf("Opcode: %02X%n", STATIC_AJMP & 0xFF);
         testController.next();
         assertTrue(testController.state.PCH.getValue() == (byte)0x10);
         assertTrue(testController.state.PCL.getValue() == (byte)0x00);
@@ -96,6 +97,7 @@ public class MC8051Test {
         System.out.println("__________Testing LJMP...");
         final RAM ram = (RAM) testController.getCodeMemory();
         final byte LJMP = 0x02;
+        System.out.printf("Opcode: %02X%n", LJMP & 0xFF);
         final Random r = new Random();
         byte arg1 = (byte)r.nextInt(256);
         byte arg2 = (byte)r.nextInt(256);
@@ -156,7 +158,6 @@ public class MC8051Test {
         };
 
         for (int i = 0; i < opcodes.length; ++i) {
-            System.out.printf("Opcode: %02X%n", opcodes[i] & 0xFF);
             //testController.state.internalRAM.set(0, (byte)0);
             testOpcode(opcodes[i], 0, i == 12 ? 2 : 1, checks[i]);
         }
@@ -180,6 +181,7 @@ public class MC8051Test {
     }
 
     private void testOpcode(byte opcode, int address, byte[] args, int desiredReturn, BooleanSupplier resultCorrect) {
+        System.out.printf("Opcode: %02X%n", opcode & 0xFF);
         final RAM ram = (RAM) testController.getCodeMemory();
         ram.set(address, opcode);
         for (int i = 0; i < args.length; ++i) ram.set(address+i+1, args[i]);

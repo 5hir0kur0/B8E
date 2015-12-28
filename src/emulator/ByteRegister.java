@@ -6,6 +6,10 @@ import java.beans.PropertyChangeSupport;
 /**
  * This class represents a CPU register containing an 8-bit-value (byte).
  *
+ * NOTE: The reason {@code this.value} is almost never used directly in the code is that there are
+ *       (anonymous) subclasses which overwrite {@code getValue()} and {@code setValue(byte)} in order to synchronize
+ *       registers like e.g. R0-R7 with other data structures.
+ *
  * @author Gordian
  */
 public class ByteRegister implements Register {
@@ -23,19 +27,18 @@ public class ByteRegister implements Register {
        if (null == name || name.isEmpty())
            throw new IllegalArgumentException("Register names must not be null or empty.");
         this.name = name;
-        this.value = initialValue;
+        setValue(initialValue);
     }
 
     /**
      * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
-     * @param initialValue the {@code ByteRegister}'s initial value. All values are allowed.
      */
     public ByteRegister(String name) {
         this(name, (byte)0);
     }
 
     public void setValue(byte newValue) {
-        byte oldValue = this.value;
+        byte oldValue = getValue();
         this.value = newValue;
         changeSupport.firePropertyChange("value", oldValue, newValue);
     }
@@ -52,9 +55,9 @@ public class ByteRegister implements Register {
     @Override
     public String getDisplayValue(NumeralSystem target) {
         switch (target) {
-            case BINARY: return target.toString(Byte.toUnsignedLong(this.value), 8);
-            case DECIMAL: return target.toString(Byte.toUnsignedLong(this.value), 3);
-            case HEXADECIMAL: return target.toString(Byte.toUnsignedLong(this.value), 2);
+            case BINARY: return target.toString(Byte.toUnsignedLong(getValue()), 8);
+            case DECIMAL: return target.toString(Byte.toUnsignedLong(getValue()), 3);
+            case HEXADECIMAL: return target.toString(Byte.toUnsignedLong(getValue()), 2);
             default: throw new IllegalArgumentException("Invalid numeral system.");
         }
     }
@@ -65,7 +68,6 @@ public class ByteRegister implements Register {
         try {
             long tmp = numeralSystem.getValue(newValue);
             if (tmp < 0 || tmp > 255) return false;
-            this.value = (byte)tmp;
             setValue((byte)tmp);
         } catch (NumberFormatException ignored) { return false; }
         return true;
@@ -83,7 +85,7 @@ public class ByteRegister implements Register {
 
     @Override
     public String toString() {
-        return "ByteRegister[name=\""+this.name+"\";value="+Byte.toUnsignedInt(this.value)+"]";
+        return "ByteRegister[name=\""+this.name+"\";value="+Byte.toUnsignedInt(getValue())+"]";
     }
 
     @Override
@@ -92,6 +94,6 @@ public class ByteRegister implements Register {
         if (this == other) return true;
         if (!(other instanceof ByteRegister)) return false;
         ByteRegister tmp = (ByteRegister) other;
-        return this.value == tmp.value && this.name.equals(tmp.name);
+        return this.getValue() == tmp.getValue() && this.name.equals(tmp.name);
     }
 }
