@@ -21,14 +21,14 @@ public class State8051 {
      * of {@code instance.get((byte)0xE0)}. It should not be a problem as the set of registers is not intended to
      * be changed during the execution of the program.
      */
-     static class SpecialFunctionRegisters implements ROM {
+    static class SpecialFunctionRegisters implements ROM {
 
         private enum PSWFlags {
             P, UD, OV, RS0, RS1, F0, AC, C;
         }
         //TODO add flag names for other flag registers
 
-        private HashMap<Byte, ByteRegister> specialFunctionRegisters;
+        HashMap<Byte, ByteRegister> specialFunctionRegisters;
 
         final BitAddressableByteRegister B = new BitAddressableByteRegister("B");
         final BitAddressableByteRegister A = new BitAddressableByteRegister("A");
@@ -172,14 +172,6 @@ public class State8051 {
         this.externalRAM = externalRAM;
         this.PCH = new ByteRegister("PCH");
         this.PCL = new ByteRegister("PCL");
-        this.R7 = new ByteRegister("R7");
-        this.R6 = new ByteRegister("R6");
-        this.R5 = new ByteRegister("R5");
-        this.R4 = new ByteRegister("R4");
-        this.R3 = new ByteRegister("R3");
-        this.R2 = new ByteRegister("R2");
-        this.R1 = new ByteRegister("R1");
-        this.R0 = new ByteRegister("R0");
     }
 
     @Override
@@ -234,5 +226,16 @@ public class State8051 {
         ret.add(R1);
         ret.add(R0);
         return ret;
+    }
+
+    void setRRegisters(ByteRegister[] rRegisters) {
+        this.R7 = Objects.requireNonNull(rRegisters[7]);
+        this.R6 = Objects.requireNonNull(rRegisters[6]);
+        this.R5 = Objects.requireNonNull(rRegisters[5]);
+        this.R4 = Objects.requireNonNull(rRegisters[4]);
+        this.R3 = Objects.requireNonNull(rRegisters[3]);
+        this.R2 = Objects.requireNonNull(rRegisters[2]);
+        this.R1 = Objects.requireNonNull(rRegisters[1]);
+        this.R0 = Objects.requireNonNull(rRegisters[0]);
     }
 }
