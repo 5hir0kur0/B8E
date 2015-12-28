@@ -176,6 +176,49 @@ public class MC8051Test {
         assertTrue(!testController.state.sfrs.PSW.getBit(0));
     }
 
+    @Test
+    public void testBitJumps() {
+        System.out.println("__________Testing JBC, JB, JNB, JC, JNC...");
+        final byte JBC = 0x10;
+        final byte JB  = 0x20;
+        final byte JNB = 0x30;
+        final byte JC  = 0x40;
+        final byte JNC = 0x50;
+        final byte[] opcodes = {JBC, JB, JNB, JC, JNC};
+        final Random r = new Random();
+        for (byte opcode : opcodes) {
+            final int address = 0x80 + r.nextInt(0xffff - 0xff);
+            byte offset = (byte)r.nextInt(256);
+            byte[] args = null;
+            if (opcode < JC) {
+                final byte bitAddr = (byte)r.nextInt(80);
+                args = new byte[]{bitAddr, offset};
+                testController.setBit(true, bitAddr);
+                testOpcode(opcode, address, args, 2, () -> {
+                    char result = (char)address;
+                    result += 3;
+                    if (opcode != JNB) result += offset;
+                    boolean res = testController.state.PCH.getValue() == (byte)(result >>> 8 & 0xff)
+                            && testController.state.PCL.getValue() == (byte)result;
+                    if (opcode == JBC) res &= !testController.getBit(bitAddr);
+                    return res;
+                });
+            }
+            else {
+                args = new byte[]{offset};
+                testController.state.sfrs.PSW.setBit(true, 7);
+                testOpcode(opcode, address, args, 2, () -> {
+                    char result = (char)address;
+                    result += 2;
+                    if (opcode != JNC) result += offset;
+                    boolean res = testController.state.PCH.getValue() == (byte)(result >>> 8 & 0xff)
+                            && testController.state.PCL.getValue() == (byte)result;
+                    return res;
+                });
+            }
+        }
+    }
+
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
         testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
     }
