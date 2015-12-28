@@ -1,5 +1,6 @@
 package assembler.arc8051;
 
+import assembler.MnemonicNameToken;
 import assembler.util.Settings;
 import assembler.util.Settings.Errors.ErrorHandling;
 import assembler.util.SimpleAssemblyError;
@@ -87,35 +88,40 @@ public class MC8051Libary {
 
             new Mnemonic8051("acall", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return absoluteCodeJump(0x11, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("add", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return tier1ArithmeticOperation((byte) 0x24, (byte) 0x26, (byte) 0x25, (byte) 0x28, this, operands);
                 }
             },
 
             new Mnemonic8051("addc", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return tier1ArithmeticOperation((byte) 0x34, (byte) 0x36, (byte) 0x35, (byte) 0x38, this, operands);
                 }
             },
 
             new Mnemonic8051("ajmp", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return absoluteCodeJump(0x01, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("anl", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return bitwiseLogicalOperation((byte) 0x54, (byte) 0x56, (byte) 0x55, (byte) 0x58,
                             (byte) 0xb0, (byte) 0x82, (byte) 0x52, (byte) 0x53, this, operands);
                 }
@@ -123,7 +129,8 @@ public class MC8051Libary {
 
             new Mnemonic8051("cjne", 3, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     byte[] result = new byte[0];
 
                     OperandToken8051 op1 = operands[0], op2 = operands[1], op3 = operands[2];
@@ -166,42 +173,48 @@ public class MC8051Libary {
 
             new Mnemonic8051("clr", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return bitOperation((byte) 0xE4, (byte) 0xC3, (byte) 0xC2, this, operands);
                 }
             },
 
             new Mnemonic8051("cpl", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return bitOperation((byte) 0xF4, (byte) 0xB3, (byte) 0xB2, this, operands);
                 }
             },
 
             new Mnemonic8051("da", 0) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
-                    return accumulatorOperation((byte) 0xD4, this, operands);
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte) 0xD4, this, name, operands);
                 }
             },
 
             new Mnemonic8051("dec", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return incDecOperation((byte) 0x14, (byte) 0x16, (byte) 0x18, (byte) 0x15, this, operands);
                 }
             },
 
             new Mnemonic8051("div", 0) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
-                    return tier2ArithmeticOperation((byte) 0x84, this, operands);
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return tier2ArithmeticOperation((byte) 0x84, this, name, operands);
                 }
             },
 
             new Mnemonic8051("djnz", 2, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     byte[] result = new byte[0];
                     OperandToken8051 op1 = operands[0], op2 = operands[1];
                     OperandType8051 type1 = op1.getOperandType();
@@ -236,7 +249,8 @@ public class MC8051Libary {
 
             new Mnemonic8051("inc", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051 ... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("dptr")) {
                         handleUnnecessaryOperands(this.getName(), false, 0, 1, operands);
                         return new byte[]{(byte) 0xA3};
@@ -247,28 +261,32 @@ public class MC8051Libary {
 
             new Mnemonic8051("jb", 2, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpBitRelevant((byte) 0x20, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jbc", 2, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpBitRelevant((byte) 0x10, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jc", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpNameRelevant((byte) 0x40, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jmp", 1, false) { // TODO add substitution support
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     boolean firstIgnored = true;
                     if (operands.length > 0) {
                         firstIgnored = false;
@@ -276,9 +294,11 @@ public class MC8051Libary {
                               operands[0].getValue().equals("a+dptr")))
                             operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! " +
                                     "(Expected \"@a+dptr\")"));
-                    } else {
-                        // TODO handle ignored operands
-                    }
+                    } else
+                        name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                "Missing '@a+dptr' as first operand!", "Operand '@a+dptr' should be written as first " +
+                                        "operand."));
+
                     handleUnnecessaryOperands(this.getName(), true, firstIgnored?1:0, 1, operands);
 
                     return new byte[]{(byte) 0x73};
@@ -287,49 +307,56 @@ public class MC8051Libary {
 
             new Mnemonic8051("jnb", 2, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpBitRelevant((byte) 0x30, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jnc", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpNameRelevant((byte) 0x50, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jnz", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpNameRelevant((byte) 0x70, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("jz", 1, true) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return jumpNameRelevant((byte) 0x60, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("lcall", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return longJump((byte) 0x12, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("ljmp", 1) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     return longJump((byte) 0x02, this, codePoint, operands);
                 }
             },
 
             new Mnemonic8051("mov", 2) {
                 @Override
-                public byte[] getInstructionFromOperands(long codePoint, OperandToken8051... operands) {
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
                     byte[] result = new byte[0];
 
                     OperandToken8051 op1 = operands[0], op2 = operands[1];
@@ -492,6 +519,34 @@ public class MC8051Libary {
 
                     return result;
                 }
+            },
+
+            new Mnemonic8051("movc", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                          OperandToken8051 ... operands) {
+                    byte[] result = new  byte[0];
+                    boolean firstA = false;
+
+                    if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("a"))
+                        firstA = true;
+                     else
+                        operands[0].setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+
+                    if (operands.length > (firstA ? 1 : 0)) {
+                        OperandToken8051 op = operands[firstA ? 1 : 0];
+                        if (!(op.getOperandType() == OperandType8051.INDIRECT_NAME &&
+                                (op.getValue().equals("a+dptr") || op.getValue().equals("a+pc"))))
+                            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                    } else
+                        name.setError(new SimpleAssemblyError(Type.ERROR, this.getName().toUpperCase() + " must " +
+                                "have 2 operands!"));
+
+                    handleUnnecessaryOperands(this.getName(), true, firstA?0:1, 2, operands);
+
+                    return result;
+                }
             }
     };
 
@@ -550,7 +605,7 @@ public class MC8051Libary {
                         op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
                     else {
                         result = new  byte[] {(byte)(ordinal
-                                | (type==OperandType8051.NAME? opc4 : opc2))}; // Set desired bits to ordinalgg
+                                | (type==OperandType8051.NAME? opc4 : opc2))}; // Set desired bits to ordinal
                         break;
                     }
                 }
@@ -797,6 +852,7 @@ public class MC8051Libary {
      * @param opc1 the opcode for the instruction.
      *
      * @param mnemonic the mnemonic that uses this method.
+     * @param name the name token of the mnemonic to use it as cause in potential errors.
      * @param operands the operands of the mnemonic.
      *
      * @return
@@ -805,16 +861,18 @@ public class MC8051Libary {
      *      operands.
      */
     private static byte[] accumulatorOperation(final byte opc1,
-                                               Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+                                               Mnemonic8051 mnemonic, MnemonicNameToken name,
+                                               OperandToken8051 ... operands) {
         boolean opIsA = false;
 
         if (operands.length > 0) {
             if (!operands[0].getValue().equals("a"))
                 operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"a\")"));
             opIsA = true;
-        } else {
-            // TODO: Correct Error handling (for no operands as well)
-        }
+        } else
+            name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+
 
         handleUnnecessaryOperands(mnemonic.getName(), true, opIsA?0:1, 1, operands);
 
@@ -888,6 +946,7 @@ public class MC8051Libary {
      * @param opc1 the opcode for the instruction.
      *
      * @param mnemonic the mnemonic that uses this method.
+     * @param name the name token of the mnemonic to use it as cause in potential errors.
      * @param operands the operands of the mnemonic.
      *
      * @return
@@ -896,7 +955,8 @@ public class MC8051Libary {
      *      operands.
      */
     private static byte[] tier2ArithmeticOperation(final byte opc1,
-                                                   Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+                                                   Mnemonic8051 mnemonic, MnemonicNameToken name,
+                                                   OperandToken8051 ... operands) {
         int ignored = 0;
 
         if (operands.length >= 2) {
@@ -914,9 +974,10 @@ public class MC8051Libary {
             if (!(operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("ab")))
                 operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"ab\")"));
 
-        } else {
-            // TODO Handle ignored operands
-        }
+        } else
+            name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                    "Missing 'ab' as first operand!", "Operand 'ab' should be written as first operand."));
+
 
 
         handleUnnecessaryOperands(mnemonic.getName(), true, ignored, 1, operands);
@@ -1012,7 +1073,8 @@ public class MC8051Libary {
             if (type == OperandType8051.ADDRESS_OFFSET)
                 jump = getFromOffset(codePoint, jump, 3);
 
-            result = new byte[] {(byte)(jump >>> 8 & 0xffL),// Shift 8 to the right get the high byte and clear the rest
+            result = new byte[] { opc1,
+                                 (byte)(jump >>> 8 & 0xffL),// Shift 8 to the right get the high byte and clear the rest
                                                             // ( ... x x 15 14 13 12 11 10 9 8)
                                  (byte)(jump & 0xffL)};     // Extract low byte ( ... x x 7 6 5 4 3 2 1 0)
         } else
@@ -1041,8 +1103,14 @@ public class MC8051Libary {
      *      jump (out of the <code>-128</code> - <code>+128</code> range).
      */
     private static Byte handleShortJump(long codePoint, OperandToken8051 op, int offset) {
-        if (op.getOperandType() == OperandType8051.ADDRESS) {
-            long i = getOffset(codePoint, Integer.parseInt(op.getValue()), offset);
+        final OperandType8051 type = op.getOperandType();
+        if (type == OperandType8051.ADDRESS || type == OperandType8051.ADDRESS_OFFSET) {
+            long i;
+            if (type == OperandType8051.ADDRESS)
+                i = getOffset(codePoint, Integer.parseInt(op.getValue()), offset);
+            else
+                i = Long.parseLong(op.getValue());
+
             if (i >= -128 && i <= 127)
                 return (byte) i;
             else {
