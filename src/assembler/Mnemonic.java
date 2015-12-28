@@ -87,16 +87,20 @@ public abstract class Mnemonic {
      *      The location of the mnemonic in the program
      *      memory. This can be used by some mnemonics
      *      to perform further calculations.<br>
+     * @param name
+     *      the name token used for this specific call.
+     *      Can be used as cause for an error if no
+     *      operands are present.
      * @param operands
      *      The operands of the mnemonic.
      *
      * @return
      *      the byte length of the resulting instruction.<br>
-     *      This method calls {@link #getInstructionFromOperands(long, OperandToken...)}
+     *      This method calls {@link #getInstructionFromOperands(long, MnemonicNameToken, OperandToken...)}
      *      and returns the length of the resulting array.
      */
-    public int getByteNumber(long codePoint, OperandToken... operands) {
-        return getInstructionFromOperands(codePoint).length;
+    public int getByteNumber(long codePoint, MnemonicNameToken name, OperandToken... operands) {
+        return getInstructionFromOperands(codePoint, name, operands).length;
     }
 
     /**
@@ -104,13 +108,16 @@ public abstract class Mnemonic {
      *      The location of the mnemonic in the program
      *      memory. This can be used by some mnemonics
      *      to perform further calculations.<br>
+     * @param name
+     *      the name token used for this specific call.
+     *      Can be used as cause for an error if no
+     *      operands are present.
      * @param operands
      *      The operands of the mnemonic.
-     *
-     * @return
+     *  @return
      *      an assembled representation of this mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(long codePoint, OperandToken ... operands);
+    public abstract byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name, OperandToken... operands);
 }
