@@ -28,7 +28,7 @@ public class State8051 {
         }
         //TODO add flag names for other flag registers
 
-        HashMap<Byte, ByteRegister> specialFunctionRegisters;
+        private HashMap<Byte, ByteRegister> specialFunctionRegisters;
 
         final BitAddressableByteRegister B = new BitAddressableByteRegister("B");
         final BitAddressableByteRegister A = new BitAddressableByteRegister("A");
@@ -154,6 +154,26 @@ public class State8051 {
                 if (specialFunctionRegisters.get(b) == r) return b;
             }
             throw new IllegalArgumentException("Invalid byte register; cannot get address: "+r);
+        }
+
+        /**
+         * Get register by address.
+         * @param address the address; must be >= 0x80
+         * @return the specified register or {@code null} it it is not present
+         */
+        ByteRegister getRegister(byte address) {
+            if ((address & 0xFF) < 0x80) throw new IllegalArgumentException("Invalid address for SFR: "+address);
+            return this.specialFunctionRegisters.get(address);
+        }
+
+        /**
+         * Add a new SFR at the specified address.
+         * @param address the address; must be >= 0x80
+         * @param register the register to be added; must not be {@code null}
+         */
+        void addRegister(byte address, ByteRegister register) {
+            if ((address & 0xFF) < 0x80) throw new IllegalArgumentException("Invalid address for SFR: "+address);
+            this.specialFunctionRegisters.put(address, Objects.requireNonNull(register));
         }
     }
 
