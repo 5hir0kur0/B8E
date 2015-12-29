@@ -7,7 +7,6 @@ import assembler.util.SimpleAssemblyError;
 import assembler.util.SimpleAssemblyError.Type;
 
 
-
 /**
  * @author Noxgrim
  */
@@ -84,6 +83,38 @@ public class MC8051Libary {
         INDIRECT_NAME;
     }
 
+    /** The address of the accumulator. */
+    public static final byte A = (byte) 0xE0;
+    /** The bit address of the carry flag. */
+    public static final byte C = (byte) 0xD7;
+    /**
+     * The register bank that is assumed if the
+     * assembler needs to convert an Rn name to an address.
+     */
+    private static byte bank = 0x0;
+
+    /**
+     * Sets the register bank that is assumed if
+     * the assembler needs to convert an Rn name
+     * to an address.<br>
+     * If the value is <code>-1</code> an error will be
+     * created instead.
+     */
+    public static void setAssumedBank(int bank) {
+        if (bank < 0 || bank > 3)
+            throw new IllegalArgumentException("Illegal bank ordinal! (Bounds: 0 to 3)");
+        else MC8051Libary.bank = (byte) bank;
+    }
+
+    /**
+     * Returns the register bank that is assumed if
+     * the assembler needs to convert an Rn name to
+     * an address.
+     */
+    public static byte getAssumedBank() {
+        return bank;
+    }
+
     public static final Mnemonic8051[] mnemonics = {
 
             new Mnemonic8051("acall", 1, true) {
@@ -123,7 +154,7 @@ public class MC8051Libary {
                 public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
                                                          OperandToken8051 ... operands) {
                     return bitwiseLogicalOperation((byte) 0x54, (byte) 0x56, (byte) 0x55, (byte) 0x58,
-                            (byte) 0xb0, (byte) 0x82, (byte) 0x52, (byte) 0x53, this, operands);
+                            (byte) 0xb0, (byte) 0x82, (byte) 0x52, (byte) 0x53, true, this, operands);
                 }
             },
 
@@ -175,7 +206,7 @@ public class MC8051Libary {
                 @Override
                 public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
                                                          OperandToken8051 ... operands) {
-                    return bitOperation((byte) 0xE4, (byte) 0xC3, (byte) 0xC2, this, operands);
+                    return bitOperation((byte) 0xE4, (byte) 0xC3, (byte) 0xC2, true, this, operands);
                 }
             },
 
@@ -183,7 +214,7 @@ public class MC8051Libary {
                 @Override
                 public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
                                                          OperandToken8051 ... operands) {
-                    return bitOperation((byte) 0xF4, (byte) 0xB3, (byte) 0xB2, this, operands);
+                    return bitOperation((byte) 0xF4, (byte) 0xB3, (byte) 0xB2, true, this, operands);
                 }
             },
 
@@ -524,7 +555,7 @@ public class MC8051Libary {
             new Mnemonic8051("movc", 1) {
                 @Override
                 public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
-                                                          OperandToken8051 ... operands) {
+                                                         OperandToken8051 ... operands) {
                     byte[] result = new  byte[0];
                     boolean firstA = false;
 
@@ -536,8 +567,13 @@ public class MC8051Libary {
 
                     if (operands.length > (firstA ? 1 : 0)) {
                         OperandToken8051 op = operands[firstA ? 1 : 0];
-                        if (!(op.getOperandType() == OperandType8051.INDIRECT_NAME &&
-                                (op.getValue().equals("a+dptr") || op.getValue().equals("a+pc"))))
+                        if (op.getOperandType() == OperandType8051.INDIRECT_NAME &&
+                                (op.getValue().equals("a+dptr") || op.getValue().equals("a+pc")))
+                            if (op.getValue().equals("a+dptr"))
+                                result = new byte[]{(byte)0x93};
+                            else
+                                result = new byte[]{(byte)0x83};
+                        else
                             op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
                     } else
                         name.setError(new SimpleAssemblyError(Type.ERROR, this.getName().toUpperCase() + " must " +
@@ -546,6 +582,271 @@ public class MC8051Libary {
                     handleUnnecessaryOperands(this.getName(), true, firstA?0:1, 2, operands);
 
                     return result;
+                }
+            },
+
+            new Mnemonic8051("movx", 2) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    byte[] result = new byte[0];
+
+
+                    OperandToken8051 op1 = operands[0], op2 = operands[1];
+                    OperandType8051 type1 = op1.getOperandType();
+
+                    switch (type1) {
+                        case INDIRECT_NAME: {
+                            if (op2.getOperandType() != OperandType8051.NAME ||
+                                op2.getValue().equals("a"))
+                                op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                            if (op1.getValue().equals("dptr"))
+                                result = new byte[]{(byte)0xF0};
+                            else if (op1.getValue().startsWith("r")) {
+                                int ordinal = Integer.parseInt(op1.getValue().substring(1));
+                                if (ordinal > 1)
+                                    op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                else result = new byte[]{(byte)0xF2};
+                            } else
+                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            break;
+                        }
+                        case NAME: {
+                            if (op2.getValue().equals("dptr"))
+                                result = new byte[]{(byte)0xE0};
+                            else if (op2.getValue().startsWith("r")) {
+                                int ordinal = Integer.parseInt(op2.getValue().substring(1));
+                                if (ordinal > 1)
+                                    op2.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                else result = new byte[]{(byte)0xE2};
+                            } else
+                                op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                            if (op1.getValue().equals("a"))
+                                break;
+                        }
+                        default:
+                            op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                    }
+
+                    handleUnnecessaryOperands(this.getName(), false, 0, 2, operands);
+                    return result;
+                }
+            },
+
+            new Mnemonic8051("mul", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return tier2ArithmeticOperation((byte) 0xA4, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("nop", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return noOperandOperation((byte)0x00, this, operands);
+                }
+            },
+
+            new Mnemonic8051("orl", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051... operands) {
+                    return bitwiseLogicalOperation((byte)0x44, (byte)0x46, (byte)0x45, (byte)0x48,
+                            (byte)0xA0, (byte)0x72, (byte)0x42, (byte)0x43, true, this, operands);
+                }
+            },
+
+            new Mnemonic8051("pop", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return addressOperation((byte)0xD0,this, operands);
+                }
+            },
+
+            new Mnemonic8051("push", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return addressOperation((byte)0xC0, this, operands);
+                }
+            },
+
+            new Mnemonic8051("ret", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return noOperandOperation((byte)0x22, this, operands);
+                }
+            },
+
+            new Mnemonic8051("reti", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return noOperandOperation((byte) 0x32, this, operands);
+                }
+            },
+
+            new Mnemonic8051("rl", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte)0x23, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("rlc", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte)0x33, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("rr", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte)0x03, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("rrc", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte)0x13, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("setb", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return bitOperation((byte)0x00, (byte)0xD2, (byte)0xD3, false, this, operands);
+                }
+            },
+
+            new Mnemonic8051("sjmp", 1, true) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    Byte result = handleShortJump(codePoint, operands[0], 2);
+                    return (result == null ? new byte[0] : new byte[]{(byte)0x80, result});
+                }
+            },
+
+            new Mnemonic8051("subb", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return tier1ArithmeticOperation((byte)0x94, (byte)0x96, (byte)0x95, (byte)0x98, this, operands);
+                }
+            },
+
+            new Mnemonic8051("swap", 0) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    return accumulatorOperation((byte)0xC4, this, name, operands);
+                }
+            },
+
+            new Mnemonic8051("xch", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    byte[] result = new byte[0];
+                    boolean firstIgnored = false;
+
+                    OperandToken8051 op = operands[0];
+
+                    for (int i = 0; i < 2; ++i) {
+                        if (firstIgnored)
+                            break;
+                        else if (i == 1)
+                            if(operands.length < 2) {
+                                op.setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
+                                return new byte[0];
+                            } else if (!(op.getOperandType() == OperandType8051.NAME && op.getValue().equals("a")))
+                                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        
+                        op = operands[i];
+                        
+                        switch (op.getOperandType()) {
+                            case ADDRESS: {
+                                if (i == 0)
+                                    firstIgnored = true;
+                                int val = Integer.parseInt(op.getValue());
+                                if (val > 0xff)
+                                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                                else
+                                    result = new byte[]{(byte)0xC5, (byte) val};
+                                break;
+                            }
+                            case INDIRECT_NAME:
+                            case NAME: {
+                                if (i == 0)
+                                    firstIgnored = true;
+                                OperandType8051 type = op.getOperandType();
+                                if (op.getValue().startsWith("r")) {
+                                    int ordinal = Integer.parseInt(op.getValue().substring(1));
+                                    if (ordinal > (type == OperandType8051.NAME? 7 : 1))
+                                        op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                    else {
+                                        result = new byte[]{(byte) (ordinal
+                                                | (type == OperandType8051.NAME ? 0xC8 : 0xC6))}; // Set desired bits to ordinal
+                                    }
+                                    break;
+                                } else  if (op.getValue().equals("a"))
+                                    firstIgnored = false;
+                            }
+                            default:
+                                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        }
+                        if (firstIgnored)
+                            op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.")); 
+                    }
+
+                    handleUnnecessaryOperands(this.getName(), true, firstIgnored?1:0, 2, operands);
+                    return result;
+                }
+            },
+
+            new Mnemonic8051("xchd", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051 ... operands) {
+                    byte[] result = new byte[0];
+                    OperandToken8051 op = operands[0];
+                    if (!(op.getOperandType() == OperandType8051.INDIRECT_NAME && op.getValue().startsWith("r"))) {
+                        int ordinal = Integer.parseInt(op.getValue().substring(1));
+                        if (ordinal > 1)
+                            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+                        else
+                            result = new byte[] {(byte)(ordinal | 0xD6)};
+                    } else
+                        op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                    handleUnnecessaryOperands(this.getName(), false, 0, 1, operands);
+
+                    return result;
+                }
+            },
+
+            new Mnemonic8051("xrl", 1) {
+                @Override
+                public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+                                                         OperandToken8051... operands) {
+                    return bitwiseLogicalOperation((byte)0x64, (byte)0x66, (byte)0x65, (byte)0x68,
+                            (byte)0x00, (byte)0x00, (byte)0x62, (byte)0x63, false, this, operands);
                 }
             }
     };
@@ -687,6 +988,7 @@ public class MC8051Libary {
      * @param opc7 the opcode for the <code>direct address, A</code> operand combination.
      * @param opc8 the opcode for the <code>direct address, #constant</code> operand combination.
      *
+     * @param cOp whether operations with the <code>C</code> operand are possible.
      * @param mnemonic the mnemonic that uses this method.
      * @param operands the operands of the mnemonic.
      *
@@ -697,42 +999,62 @@ public class MC8051Libary {
      */
     private static byte[] bitwiseLogicalOperation(final byte opc1, final byte opc2, final byte opc3, final byte opc4,
                                                   final byte opc5, final byte opc6, final byte opc7, final byte opc8,
-                                                  Mnemonic8051 mnemonic, OperandToken8051 ... operands)  {
+                                                  boolean cOp, Mnemonic8051 mnemonic, OperandToken8051 ... operands)  {
         byte[] result = new  byte[0];
-        OperandToken8051 op1 = operands[0];
+        OperandToken8051 op = operands[0];
         boolean firstIgnored = false;
 
-        switch (op1.getOperandType()) {
-            case NEGATED_ADDRESS: {
-                firstIgnored = true;
-                op1.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                        "Missing 'c' as first operand!", "Operand 'c' should be written as first operand."));
-                result = new byte[]{opc5};
-            }
-            case INDIRECT_NAME:
-            case NAME:
-                if (op1.getValue().startsWith("r")) {
-                    OperandType8051 type = op1.getOperandType();
-                    firstIgnored = true;
-                    op1.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                            "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
-
-                    int ordinal = Integer.parseInt(op1.getValue().substring(1));
-                    if (ordinal > (type == OperandType8051.NAME? 7 : 1))
-                        op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
-                    else {
-                        result = new  byte[] {(byte)(ordinal|(type==OperandType8051.NAME? opc4: opc2))};
-                        break;
-                    }
+    out:for (int i = 0; i < 2; ++i) {
+            if (firstIgnored)
+                break;
+            else if (i == 1)
+                if(operands.length < 2) {
+                    op.setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
+                    return new byte[0];
                 }
+            op = operands[i];
+
+            switch (op.getOperandType()) {
+                case NEGATED_ADDRESS: {
+                    if (cOp)
+                        break out;
+                    int val = Integer.parseInt(op.getValue());
+                    if (val > 0xff)
+                        op.setError(new SimpleAssemblyError(Type.ERROR, "Value of negated direct address too big!"));
+                    else
+                        result = new byte[]{opc5, (byte) val};
+                    if (i == 0) {
+                        firstIgnored = true;
+                        op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                "Missing 'c' as first operand!", "Operand 'c' should be written as first operand."));
+                    } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
+                               operands[0].getValue().equals("c")))
+                        operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                    break;
+                }
+                case INDIRECT_NAME:
+                case NAME:
+                    if (op.getValue().startsWith("r")) {
+                        OperandType8051 type = op.getOperandType();
+                        if (i == 0) {
+                            firstIgnored = true;
+                            op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+                        } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
+                                     operands[0].getValue().equals("c")))
+                            operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+                        int ordinal = Integer.parseInt(op.getValue().substring(1));
+                        if (ordinal > (type == OperandType8051.NAME ? 7 : 1))
+                            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                        else
+                            result = new byte[]{(byte) (ordinal | (type == OperandType8051.NAME ? opc4 : opc2))};
+                    }
+            }
         }
 
         if (!firstIgnored) {
-            if (operands.length < 2) {
-                op1.setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
-                return new byte[0];
-            }
-            OperandToken8051 op2 = operands[1];
+            OperandToken8051 op1 = operands[0], op2 = operands[1];
 
             switch (op1.getOperandType()) {
                 case ADDRESS: {
@@ -778,7 +1100,7 @@ public class MC8051Libary {
                         } else
                             op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
                         break;
-                    } else if (op1.getValue().equals("c")) {
+                    } else if (op1.getValue().equals("c") && cOp) {
                         if (type == OperandType8051.ADDRESS)
                             return new byte[]{opc6};
                         else
@@ -806,6 +1128,7 @@ public class MC8051Libary {
      * @param opc2 the opcode for <code>C</code> as operand.
      * @param opc3 the opcode for <code>direct address</code> as operand.
      *
+     * @param acc whether <code>A</code> can be used as an operand or not.
      * @param mnemonic the mnemonic that uses this method.
      * @param operands the operands of the mnemonic.
      *
@@ -815,7 +1138,7 @@ public class MC8051Libary {
      *      operands.
      */
     private static byte[] bitOperation(final byte opc1, final byte opc2, final byte opc3,
-                                       Mnemonic8051 mnemonic, OperandToken8051... operands) {
+                                       boolean acc, Mnemonic8051 mnemonic, OperandToken8051... operands) {
         byte[] result = new byte[0];
 
         OperandToken8051 op = operands[0];
@@ -830,7 +1153,7 @@ public class MC8051Libary {
                     return new byte[] {opc3, (byte) value};
                 break;
             case NAME:
-                if (op.getValue().equals("a"))
+                if (op.getValue().equals("a") && acc)
                     return new byte[]{opc1};
                 else if (op.getValue().equals("c"))
                     return new byte[]{opc2};
@@ -941,7 +1264,7 @@ public class MC8051Libary {
     /**
      * Generates instruction codes for all tier 2 arithmetic operations (* /) because they are all generated the same way with
      * different opcodes.<br>
-     * This function is used by the <code>ADD</code>, <code>ADDC</code> and <code>SUBB</code> mnemonics.
+     * This function is used by the <code>MUL</code> and <code>DIV</code> mnemonics.
      *
      * @param opc1 the opcode for the instruction.
      *
@@ -1085,6 +1408,50 @@ public class MC8051Libary {
         return result;
     }
 
+
+    /**
+     * Generates instruction codes for all operations that have no operands. It basically just handles unnecessary
+     * operands and returns the opcode.<br>
+     * This function is used by the <code>NOP</code>, <code>RET</code> and <code>RETI</code> mnemonics.
+     *
+     * @param opc1 the opcode of the instruction.
+     *
+     * @param mnemonic the mnemonic that uses this method.
+     * @param operands the operands of the mnemonic.
+     *
+     * @return
+     *      an assembled representation of the mnemonic.
+     *      It consists of the opcode and the assembled
+     *      operands.
+     */
+    private static byte[] noOperandOperation(final byte opc1,
+                                             Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 0, operands);
+        return new byte[] {opc1};
+    }
+
+    /**
+     * Generates instruction codes for all operations that work with raw byte addresses.<br>
+     * This function is used by the <code>POP</code> and <code>PUSH</code> mnemonics.
+     *
+     * @param opc1 the opcode of the instruction.
+     *
+     * @param mnemonic the mnemonic that uses this method.
+     * @param operands the operands of the mnemonic.
+     *
+     * @return
+     *      an assembled representation of the mnemonic.
+     *      It consists of the opcode and the assembled
+     *      operands.
+     */
+    private static byte[] addressOperation(final byte opc1,
+                                           Mnemonic8051 mnemonic, OperandToken8051 ... operands) {
+        Byte result = handleAddress(operands[0]);
+        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
+        return (result == null ? new byte[0] : new byte[]{opc1, result});
+
+    }
+
     /**
      * Handles a short jump by calculating the needed offset.<br>
      *
@@ -1185,6 +1552,85 @@ public class MC8051Libary {
             operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
                     err, "Unnecessary operand."));
 
+    }
+
+    /**
+     * Processes a potential address.<br>
+     * This method can convert the SFR names for <code>A</code> and <code>C</code> and the
+     * RN registers.<br>
+     * If the address is invalid a new error with the operand at its cause will be created.
+     * Also a new warning will be created if the resulting address is in the SFR-area of the
+     * internal RAM but no valid SFR.
+     *
+     * @param op the address to process.
+     *
+     * @return
+     *      the value of the address as a byte.<br>
+     *      <code>null</code> if the value is out
+     *      of bounds or no address.
+     */
+    private static Byte handleAddress(OperandToken8051 op) {
+        Byte result = null;
+        if (op.getOperandType() == OperandType8051.ADDRESS) {
+            int val = Integer.parseInt(op.getValue());
+            if (val > 0xff)
+                op.setError(new SimpleAssemblyError(Type.ERROR, "Value of address too big!"));
+            else
+                result = (byte) val;
+        } else if (op.getOperandType() == OperandType8051.NAME &&
+                op.getValue().equals("a"))
+            result = A;
+        else if (op.getOperandType() == OperandType8051.NAME &&
+                op.getValue().startsWith("r"))
+            result = getRAddress(Integer.parseInt(op.getValue().substring(1)), op);
+        else
+            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+
+        if (result == null)
+            return null;
+        else if (isValidByte(result))
+            op.setError(new SimpleAssemblyError(Type.WARNING, "Address in invalid SFR memory area."));
+
+        return result;
+    }
+
+    /**
+     * Check whether a byte address is valid.<br>
+     * A byte address is valid if it is in the lower part of the internal RAM or a SFR.
+     *
+     * @param address the byte address to check.
+     */
+    public static boolean isValidByte(byte address) {
+        return (address >= 0 && address <= (byte) 0x7F) ||
+                address == (byte) 0xF0 || address == (byte) 0xE0 || address == (byte) 0xD0 || address == (byte) 0xB8 ||
+                address == (byte) 0xB0 || address == (byte) 0xA8 || address == (byte) 0xA0 || address == (byte) 0x98 ||
+                address == (byte) 0x99 || address == (byte) 0x90 || address == (byte) 0x88 || address == (byte) 0x89 ||
+                address == (byte) 0x8A || address == (byte) 0x8B || address == (byte) 0x8C || address == (byte) 0x8D ||
+                address == (byte) 0x80 || address == (byte) 0x81 || address == (byte) 0x82 || address == (byte) 0x83 ||
+                                          address == (byte) 0x84 || address == (byte) 0x87;
+    }
+
+    /**
+     * Check whether a bit address is valid.<br>
+     * A bit address is valid if it is in the bit addressable part of the internal RAM or in a SFR.
+     *
+     * @param bitAddress the byte address to check.
+     */
+    public static boolean isValidBit(byte bitAddress) {
+        return (bitAddress >= 0 && bitAddress <= (byte) 0x7F) || isValidByte((byte)(bitAddress - bitAddress % 8));
+    }
+
+    /**
+     * Returns the address of a R register from its ordinal and the current register bank.<br>
+     * <code>null</code> will be returned if the register ordinal is invalid and an error will
+     * be created with <code>op</code> as the cause.
+     */
+    private static Byte getRAddress(int ordinal, OperandToken8051 op) {
+        if (ordinal >= 0 || ordinal < 8)
+            return (byte)(ordinal | bank << 3);
+        else
+            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+        return null;
     }
 
     /**
