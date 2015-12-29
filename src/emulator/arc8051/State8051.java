@@ -52,7 +52,7 @@ public class State8051 {
         final ByteRegister TH0 = new ByteRegister("TH0");
         final ByteRegister TH1 = new ByteRegister("TH1");
         final BitAddressableByteRegister P0 = new BitAddressableByteRegister("P0");
-        final ByteRegister SP = new ByteRegister("SP");
+        final ByteRegister SP = new ByteRegister("SP", (byte)7);
         final ByteRegister DPL = new ByteRegister("DPL");
         final ByteRegister DPH = new ByteRegister("DPH");
         final ByteRegister PCON = new ByteRegister("PCON");

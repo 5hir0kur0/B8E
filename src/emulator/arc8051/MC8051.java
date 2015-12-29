@@ -99,28 +99,28 @@ public class MC8051 implements Emulator {
             case       0x07: retValue = inc(this.state.R1.getValue()); break;
             case       0x08: retValue = inc(this.state.R0); break;
             case       0x09: retValue = inc(this.state.R1); break;
-            case       0x0a: retValue = inc(this.state.R2); break;
-            case       0x0b: retValue = inc(this.state.R3); break;
-            case       0x0c: retValue = inc(this.state.R4); break;
-            case       0x0d: retValue = inc(this.state.R5); break;
-            case       0x0e: retValue = inc(this.state.R6); break;
-            case       0x0f: retValue = inc(this.state.R7); break;
+            case       0x0A: retValue = inc(this.state.R2); break;
+            case       0x0B: retValue = inc(this.state.R3); break;
+            case       0x0C: retValue = inc(this.state.R4); break;
+            case       0x0D: retValue = inc(this.state.R5); break;
+            case       0x0E: retValue = inc(this.state.R6); break;
+            case       0x0F: retValue = inc(this.state.R7); break;
             case       0x10: retValue = jbc(getCodeByte(), getCodeByte()); break;
-            case       0x11: break;
-            case       0x12: break;
-            case       0x13: break;
+            case       0x11: retValue = acall(currentInstruction, getCodeByte()); break;
+            case       0x12: retValue = lcall(getCodeByte(), getCodeByte()); break;
+            case       0x13: retValue = rrc_a(); break;
             case       0x14: break;
             case       0x15: break;
             case       0x16: break;
             case       0x17: break;
             case       0x18: break;
             case       0x19: break;
-            case       0x1a: break;
-            case       0x1b: break;
-            case       0x1c: break;
-            case       0x1d: break;
-            case       0x1e: break;
-            case       0x1f: break;
+            case       0x1A: break;
+            case       0x1B: break;
+            case       0x1C: break;
+            case       0x1D: break;
+            case       0x1E: break;
+            case       0x1F: break;
             case       0x20: retValue = jb(getCodeByte(), getCodeByte()); break;
             case       0x21: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x22: break;
@@ -131,14 +131,14 @@ public class MC8051 implements Emulator {
             case       0x27: break;
             case       0x28: break;
             case       0x29: break;
-            case       0x2a: break;
-            case       0x2b: break;
-            case       0x2c: break;
-            case       0x2d: break;
-            case       0x2e: break;
-            case       0x2f: break;
+            case       0x2A: break;
+            case       0x2B: break;
+            case       0x2C: break;
+            case       0x2D: break;
+            case       0x2E: break;
+            case       0x2F: break;
             case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
-            case       0x31: break;
+            case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x32: break;
             case       0x33: break;
             case       0x34: break;
@@ -147,12 +147,12 @@ public class MC8051 implements Emulator {
             case       0x37: break;
             case       0x38: break;
             case       0x39: break;
-            case       0x3a: break;
-            case       0x3b: break;
-            case       0x3c: break;
-            case       0x3d: break;
-            case       0x3e: break;
-            case       0x3f: break;
+            case       0x3A: break;
+            case       0x3B: break;
+            case       0x3C: break;
+            case       0x3D: break;
+            case       0x3E: break;
+            case       0x3F: break;
             case       0x40: retValue = jc(getCodeByte()); break;
             case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x42: break;
@@ -163,14 +163,14 @@ public class MC8051 implements Emulator {
             case       0x47: break;
             case       0x48: break;
             case       0x49: break;
-            case       0x4a: break;
-            case       0x4b: break;
-            case       0x4c: break;
-            case       0x4d: break;
-            case       0x4e: break;
-            case       0x4f: break;
+            case       0x4A: break;
+            case       0x4B: break;
+            case       0x4C: break;
+            case       0x4D: break;
+            case       0x4E: break;
+            case       0x4F: break;
             case       0x50: retValue = jnc(getCodeByte()); break;
-            case       0x51: break;
+            case       0x51: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x52: break;
             case       0x53: break;
             case       0x54: break;
@@ -179,12 +179,12 @@ public class MC8051 implements Emulator {
             case       0x57: break;
             case       0x58: break;
             case       0x59: break;
-            case       0x5a: break;
-            case       0x5b: break;
-            case       0x5c: break;
-            case       0x5d: break;
-            case       0x5e: break;
-            case       0x5f: break;
+            case       0x5A: break;
+            case       0x5B: break;
+            case       0x5C: break;
+            case       0x5D: break;
+            case       0x5E: break;
+            case       0x5F: break;
             case       0x60: break;
             case       0x61: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x62: break;
@@ -195,14 +195,14 @@ public class MC8051 implements Emulator {
             case       0x67: break;
             case       0x68: break;
             case       0x69: break;
-            case       0x6a: break;
-            case       0x6b: break;
-            case       0x6c: break;
-            case       0x6d: break;
-            case       0x6e: break;
-            case       0x6f: break;
+            case       0x6A: break;
+            case       0x6B: break;
+            case       0x6C: break;
+            case       0x6D: break;
+            case       0x6E: break;
+            case       0x6F: break;
             case       0x70: break;
-            case       0x71: break;
+            case       0x71: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x72: break;
             case       0x73: break;
             case       0x74: break;
@@ -211,12 +211,12 @@ public class MC8051 implements Emulator {
             case       0x77: break;
             case       0x78: break;
             case       0x79: break;
-            case       0x7a: break;
-            case       0x7b: break;
-            case       0x7c: break;
-            case       0x7d: break;
-            case       0x7e: break;
-            case       0x7f: break;
+            case       0x7A: break;
+            case       0x7B: break;
+            case       0x7C: break;
+            case       0x7D: break;
+            case       0x7E: break;
+            case       0x7F: break;
             case (byte)0x80: break;
             case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0x82: break;
@@ -227,14 +227,14 @@ public class MC8051 implements Emulator {
             case (byte)0x87: break;
             case (byte)0x88: break;
             case (byte)0x89: break;
-            case (byte)0x8a: break;
-            case (byte)0x8b: break;
-            case (byte)0x8c: break;
-            case (byte)0x8d: break;
-            case (byte)0x8e: break;
-            case (byte)0x8f: break;
+            case (byte)0x8A: break;
+            case (byte)0x8B: break;
+            case (byte)0x8C: break;
+            case (byte)0x8D: break;
+            case (byte)0x8E: break;
+            case (byte)0x8F: break;
             case (byte)0x90: break;
-            case (byte)0x91: break;
+            case (byte)0x91: retValue = acall(currentInstruction, getCodeByte());
             case (byte)0x92: break;
             case (byte)0x93: break;
             case (byte)0x94: break;
@@ -243,108 +243,108 @@ public class MC8051 implements Emulator {
             case (byte)0x97: break;
             case (byte)0x98: break;
             case (byte)0x99: break;
-            case (byte)0x9a: break;
-            case (byte)0x9b: break;
-            case (byte)0x9c: break;
-            case (byte)0x9d: break;
-            case (byte)0x9e: break;
-            case (byte)0x9f: break;
-            case (byte)0xa0: break;
-            case (byte)0xa1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xa2: break;
-            case (byte)0xa3: retValue = inc_dptr(); break;
-            case (byte)0xa4: break;
-            case (byte)0xa5: break;
-            case (byte)0xa6: break;
-            case (byte)0xa7: break;
-            case (byte)0xa8: break;
-            case (byte)0xa9: break;
-            case (byte)0xaa: break;
-            case (byte)0xab: break;
-            case (byte)0xac: break;
-            case (byte)0xad: break;
-            case (byte)0xae: break;
-            case (byte)0xaf: break;
-            case (byte)0xb0: break;
-            case (byte)0xb1: break;
-            case (byte)0xb2: break;
-            case (byte)0xb3: break;
-            case (byte)0xb4: break;
-            case (byte)0xb5: break;
-            case (byte)0xb6: break;
-            case (byte)0xb7: break;
-            case (byte)0xb8: break;
-            case (byte)0xb9: break;
-            case (byte)0xba: break;
-            case (byte)0xbb: break;
-            case (byte)0xbc: break;
-            case (byte)0xbd: break;
-            case (byte)0xbe: break;
-            case (byte)0xbf: break;
-            case (byte)0xc0: break;
-            case (byte)0xc1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xc2: break;
-            case (byte)0xc3: break;
-            case (byte)0xc4: break;
-            case (byte)0xc5: break;
-            case (byte)0xc6: break;
-            case (byte)0xc7: break;
-            case (byte)0xc8: break;
-            case (byte)0xc9: break;
-            case (byte)0xca: break;
-            case (byte)0xcb: break;
-            case (byte)0xcc: break;
-            case (byte)0xcd: break;
-            case (byte)0xce: break;
-            case (byte)0xcf: break;
-            case (byte)0xd0: break;
-            case (byte)0xd1: break;
-            case (byte)0xd2: break;
-            case (byte)0xd3: break;
-            case (byte)0xd4: break;
-            case (byte)0xd5: break;
-            case (byte)0xd6: break;
-            case (byte)0xd7: break;
-            case (byte)0xd8: break;
-            case (byte)0xd9: break;
-            case (byte)0xda: break;
-            case (byte)0xdb: break;
-            case (byte)0xdc: break;
-            case (byte)0xdd: break;
-            case (byte)0xde: break;
-            case (byte)0xdf: break;
-            case (byte)0xe0: break;
-            case (byte)0xe1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xe2: break;
-            case (byte)0xe3: break;
-            case (byte)0xe4: break;
-            case (byte)0xe5: break;
-            case (byte)0xe6: break;
-            case (byte)0xe7: break;
-            case (byte)0xe8: break;
-            case (byte)0xe9: break;
-            case (byte)0xea: break;
-            case (byte)0xeb: break;
-            case (byte)0xec: break;
-            case (byte)0xed: break;
-            case (byte)0xee: break;
-            case (byte)0xef: break;
-            case (byte)0xf0: break;
-            case (byte)0xf1: break;
-            case (byte)0xf2: break;
-            case (byte)0xf3: break;
-            case (byte)0xf4: break;
-            case (byte)0xf5: break;
-            case (byte)0xf6: break;
-            case (byte)0xf7: break;
-            case (byte)0xf8: break;
-            case (byte)0xf9: break;
-            case (byte)0xfa: break;
-            case (byte)0xfb: break;
-            case (byte)0xfc: break;
-            case (byte)0xfd: break;
-            case (byte)0xfe: break;
-            case (byte)0xff: break;
+            case (byte)0x9A: break;
+            case (byte)0x9B: break;
+            case (byte)0x9C: break;
+            case (byte)0x9D: break;
+            case (byte)0x9E: break;
+            case (byte)0x9F: break;
+            case (byte)0xA0: break;
+            case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+            case (byte)0xA2: break;
+            case (byte)0xA3: retValue = inc_dptr(); break;
+            case (byte)0xA4: break;
+            case (byte)0xA5: break;
+            case (byte)0xA6: break;
+            case (byte)0xA7: break;
+            case (byte)0xA8: break;
+            case (byte)0xA9: break;
+            case (byte)0xAA: break;
+            case (byte)0xAB: break;
+            case (byte)0xAC: break;
+            case (byte)0xAD: break;
+            case (byte)0xAE: break;
+            case (byte)0xAF: break;
+            case (byte)0xB0: break;
+            case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
+            case (byte)0xB2: break;
+            case (byte)0xB3: break;
+            case (byte)0xB4: break;
+            case (byte)0xB5: break;
+            case (byte)0xB6: break;
+            case (byte)0xB7: break;
+            case (byte)0xB8: break;
+            case (byte)0xB9: break;
+            case (byte)0xBA: break;
+            case (byte)0xBB: break;
+            case (byte)0xBC: break;
+            case (byte)0xBD: break;
+            case (byte)0xBE: break;
+            case (byte)0xBF: break;
+            case (byte)0xC0: retValue = pop(getCodeByte()); break;
+            case (byte)0xC1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+            case (byte)0xC2: break;
+            case (byte)0xC3: break;
+            case (byte)0xC4: break;
+            case (byte)0xC5: break;
+            case (byte)0xC6: break;
+            case (byte)0xC7: break;
+            case (byte)0xC8: break;
+            case (byte)0xC9: break;
+            case (byte)0xCA: break;
+            case (byte)0xCB: break;
+            case (byte)0xCC: break;
+            case (byte)0xCD: break;
+            case (byte)0xCE: break;
+            case (byte)0xCF: break;
+            case (byte)0xD0: retValue = push(getCodeByte()); break;
+            case (byte)0xD1: retValue = acall(currentInstruction, getCodeByte()); break;
+            case (byte)0xD2: break;
+            case (byte)0xD3: break;
+            case (byte)0xD4: break;
+            case (byte)0xD5: break;
+            case (byte)0xD6: break;
+            case (byte)0xD7: break;
+            case (byte)0xD8: break;
+            case (byte)0xD9: break;
+            case (byte)0xDA: break;
+            case (byte)0xDB: break;
+            case (byte)0xDC: break;
+            case (byte)0xDD: break;
+            case (byte)0xDE: break;
+            case (byte)0xDF: break;
+            case (byte)0xE0: break;
+            case (byte)0xE1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+            case (byte)0xE2: break;
+            case (byte)0xE3: break;
+            case (byte)0xE4: break;
+            case (byte)0xE5: break;
+            case (byte)0xE6: break;
+            case (byte)0xE7: break;
+            case (byte)0xE8: break;
+            case (byte)0xE9: break;
+            case (byte)0xEA: break;
+            case (byte)0xEB: break;
+            case (byte)0xEC: break;
+            case (byte)0xED: break;
+            case (byte)0xEE: break;
+            case (byte)0xEF: break;
+            case (byte)0xF0: break;
+            case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
+            case (byte)0xF2: break;
+            case (byte)0xF3: break;
+            case (byte)0xF4: break;
+            case (byte)0xF5: break;
+            case (byte)0xF6: break;
+            case (byte)0xF7: break;
+            case (byte)0xF8: break;
+            case (byte)0xF9: break;
+            case (byte)0xFA: break;
+            case (byte)0xFB: break;
+            case (byte)0xFC: break;
+            case (byte)0xFD: break;
+            case (byte)0xFE: break;
+            case (byte)0xFF: break;
         }
         //TODO put the following in a finally-block and add exception handling
         //TODO add updateTimers()-Method
@@ -588,6 +588,23 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * Get a byte from stack. This is not the method called upon the opcode for {@code POP}, but an internal helper
+     * method.
+     * @param exceptionOnUnderflow if this is {@code true}, an exception is thrown, when the stack pointer is 0
+     * @return the byte from the stack
+     * @see #pop(byte)
+     */
+    private byte _pop(boolean exceptionOnUnderflow) {
+        int resultingAddress = this.state.sfrs.SP.getValue() & 0xFF;
+        byte result = this.state.internalRAM.get(resultingAddress);
+        --resultingAddress;
+        this.state.sfrs.SP.setValue((byte)resultingAddress);
+        if (resultingAddress < 0 && exceptionOnUnderflow)
+            throw new IllegalArgumentException("Stack underflow.");
+        return result;
+    }
+
+    /**
      * <b>No Operation</b><br>
      * @return the number of cycles (1)
      * */
@@ -639,7 +656,7 @@ public class MC8051 implements Emulator {
         char result = (char)((this.state.PCH.getValue() << 8) & 0xFF00 | this.state.PCL.getValue() & 0xFF);
         //result += 2; not necessary because the current pc at the time of the call will be the address after ajmp
         result &= 0xF800; //delete the last 11 bits
-        result |= last8bits;
+        result |= last8bits & 0xFF;
         result |= (currentOp & 0xE0) << 3; //copy the three bits of the address encoded in the opcode
         this.state.PCH.setValue((byte)(result >>> 8));
         this.state.PCL.setValue((byte)result);
@@ -650,18 +667,19 @@ public class MC8051 implements Emulator {
      * <b>Long Jump</b><br>
      * The address is encoded in the following way:<br>
      * opcode | A<sub>15<sub>-A<sub>8</sub> | A<sub>7</sub>-A<sub>0</sub>
-     * @param arg1 A<sub>15<sub>-A<sub>8</sub>
-     * @param arg2 A<sub>7</sub>-A<sub>0</sub>
+     * @param highByte A<sub>15<sub>-A<sub>8</sub>
+     * @param lowByte A<sub>7</sub>-A<sub>0</sub>
      * @return the number of cycles (2)
      */
-    private int ljmp(byte arg1, byte arg2) {
-        this.state.PCH.setValue(arg1);
-        this.state.PCL.setValue(arg2);
+    private int ljmp(byte highByte, byte lowByte) {
+        this.state.PCH.setValue(highByte);
+        this.state.PCL.setValue(lowByte);
         return 2;
     }
 
     /**
-     * <b>Rotate Right</b> (rotates the accumulator one bit to the right)<br>
+     * <b>Rotate Right</b><br>
+     * This instruction rotates the accumulator one bit to the right.
      * Bit 0 of the accumulator is rotated to bit 7.<br>
      * @return the number of cycles (1)
      */
@@ -672,6 +690,22 @@ public class MC8051 implements Emulator {
            result |= 1 << 7; //set bit 7 in result
         }
         this.state.sfrs.A.setValue((byte)result);
+        return 1;
+    }
+
+    /**
+     * <b>Rotate Right (with) Carry</b><br>
+     * This instruction rotates the accumulator one bit to the right. Bit 0 is rotated into C and C into bit 7.
+     * @return the number of cycles (1)
+     */
+    private int rrc_a() {
+        int a = this.state.sfrs.A.getValue() & 0xFF;
+        final boolean oldC = this.state.sfrs.PSW.getBit(7);
+        final boolean newC = (a & 1) == 1;
+        a >>>= 1;
+        if (oldC) a |= 1 << 7;
+        this.state.sfrs.A.setValue((byte)a);
+        this.state.sfrs.PSW.setBit(newC, 7);
         return 1;
     }
 
@@ -776,4 +810,73 @@ public class MC8051 implements Emulator {
         return 2;
     }
 
+    /**
+     * <b>Absolute Call</b><br>
+     *
+     * Call a subroutine at the specified address (in the same 2KiB block)<br>
+     *
+     * NOTE: This instruction internally uses push() and ajmp().
+     *
+     * @param currentOpcode the current opcode
+     * @param last8bits the argument (which contains the destination address' low-byte)
+     * @return the number of cycles (2)
+     * @throws IllegalStateException on stack overflow
+     *
+     * @see #ajmp(byte, byte)
+     * @see #push(byte)
+     */
+    private int acall(byte currentOpcode, byte last8bits) {
+        push(this.state.PCL.getValue());
+        push(this.state.PCH.getValue());
+        ajmp(currentOpcode, last8bits);
+        return 2;
+    }
+
+    /**
+     * <b>Long Call</b><br>
+     *
+     * Call a subroutine at the specified address.<br>
+     *
+     * NOTE: This instruction internally uses push() and ljmp().
+     *
+     * @param highByte the destination address' high byte
+     * @param lowByte the destination address' low byte
+     * @return the number of cycles (2)
+     * @see #push(byte)
+     * @see #lcall(byte, byte)
+     */
+    private int lcall(byte highByte, byte lowByte) {
+        push(this.state.PCL.getValue());
+        push(this.state.PCH.getValue());
+        ljmp(highByte, lowByte);
+        return 2;
+    }
+
+    /**
+     * <b>Push</b><br>
+     * Increment the stack pointer and push a byte onto the stack.
+     * @param value the value to be stored on the stack
+     * @return the number of cycles (2)
+     * @throws IllegalStateException on stack overflow
+     */
+    private int push(byte value) throws IllegalStateException {
+        int resultingAddress = (this.state.sfrs.SP.getValue() & 0xFF) + 1;
+        this.state.internalRAM.set(resultingAddress & 0xFF, value);
+        this.state.sfrs.SP.setValue((byte)resultingAddress);
+        if (resultingAddress > 0xFF)
+            throw new IllegalStateException("Stack overflow.");
+        return 2;
+    }
+
+    /**
+     * <b>Pop</b> a byte from the stack and decrement the stack pointer
+     * @return the number of cycles (2)
+     * @param direct address at which the result is stored
+     * @throws IllegalStateException on stack underflow
+     * @see #setDirectAddress(byte, byte)
+     */
+    private int pop(byte direct) throws IllegalStateException {
+        setDirectAddress(direct, _pop(true));
+        return 2;
+    }
 }

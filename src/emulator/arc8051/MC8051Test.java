@@ -16,10 +16,12 @@ import static org.junit.Assert.*;
 public class MC8051Test {
 
     MC8051 testController;
+    Random r;
 
     @Before
     public void setUp() throws Exception {
         testController = new MC8051(new RAM(65536), new RAM(65536));
+        r = new Random();
     }
 
     @Test
@@ -31,11 +33,6 @@ public class MC8051Test {
     public void testGetPSW() throws Exception {
         FlagRegister psw = testController.getPSW();
         assertTrue(psw != null && psw.getName(7).equals("C") && psw.getHexadecimalDisplayValue().equals("00"));
-    }
-
-    @Test
-    public void testNext() throws Exception {
-        assertTrue(testController.next() == 1);
     }
 
     @Test
@@ -66,7 +63,6 @@ public class MC8051Test {
         System.out.println("__________Test AJMP...");
         final RAM ram = (RAM)testController.getCodeMemory();
         final byte STATIC_AJMP = 0x01; //AJMP: 0bXXX00001
-        final Random r = new Random();
         for (byte i = 0; i <= 0b111; ++i) {
             final byte instruction = (byte)(STATIC_AJMP | i << 5);
             System.out.printf("Opcode: %02X%n", instruction & 0xFF);
@@ -77,9 +73,11 @@ public class MC8051Test {
             final byte arg = (byte) r.nextInt(256);
             ram.set(pch << 8, instruction);
             ram.set((pch << 8) + 1, arg);
-            final char resultingAddress = (char)((pch << 8) & 0xF800 | arg | (i << 8));
+            final char resultingAddress = (char)((pch << 8) & 0xF800 | arg & 0xFF | (i << 8));
             assertTrue(testController.next() == 2);
-            char actualResult = (char)(testController.state.PCH.getValue() << 8 | testController.state.PCL.getValue());
+            char actualResult = (char)(testController.state.PCH.getValue() << 8 & 0xff00
+                    | testController.state.PCL.getValue() & 0xff);
+            System.out.println("actualResult = "+actualResult+" resultingAddress = "+resultingAddress);
             assertTrue(actualResult == resultingAddress);
         }
         testController.state.PCH.setValue((byte)0x0F);
@@ -98,7 +96,6 @@ public class MC8051Test {
         final RAM ram = (RAM) testController.getCodeMemory();
         final byte LJMP = 0x02;
         System.out.printf("Opcode: %02X%n", LJMP & 0xFF);
-        final Random r = new Random();
         byte arg1 = (byte)r.nextInt(256);
         byte arg2 = (byte)r.nextInt(256);
         ram.set(0, LJMP);
@@ -185,7 +182,6 @@ public class MC8051Test {
         final byte JC  = 0x40;
         final byte JNC = 0x50;
         final byte[] opcodes = {JBC, JB, JNB, JC, JNC};
-        final Random r = new Random();
         for (byte opcode : opcodes) {
             final int address = 0x80 + r.nextInt(0xffff - 0xff);
             byte offset = (byte)r.nextInt(256);
@@ -207,6 +203,7 @@ public class MC8051Test {
             else {
                 args = new byte[]{offset};
                 testController.state.sfrs.PSW.setBit(true, 7);
+                assertTrue(testController.getBit((byte)0xD7)); //test if C is really set
                 testOpcode(opcode, address, args, 2, () -> {
                     char result = (char)address;
                     result += 2;
@@ -216,6 +213,79 @@ public class MC8051Test {
                     return res;
                 });
             }
+        }
+    }
+
+    @Test
+    public void testAcall() {
+        System.out.println("__________Testing ACALL...");
+        final byte ACALL_STATIC = 0b00010001;
+        for (int i = 0; i < 8; ++i) {
+            final byte opcode = (byte) (ACALL_STATIC | i << 5);
+            final byte arg    = (byte) r.nextInt(0xff);
+            final char result = (char) (i << 8 | arg & 0xff);
+            testController.state.sfrs.SP.setValue((byte)7);
+            testOpcode(opcode, 0, new byte[]{arg}, 2, () -> {
+                final char pc = (char) (testController.state.PCH.getValue() << 8 & 0xff00
+                        | testController.state.PCL.getValue() & 0xff);
+                System.out.println("result = "+result+"; pc = "+pc+"; sp = "+testController.state.sfrs.SP.getValue());
+                return pc == result && testController.state.sfrs.SP.getValue() == (byte) 9;
+            });
+        }
+    }
+
+    @Test
+    public void testLcall() {
+        System.out.println("__________Testing LCALL...");
+        final byte LCALL = 0x12;
+        final byte high  = (byte)r.nextInt(256);
+        final byte low   = (byte)r.nextInt(256);
+        testOpcode(LCALL, 42, new byte[]{high, low}, 2, () ->
+            testController.state.PCH.getValue() == high && testController.state.PCL.getValue() == low &&
+            testController.state.sfrs.SP.getValue() == (byte)9
+        );
+    }
+
+    @Test
+    public void testPush() {
+        System.out.println("__________Testing PUSH...");
+        final byte PUSH = (byte)0xD0;
+        final byte arg = (byte)r.nextInt(256);
+        final int stack = r.nextInt(100);
+        testController.state.sfrs.SP.setValue((byte)stack);
+        testOpcode(PUSH, 111, new byte[]{arg}, 2, () -> testController.state.internalRAM.get(stack + 1) == arg
+                && testController.state.sfrs.SP.getValue() == (byte)((stack & 0xFF) + 1));
+    }
+
+    @Test
+    public void testPop() {
+        System.out.println("__________Testing POP...");
+        final byte POP = (byte)0xC0;
+        final byte stack = (byte)r.nextInt(256);
+        final byte arg = (byte)0x42;
+        final byte addr = (byte)r.nextInt(0x80);
+        testController.state.sfrs.SP.setValue(stack);
+        testController.state.internalRAM.set(stack & 0xFF, arg);
+        testOpcode(POP, 2134, new byte[]{addr}, 2, () -> testController.state.internalRAM.get(addr) == arg
+                && testController.state.sfrs.SP.getValue() == (byte)((stack & 0xFF)-1));
+    }
+
+    @Test
+    public void testRRCA() {
+        System.out.println("__________Testing RRC A...");
+        final byte RRC_A = 0x13;
+        final byte[] testA          = {(byte)0b10001001,       0b00011000, (byte)0b10101010};
+        final byte[] correctResC0   = {      0b01000100,       0b00001100,       0b01010101};
+        final byte[] correctResC1   = {(byte)0b11000100, (byte)0b10001100, (byte)0b11010101};
+        for (int i = 0; i < testA.length; ++i) {
+            testController.state.sfrs.PSW.setBit(false, 7);
+            final byte res1 = correctResC0[i];
+            final byte res2 = correctResC1[i];
+            testController.state.sfrs.A.setValue(testA[i]);
+            testOpcode(RRC_A, 11, 1, () -> testController.state.sfrs.A.getValue() == res1);
+            testController.state.sfrs.PSW.setBit(true, 7);
+            testController.state.sfrs.A.setValue(testA[i]);
+            testOpcode(RRC_A, 11, 1, () -> testController.state.sfrs.A.getValue() == res2);
         }
     }
 
