@@ -1,7 +1,5 @@
 package assembler;
 
-import assembler.util.SimpleAssemblyError;
-
 import java.util.Objects;
 
 /**
@@ -16,7 +14,6 @@ public class Token {
     /** The value of the token. */
     protected String value;
 
-    protected SimpleAssemblyError error = null;
 
     /**
      * Constructs a new Token.
@@ -42,9 +39,6 @@ public class Token {
         return value;
     }
 
-    public boolean hasError() { return error != null;}
-    public SimpleAssemblyError getError() { return error; }
-    public void setError(SimpleAssemblyError error) {this.error = error;}
 
     /**
      * The different types a token can have.
