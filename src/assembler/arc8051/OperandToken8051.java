@@ -1,7 +1,7 @@
 package assembler.arc8051;
 
 import assembler.OperandToken;
-import assembler.arc8051.MC8051Libary.OperandType8051;
+import assembler.arc8051.MC8051Library.OperandType8051;
 
 /**
  * @author Noxgrim

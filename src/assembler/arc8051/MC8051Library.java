@@ -10,7 +10,7 @@ import assembler.util.SimpleAssemblyError.Type;
 /**
  * @author Noxgrim
  */
-public class MC8051Libary {
+public class MC8051Library {
 
     /**
      * Contains all the possible types of a 8051 operand
@@ -103,7 +103,7 @@ public class MC8051Libary {
     public static void setAssumedBank(int bank) {
         if (bank < 0 || bank > 3)
             throw new IllegalArgumentException("Illegal bank ordinal! (Bounds: 0 to 3)");
-        else MC8051Libary.bank = (byte) bank;
+        else MC8051Library.bank = (byte) bank;
     }
 
     /**
