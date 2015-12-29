@@ -1,6 +1,6 @@
 package assembler;
 
-import assembler.util.AssemblyError;
+import assembler.util.Problem;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -34,5 +34,5 @@ public interface Assembler {
      *      This method should return <code>false</code>, if the assembler detected
      *      one or more errors.
      */
-    boolean assemble(BufferedReader input, BufferedWriter output, List<AssemblyError> problems);
+    boolean assemble(BufferedReader input, BufferedWriter output, List<Problem> problems);
 }

@@ -1,10 +1,14 @@
 package assembler.arc8051;
 
 import assembler.MnemonicNameToken;
+import assembler.Token;
+import assembler.util.Problem.Type;
 import assembler.util.Settings;
 import assembler.util.Settings.Errors.ErrorHandling;
-import assembler.util.SimpleAssemblyError;
-import assembler.util.SimpleAssemblyError.Type;
+import assembler.util.TokenProblem;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -94,6 +98,12 @@ public class MC8051Library {
     private static byte bank = 0x0;
 
     /**
+     * Problems that occur while assembling will be stored
+     * here.
+     */
+    private static List<TokenProblem> problems = new ArrayList<>();
+
+    /**
      * Sets the register bank that is assumed if
      * the assembler needs to convert an Rn name
      * to an address.<br>
@@ -104,6 +114,13 @@ public class MC8051Library {
         if (bank < 0 || bank > 3)
             throw new IllegalArgumentException("Illegal bank ordinal! (Bounds: 0 to 3)");
         else MC8051Library.bank = (byte) bank;
+    }
+
+    /**
+     * Returns recorded problems.
+     */
+    public static List<TokenProblem> getProblems() {
+        return problems;
     }
 
     /**
@@ -181,7 +198,7 @@ public class MC8051Library {
                                 else if (op1.getValue().startsWith("r")) {
                                     int ordinal = Integer.parseInt(op1.getValue().substring(1));
                                     if (ordinal > (type1 == OperandType8051.NAME ? 7 : 1))
-                                        op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                        problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op1));
                                     else {
                                         result = new byte[]{(byte) (ordinal
                                                 | (type1 == OperandType8051.NAME ? 0xB8 : 0xB6)), // Set desired bits to ordinal
@@ -189,12 +206,13 @@ public class MC8051Library {
                                     }
                                 }
                             } else
-                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
                         } else
-                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
-                                    (type2 == OperandType8051.ADDRESS ? "direct address" : "constant") + " too big!"));
+                            problems.add(new TokenProblem("Value of " +
+                                    (type2 == OperandType8051.ADDRESS ? "direct address" : "constant") + " too big!",
+                                    Type.ERROR, op2));
                     } else
-                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
 
                     handleUnnecessaryOperands(this.getName(), false, 0, 3, operands);
 
@@ -258,20 +276,20 @@ public class MC8051Library {
                             if (value <= 0xff)
                                 result = new byte[]{(byte) 0xD5, offset == null ? -2 : offset};
                             else
-                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                                problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op1));
                             break;
                         }
                         case NAME:
                             if (op1.getValue().startsWith("r")) {
                                 int ordinal = Integer.parseInt(op1.getValue().substring(1));
                                 if (ordinal > 7)
-                                    op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+                                    problems.add(new TokenProblem("Register ordinal too big!", Type.ERROR, op1));
                                 else
                                     return new byte[]{(byte)(ordinal | 0xD8), offset == null ? -2 : offset};
                                 break;
                             }
                         default:
-                            op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
                     }
 
                     return result;
@@ -323,10 +341,10 @@ public class MC8051Library {
                         firstIgnored = false;
                         if (!(operands[0].getOperandType() == OperandType8051.INDIRECT_NAME &&
                               operands[0].getValue().equals("a+dptr")))
-                            operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! " +
-                                    "(Expected \"@a+dptr\")"));
+                            problems.add(new TokenProblem("Incompatible operand! " +
+                                    "(Expected \"@a+dptr\")", Type.WARNING, operands[0]));
                     } else
-                        name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing '@a+dptr' as first operand!", "Operand '@a+dptr' should be written as first " +
                                         "operand."));
 
@@ -404,7 +422,7 @@ public class MC8051Library {
                                 if (i == 0) ord1 = ordinal;
                                 else ord2 = ordinal;
                             else
-                                op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+                                problems.add(new TokenProblem("Register ordinal too big!", Type.ERROR, op));
                         }
                     }
 
@@ -414,14 +432,14 @@ public class MC8051Library {
                         case ADDRESS: {
                             int dest = Integer.parseInt(op1.getValue());
                             if (dest > 0xff)
-                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                                problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op1));
                             else
                                 switch (type2) {
                                     case ADDRESS: {
                                         int src = Integer.parseInt(op2.getValue());
                                         if (src > 0xff)
-                                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address" +
-                                                    " too big!"));
+                                            problems.add(new TokenProblem("Value of direct address" +
+                                                    " too big!", Type.ERROR, op2));
                                         else
                                             result = new byte[]{(byte) 0x85, (byte) src, (byte) dest}; //address, address
                                         break;
@@ -429,8 +447,8 @@ public class MC8051Library {
                                     case CONSTANT: {
                                         int val = Integer.parseInt(op2.getValue());
                                         if (val > 0xff)
-                                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of constant too" +
-                                                    " big!"));
+                                            problems.add(new TokenProblem("Value of constant too" +
+                                                    " big!", Type.ERROR, op2));
                                         else
                                             result = new byte[]{(byte) 0x75, (byte) dest, (byte) val}; //address, #constant
                                         break;
@@ -453,7 +471,7 @@ public class MC8051Library {
                                         }
                                     }
                                     default:
-                                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                                 }
                             break;
                         }
@@ -464,12 +482,12 @@ public class MC8051Library {
                                 if (type2 == OperandType8051.ADDRESS) {
                                    int valAd = Integer.parseInt(op2.getValue());
                                     if (valAd > 0xff)
-                                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too" +
-                                                " big!"));
+                                        problems.add(new TokenProblem("Value of direct address too" +
+                                                " big!", Type.ERROR, op2));
                                     else
                                         result = new byte[] {(byte) 0xA2, (byte) valAd};      // c, address
                                 } else
-                                    op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                    problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                                 break;
                             } else if (val.equals("dptr")) {
                                 if (type2 == OperandType8051.CONSTANT) {
@@ -478,7 +496,7 @@ public class MC8051Library {
                                                          (byte)(val2 >>> 8 & 0xff), // Extract high byte
                                                          (byte)(val2 & 0xff)};      // Extract low byte
                                 } else
-                                    op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                    problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                                 break;
                             } else if (val.equals("a")) {
                                 switch (type2) {
@@ -486,9 +504,9 @@ public class MC8051Library {
                                     case ADDRESS: {
                                         int val2 = Integer.parseInt(op2.getValue());
                                         if (val2 > 0xff)
-                                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
-                                                    (type2==OperandType8051.ADDRESS?"direct address":"constant") +
-                                                    " too big!"));
+                                            problems.add(new TokenProblem("Value of " +
+                                                    (type2 == OperandType8051.ADDRESS ? "direct address" : "constant") +
+                                                    " too big!", Type.ERROR, op2));
                                         else
                                             return new byte[]{(byte)(type2 == OperandType8051.ADDRESS ? 0xE5 ://a,direct
                                             0x74), (byte) val2};                              // a, #constant
@@ -504,7 +522,7 @@ public class MC8051Library {
                                         }
                                     }
                                     default:
-                                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                                 }
                                 break;
                             } else if (val.startsWith("r")) {
@@ -513,9 +531,9 @@ public class MC8051Library {
                                     case ADDRESS: {
                                         int valCon = Integer.parseInt(op2.getValue());
                                         if (valCon > 0xff)
-                                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
-                                                    (type2 == OperandType8051.CONSTANT ? "constant":"direct address") +
-                                                     " too big!"));
+                                            problems.add(new TokenProblem("Value of " +
+                                                    (type2 == OperandType8051.CONSTANT ? "constant" : "direct address") +
+                                                    " too big!", Type.ERROR, op2));
                                         else if (ord1 != -1)
                                             result = new byte[]{(byte) (ord1
                                                     | (type2 == OperandType8051.CONSTANT ?
@@ -539,13 +557,13 @@ public class MC8051Library {
                                         }
                                     }
                                     default:
-                                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                                 }
                                 break;
                             }
                         }
                         default:
-                            op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
                     }
 
                     return result;
@@ -562,7 +580,7 @@ public class MC8051Library {
                     if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("a"))
                         firstA = true;
                      else
-                        operands[0].setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(operands[0], Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
 
                     if (operands.length > (firstA ? 1 : 0)) {
@@ -574,10 +592,10 @@ public class MC8051Library {
                             else
                                 result = new byte[]{(byte)0x83};
                         else
-                            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
                     } else
-                        name.setError(new SimpleAssemblyError(Type.ERROR, this.getName().toUpperCase() + " must " +
-                                "have 2 operands!"));
+                        problems.add(new TokenProblem(this.getName().toUpperCase() + " must have 2 operands!",
+                                Type.ERROR, name));
 
                     handleUnnecessaryOperands(this.getName(), true, firstA?0:1, 2, operands);
 
@@ -599,17 +617,17 @@ public class MC8051Library {
                         case INDIRECT_NAME: {
                             if (op2.getOperandType() != OperandType8051.NAME ||
                                 op2.getValue().equals("a"))
-                                op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
 
                             if (op1.getValue().equals("dptr"))
                                 result = new byte[]{(byte)0xF0};
                             else if (op1.getValue().startsWith("r")) {
                                 int ordinal = Integer.parseInt(op1.getValue().substring(1));
                                 if (ordinal > 1)
-                                    op1.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                    problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op1));
                                 else result = new byte[]{(byte)0xF2};
                             } else
-                                op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
                             break;
                         }
                         case NAME: {
@@ -618,16 +636,16 @@ public class MC8051Library {
                             else if (op2.getValue().startsWith("r")) {
                                 int ordinal = Integer.parseInt(op2.getValue().substring(1));
                                 if (ordinal > 1)
-                                    op2.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                    problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op2));
                                 else result = new byte[]{(byte)0xE2};
                             } else
-                                op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
 
                             if (op1.getValue().equals("a"))
                                 break;
                         }
                         default:
-                            op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
 
                     }
 
@@ -772,10 +790,10 @@ public class MC8051Library {
                             break;
                         else if (i == 1)
                             if(operands.length < 2) {
-                                op.setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
+                                problems.add(new TokenProblem("Expected 2 operands!", Type.ERROR, op));
                                 return new byte[0];
                             } else if (!(op.getOperandType() == OperandType8051.NAME && op.getValue().equals("a")))
-                                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
                         
                         op = operands[i];
                         
@@ -785,7 +803,7 @@ public class MC8051Library {
                                     firstIgnored = true;
                                 int val = Integer.parseInt(op.getValue());
                                 if (val > 0xff)
-                                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                                    problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op));
                                 else
                                     result = new byte[]{(byte)0xC5, (byte) val};
                                 break;
@@ -798,7 +816,7 @@ public class MC8051Library {
                                 if (op.getValue().startsWith("r")) {
                                     int ordinal = Integer.parseInt(op.getValue().substring(1));
                                     if (ordinal > (type == OperandType8051.NAME? 7 : 1))
-                                        op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                                        problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op));
                                     else {
                                         result = new byte[]{(byte) (ordinal
                                                 | (type == OperandType8051.NAME ? 0xC8 : 0xC6))}; // Set desired bits to ordinal
@@ -808,10 +826,10 @@ public class MC8051Library {
                                     firstIgnored = false;
                             }
                             default:
-                                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
                         }
                         if (firstIgnored)
-                            op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                            problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.")); 
                     }
 
@@ -829,11 +847,11 @@ public class MC8051Library {
                     if (!(op.getOperandType() == OperandType8051.INDIRECT_NAME && op.getValue().startsWith("r"))) {
                         int ordinal = Integer.parseInt(op.getValue().substring(1));
                         if (ordinal > 1)
-                            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+                            problems.add(new TokenProblem("Register ordinal too big!", Type.ERROR, op));
                         else
                             result = new byte[] {(byte)(ordinal | 0xD6)};
                     } else
-                        op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
 
                     handleUnnecessaryOperands(this.getName(), false, 0, 1, operands);
 
@@ -852,8 +870,8 @@ public class MC8051Library {
     };
 
     /**
-     * Generates instruction codes for all tier 1 arithmetic operations (+ -) because they are all generated the same way with
-     * different opcodes.<br>
+     * Generates instruction codes for all tier 1 arithmetic operations (+ -) because they are all generated the same
+     * way with different opcodes.<br>
      * This function is used by the <code>ADD</code>, <code>ADDC</code> and <code>SUBB</code> mnemonics.
      *
      * @param opc1 the opcode for the <code>A, #constant</code> operand combination.
@@ -878,10 +896,10 @@ public class MC8051Library {
         if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                 operands[0].getValue().equals("a"))) {
             firstIsA = false;
-            operands[0].setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(operands[0], Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
         } else if (operands.length < 2) {
-            operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
+            problems.add(new TokenProblem("Expected 2 operands!", Type.ERROR, operands[0]));
             return new byte[0];
         }
 
@@ -892,8 +910,9 @@ public class MC8051Library {
             case ADDRESS: {
                 int value = Integer.parseInt(op.getValue());
                 if (value > 0xFF)
-                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
-                            (type == OperandType8051.ADDRESS ? "direct address" : "constant" ) + " too big!"));
+                    problems.add(new TokenProblem("Value of " +
+                            (type == OperandType8051.ADDRESS ? "direct address" : "constant") + " too big!",
+                            Type.ERROR, op));
                 else
                     result = new byte[]{(type == OperandType8051.ADDRESS ? opc3 : opc1), (byte) value};
                 break;
@@ -903,7 +922,7 @@ public class MC8051Library {
                 if (op.getValue().startsWith("r")) {
                     int ordinal = Integer.parseInt(op.getValue().substring(1));
                     if (ordinal > (type == OperandType8051.NAME? 7 : 1))
-                        op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                        problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op));
                     else {
                         result = new  byte[] {(byte)(ordinal
                                 | (type==OperandType8051.NAME? opc4 : opc2))}; // Set desired bits to ordinal
@@ -911,8 +930,8 @@ public class MC8051Library {
                     }
                 }
             default:
-                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
-        } //TODO Multiple error handling.
+                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
+        }
 
         handleUnnecessaryOperands(mnemonic.getName(), true, firstIsA ? 0 : 1, 2, operands);
 
@@ -964,19 +983,18 @@ public class MC8051Library {
                         jump & 0xffL) // Clear all bits but the low byte (x x x 7 6 5 4 3 2 1 0)
                 };
             else
-                operands[0].setError(new SimpleAssemblyError(Type.ERROR,
-                        "Call address too far absolute 11 bit addressing!"));
+                problems.add(new TokenProblem("Call address too far absolute 11 bit addressing!",
+                        Type.ERROR, operands[0]));
         } else
-            operands[0].setError(new SimpleAssemblyError(Type.ERROR,
-                    "Operand needs to be an address!"));
+            problems.add(new TokenProblem("Operand needs to be an address!", Type.ERROR, operands[0]));
 
         handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
         return result;
 
     }
     /**
-     * Generates instruction codes for all bitwise logical operations (& | ^) because they are all generated the same way with
-     * different opcodes.<br>
+     * Generates instruction codes for all bitwise logical operations (& | ^) because they are all generated the same
+     * way with different opcodes.<br>
      * This function is used by the <code>ANL</code>, <code>ORL</code> and <code>XRL</code> mnemonics.
      *
      * @param opc1 the opcode for the <code>A, #constant</code> operand combination.
@@ -1009,7 +1027,7 @@ public class MC8051Library {
                 break;
             else if (i == 1)
                 if(operands.length < 2) {
-                    op.setError(new SimpleAssemblyError(Type.ERROR, "Expected 2 operands!"));
+                    problems.add(new TokenProblem("Expected 2 operands!", Type.ERROR, op));
                     return new byte[0];
                 }
             op = operands[i];
@@ -1020,16 +1038,16 @@ public class MC8051Library {
                         break out;
                     int val = Integer.parseInt(op.getValue());
                     if (val > 0xff)
-                        op.setError(new SimpleAssemblyError(Type.ERROR, "Value of negated direct address too big!"));
+                        problems.add(new TokenProblem("Value of negated direct address too big!", Type.ERROR, op));
                     else
                         result = new byte[]{opc5, (byte) val};
                     if (i == 0) {
                         firstIgnored = true;
-                        op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing 'c' as first operand!", "Operand 'c' should be written as first operand."));
                     } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                                operands[0].getValue().equals("c")))
-                        operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, operands[0]));
                     break;
                 }
                 case INDIRECT_NAME:
@@ -1038,15 +1056,15 @@ public class MC8051Library {
                         OperandType8051 type = op.getOperandType();
                         if (i == 0) {
                             firstIgnored = true;
-                            op.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                            problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
                         } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                                      operands[0].getValue().equals("c")))
-                            operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, operands[0]));
 
                         int ordinal = Integer.parseInt(op.getValue().substring(1));
                         if (ordinal > (type == OperandType8051.NAME ? 7 : 1))
-                            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                            problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op));
                         else
                             result = new byte[]{(byte) (ordinal | (type == OperandType8051.NAME ? opc4 : opc2))};
                     }
@@ -1067,8 +1085,7 @@ public class MC8051Library {
                                     result = new byte[]{opc8, (byte) value, (byte) constVal};
                                     break;
                                 } else
-                                    op2.setError(new SimpleAssemblyError(Type.ERROR,
-                                            "Value of constant too big!"));
+                                    problems.add(new TokenProblem("Value of constant too big!", Type.ERROR, op2));
                                 break;
                             }
                             case NAME:
@@ -1077,19 +1094,19 @@ public class MC8051Library {
                                     break;
                                 }
                             default:
-                                op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                         }
                     else
-                        op1.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                        problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op1));
                     break;
                 }
                 case NAME:
                     int value = Integer.parseInt(op2.getValue());
                     OperandType8051 type = op2.getOperandType();
                     if (value > 0xff)
-                        op2.setError(new SimpleAssemblyError(Type.ERROR, "Value of " +
+                         problems.add(new TokenProblem("Value of " +
                                 (type == OperandType8051.CONSTANT ? "constant" : "direct address") +
-                                " too big!"));
+                                " too big!", Type.ERROR, op2));
 
                     else if (op1.getValue().equals("a")) {
                         if (op2.getOperandType() == OperandType8051.CONSTANT
@@ -1098,17 +1115,17 @@ public class MC8051Library {
                             result = new byte[]{type == OperandType8051.CONSTANT ? opc1 : opc3,
                                     (byte) value};
                         } else
-                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                         break;
                     } else if (op1.getValue().equals("c") && cOp) {
                         if (type == OperandType8051.ADDRESS)
                             return new byte[]{opc6};
                         else
-                            op2.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op2));
                         break;
                     }
                 default:
-                    op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                    problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
 
             }
         }
@@ -1148,7 +1165,7 @@ public class MC8051Library {
             case ADDRESS:
                 int value = Integer.parseInt(op.getValue());
                 if (value > 0xff)
-                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                    problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op));
                 else
                     return new byte[] {opc3, (byte) value};
                 break;
@@ -1158,7 +1175,7 @@ public class MC8051Library {
                 else if (op.getValue().equals("c"))
                     return new byte[]{opc2};
             default:
-                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
         }
 
         handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
@@ -1190,10 +1207,10 @@ public class MC8051Library {
 
         if (operands.length > 0) {
             if (!operands[0].getValue().equals("a"))
-                operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"a\")"));
+                problems.add(new TokenProblem("Incompatible operand! (Expected \"a\")", Type.WARNING, operands[0]));
             opIsA = true;
         } else
-            name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
 
 
@@ -1232,7 +1249,7 @@ public class MC8051Library {
                 int value = Integer.parseInt(op.getValue());
 
                 if (value > 0xff)
-                    op.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                    problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op));
                 else
                     return new byte[] {opc4, (byte) value};
                 break;
@@ -1246,7 +1263,7 @@ public class MC8051Library {
                 else if (op.getValue().startsWith("r")) {
                     int ordinal = Integer.parseInt(op.getValue().substring(1));
                     if (ordinal > (type == OperandType8051.NAME? 7 : 1))
-                        op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too high!"));
+                        problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, op));
                     else {
                         result = new  byte[] {(byte)(ordinal
                                 | (type==OperandType8051.NAME? opc3 : opc2))}; // Set desired bits to ordinal
@@ -1254,7 +1271,7 @@ public class MC8051Library {
                     break;
                 }
             default:
-                op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
         }
 
         handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
@@ -1262,8 +1279,8 @@ public class MC8051Library {
         return result;
     }
     /**
-     * Generates instruction codes for all tier 2 arithmetic operations (* /) because they are all generated the same way with
-     * different opcodes.<br>
+     * Generates instruction codes for all tier 2 arithmetic operations (* /) because they are all generated the same
+     * way with different opcodes.<br>
      * This function is used by the <code>MUL</code> and <code>DIV</code> mnemonics.
      *
      * @param opc1 the opcode for the instruction.
@@ -1286,19 +1303,19 @@ public class MC8051Library {
             ignored = -1;
 
             if (!(operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("a")))
-                operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"a\")"));
+                problems.add(new TokenProblem("Incompatible operand! (Expected \"a\")", Type.WARNING, operands[0]));
 
             if (!(operands[1].getOperandType() == OperandType8051.NAME && operands[1].getValue().equals("b")))
-                operands[1].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"b\")"));
+                problems.add(new TokenProblem("Incompatible operand! (Expected \"b\")", Type.WARNING, operands[1]));
 
         } else if (operands.length >= 1) {
             ignored = 0;
 
             if (!(operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("ab")))
-                operands[0].setError(new SimpleAssemblyError(Type.WARNING, "Incompatible operand! (Expected \"ab\")"));
+                problems.add(new TokenProblem("Incompatible operand! (Expected \"ab\")", Type.WARNING, operands[0]));
 
         } else
-            name.setError(getErrorFromErrorHandlingSetting(Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'ab' as first operand!", "Operand 'ab' should be written as first operand."));
 
 
@@ -1334,11 +1351,11 @@ public class MC8051Library {
         if (op1.getOperandType() == OperandType8051.ADDRESS) {
             int value = Integer.parseInt(op1.getValue());
             if (value > 0xff)
-                op1.setError(new SimpleAssemblyError(Type.ERROR, "Value of direct address too big!"));
+                problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, op1));
             else
                 result = new byte[]{opc1, offset == null ? -3 : offset};
         } else
-            op1.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op1));
 
         handleUnnecessaryOperands(mnemonic.getName(), false, 0, 2, operands);
         return result;
@@ -1401,7 +1418,7 @@ public class MC8051Library {
                                                             // ( ... x x 15 14 13 12 11 10 9 8)
                                  (byte)(jump & 0xffL)};     // Extract low byte ( ... x x 7 6 5 4 3 2 1 0)
         } else
-            operands[0].setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, operands[0]));
 
         handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands);
 
@@ -1481,10 +1498,10 @@ public class MC8051Library {
             if (i >= -128 && i <= 127)
                 return (byte) i;
             else {
-                op.setError(new SimpleAssemblyError(Type.ERROR, "Jump is too far for a short jump!"));
+                problems.add(new TokenProblem("Jump is too far for a short jump!", Type.ERROR, op));
             }
         } else
-            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
 
         return null;
 
@@ -1549,7 +1566,7 @@ public class MC8051Library {
                 "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly "+firstOperand+" operand"+
                         (firstOperand == 0 ? "":"s")+".";
         for (int i = firstOperand - ignored; i < operands.length; ++i)
-            operands[i].setError(getErrorFromErrorHandlingSetting(Settings.Errors.ADDITIONAL_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(operands[i], Settings.Errors.ADDITIONAL_OPERANDS,
                     err, "Unnecessary operand."));
 
     }
@@ -1574,22 +1591,26 @@ public class MC8051Library {
         if (op.getOperandType() == OperandType8051.ADDRESS) {
             int val = Integer.parseInt(op.getValue());
             if (val > 0xff)
-                op.setError(new SimpleAssemblyError(Type.ERROR, "Value of address too big!"));
+                problems.add(new TokenProblem("Value of address too big!", Type.ERROR, op));
             else
                 result = (byte) val;
         } else if (op.getOperandType() == OperandType8051.NAME &&
                 op.getValue().equals("a"))
             result = A;
         else if (op.getOperandType() == OperandType8051.NAME &&
-                op.getValue().startsWith("r"))
+                op.getValue().startsWith("r")) {
             result = getRAddress(Integer.parseInt(op.getValue().substring(1)), op);
+            if (result != null)
+                problems.add(new TokenProblem("Assumed register bank " + bank + " for address of " +
+                        op.getValue() + ". This could be wrong!", Type.WARNING, op));
+        }
         else
-            op.setError(new SimpleAssemblyError(Type.ERROR, "Incompatible operand!"));
+            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
 
         if (result == null)
             return null;
         else if (isValidByte(result))
-            op.setError(new SimpleAssemblyError(Type.WARNING, "Address in invalid SFR memory area."));
+            problems.add(new TokenProblem("Address in invalid SFR memory area.", Type.WARNING, op));
 
         return result;
     }
@@ -1629,7 +1650,7 @@ public class MC8051Library {
         if (ordinal >= 0 || ordinal < 8)
             return (byte)(ordinal | bank << 3);
         else
-            op.setError(new SimpleAssemblyError(Type.ERROR, "Register ordinal too big!"));
+            problems.add(new TokenProblem("Register ordinal too big!", Type.ERROR, op));
         return null;
     }
 
@@ -1637,6 +1658,7 @@ public class MC8051Library {
      * Generates an error for a given ErrorHandling.<br>
      * The messages will be taken from 2 given Strings.
      *
+     * @param cause the cause of the problem.
      * @param setting the ErrorHandling that should be used for generating.
      * @param errorMessage the message String for the case of a generated error
      * @param warningMessage the message String for the case of an generated warning
@@ -1645,13 +1667,13 @@ public class MC8051Library {
      *      an error with the given messages and error type.<br>
      *      If the error is set to be ignored, <code>null</code> will be returned.
      */
-    private static SimpleAssemblyError getErrorFromErrorHandlingSetting(ErrorHandling setting, String errorMessage,
-                                                                        String warningMessage) {
+    private static TokenProblem getErrorFromErrorHandlingSetting(Token cause, ErrorHandling setting,
+                                                                 String errorMessage, String warningMessage) {
         switch (setting) {
             case ERROR:
-                return new SimpleAssemblyError(Type.ERROR, errorMessage);
+                return new TokenProblem(errorMessage, Type.ERROR, cause);
             case WARN:
-                return new SimpleAssemblyError(Type.WARNING, warningMessage);
+                return new TokenProblem(warningMessage, Type.WARNING, cause);
             default:
                 return null;
         }
