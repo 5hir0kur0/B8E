@@ -496,12 +496,12 @@ public class MC8051 implements Emulator {
                 //If the program attempts to use a value in the SFR area which does not hold a register,
                 //create a new register and throw an exception (because the program would exhibit undefined behaviour
                 //on real hardware
-                this.state.sfrs.specialFunctionRegisters.put(address, new ByteRegister("TMP_SFR", value));
+                this.state.sfrs.addRegister(address, new ByteRegister(String.format("TMP_SFR#%02X", address & 0xFF)));
                 int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
                 throw new IndexOutOfBoundsException("Illegal address used at " + pcOfThisInstruction + ": "
                         + (address & 0xFF));
             }
-            this.state.sfrs.specialFunctionRegisters.get(address).setValue(value);
+            this.state.sfrs.getRegister(address).setValue(value);
         }
     }
 
@@ -535,7 +535,18 @@ public class MC8051 implements Emulator {
                 case 0xD0: tmp = this.state.sfrs.PSW; break; // PSW
                 case 0xE0: tmp = this.state.sfrs.A; break; // ACC
                 case 0xF0: tmp = this.state.sfrs.B; break; // B
-                default: throw new IndexOutOfBoundsException("Invalid bit address: "+address);
+                default:
+                    int tmpAddr = address - address % 8;
+                    tmp = this.state.sfrs.getRegister((byte)tmpAddr);
+                    if (null == tmp) {
+                        //if the program attempts to use an illegal address, a new SFR ist created at this address
+                        //and an exception is thrown, so that the user can continue, if he wants
+                        //(on real hardware, the behaviour in this case might be undefined)
+                        int pc = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
+                        tmp = new ByteRegister(String.format("TMP_SFR#%02X", tmpAddr & 0xFF));
+                        this.state.sfrs.addRegister((byte)tmpAddr, tmp);
+                        throw new IndexOutOfBoundsException("Invalid bit address: " + address + " at " + pc);
+                    }
             }
             retAddress = this.state.sfrs.getAddress(tmp);
         }
