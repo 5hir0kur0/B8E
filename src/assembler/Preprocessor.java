@@ -1,6 +1,6 @@
 package assembler;
 
-import assembler.util.AssemblyError;
+import assembler.util.Problem;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -28,5 +28,5 @@ public interface Preprocessor {
      *      This method should return <code>false</code>, if the preprocessor detected
      *      one or more errors.
      */
-    boolean preprocess(BufferedReader input, BufferedWriter output, List<AssemblyError> problems);
+    boolean preprocess(BufferedReader input, BufferedWriter output, List<Problem> problems);
 }
