@@ -1,5 +1,6 @@
 package emulator.arc8051;
 
+import emulator.ByteRegister;
 import emulator.FlagRegister;
 import emulator.RAM;
 import org.junit.Before;
@@ -107,9 +108,25 @@ public class MC8051Test {
     }
 
     @Test
+    public void testRet() {
+        System.out.println("__________Testing RET...");
+        final byte LCALL = 0x12;
+        final byte RET = 0x22;
+        char addr = (char)(r.nextInt(0xfff) + 42);
+        RAM tmp = (RAM)testController.state.codeMemory;
+        tmp.set(addr, LCALL);
+        testController.state.PCH.setValue((byte) (addr >>> 8));
+        testController.state.PCL.setValue((byte) addr);
+        testController.next();
+        testOpcode(RET, 0, 2, () -> {
+            int pc = testController.state.PCH.getValue() << 8 & 0xff00 | testController.state.PCL.getValue() & 0xff;
+            return pc == addr + 3 && testController.state.sfrs.SP.getValue() == (byte)7;
+        });
+    }
+
+    @Test
     public void testRRA() {
         System.out.println("__________Testing RR A...");
-        final RAM ram = (RAM) testController.getCodeMemory();
         final byte RR = 0x3;
         final byte[] testA          = {(byte)0b10001001, 0b00011000, (byte)0b101010};
         final byte[] correctResults = {(byte)0b11000100, 0b00001100,       0b010101};
@@ -117,6 +134,19 @@ public class MC8051Test {
             testController.state.sfrs.A.setValue(testA[i]);
             final byte correctResult = correctResults[i];
             testOpcode(RR, 0, 1, () -> testController.state.sfrs.A.getValue() == correctResult);
+        }
+    }
+
+    @Test
+    public void testRLA() {
+        System.out.println("__________Testing RL A...");
+        final byte RL = 0x23;
+        final byte[] testA          = {(byte)0b10001001, 0b00011000, (byte)0b00101010};
+        final byte[] correctResults = {(byte)0b00010011, 0b00110000,       0b01010100};
+        for (int i = 0; i < testA.length; ++i) {
+            testController.state.sfrs.A.setValue(testA[i]);
+            final byte correctResult = correctResults[i];
+            testOpcode(RL, 0, 1, () -> testController.state.sfrs.A.getValue() == correctResult);
         }
     }
 
@@ -157,6 +187,43 @@ public class MC8051Test {
         for (int i = 0; i < opcodes.length; ++i) {
             //testController.state.internalRAM.set(0, (byte)0);
             testOpcode(opcodes[i], 0, i == 12 ? 2 : 1, checks[i]);
+        }
+    }
+
+    @Test
+    public void testDec() {
+        System.out.println("__________Testing DEC...");
+        byte[] opcodes = {
+                0x14, //DEC A
+                0x15, //DEC direct
+                0x16, //DEC @R0
+                0x17, //DEC @R1
+                0x18, //DEC R0
+                0x19, //DEC R1
+                0x1a, //DEC R2
+                0x1b, //DEC R3
+                0x1c, //DEC R4
+                0x1d, //DEC R5
+                0x1e, //DEC R6
+                0x1f  //DEC R7
+        };
+        BooleanSupplier[] checks = {
+                () -> testController.state.sfrs.A.getValue() == (byte)0xFF && !testController.state.sfrs.PSW.getBit(0),
+                () -> testController.state.R0.getValue() == (byte)0xFF,
+                () -> testController.state.internalRAM.get(0xFF) == (byte)0xFF,
+                () -> testController.state.R0.getValue() == (byte)0xFE,
+                () -> testController.state.R0.getValue() == (byte)0xFD,
+                () -> testController.state.R1.getValue() == (byte)0xFF,
+                () -> testController.state.R2.getValue() == (byte)0xFF,
+                () -> testController.state.R3.getValue() == (byte)0xFF,
+                () -> testController.state.R4.getValue() == (byte)0xFF,
+                () -> testController.state.R5.getValue() == (byte)0xFF,
+                () -> testController.state.R6.getValue() == (byte)0xFF,
+                () -> testController.state.R7.getValue() == (byte)0xFF,
+                () -> testController.state.sfrs.DPL.getValue() == 1
+        };
+        for (int i = 0; i < opcodes.length; ++i) {
+            testOpcode(opcodes[i], 0, 1, checks[i]);
         }
     }
 
@@ -289,6 +356,91 @@ public class MC8051Test {
         }
     }
 
+    @Test
+    public void testAdd() {
+        System.out.println("__________Testing ADD...");
+        final byte ADD_IMM  = 0x24;
+        final byte ADD_DIR  = 0x25;
+        final byte ADD_IND0 = 0x26;
+        final byte ADD_IND1 = 0x27;
+        final byte ADD_R0   = 0x28;
+        final byte ADD_R1   = 0x29;
+        final byte ADD_R2   = 0x2a;
+        final byte ADD_R3   = 0x2b;
+        final byte ADD_R4   = 0x2c;
+        final byte ADD_R5   = 0x2d;
+        final byte ADD_R6   = 0x2e;
+        final byte ADD_R7   = 0x2f;
+        final ByteRegister A = testController.state.sfrs.A;
+        final FlagRegister PSW = testController.state.sfrs.PSW;
+        final ByteRegister R0 = testController.state.R0;
+        A.setValue((byte)42);
+        testOpcode(ADD_IMM, 0, new byte[]{42}, 1, () -> A.getValue() == (byte)(84) && !PSW.getBit(7) && !PSW.getBit(2)
+                && PSW.getBit(6) && PSW.getBit(0));
+        R0.setValue((byte)1);
+        testOpcode(ADD_DIR, 0, new byte[]{0}, 1, () -> A.getValue() == (byte) (85));
+        testOpcode(ADD_IND0, 0, 1, () -> A.getValue() == (byte)85);
+        testOpcode(ADD_IND1, 0, 1, () -> A.getValue() == (byte)86);
+        testOpcode(ADD_R0, 0, 1, () -> A.getValue() == (byte)87);
+        byte op = ADD_R1;
+        for (int i = 1; i < 8; ++i) {
+            testController.state.getR(i).setValue((byte)1);
+            final int ordinal = i;
+            testOpcode(op++, 0, 1, () -> A.getValue() == (byte)(87+ordinal));
+        }
+        //test C, OV and AC
+        A.setValue((byte)0x7F);
+        testController.state.getR(2).setValue((byte)0x7F);
+        testOpcode(ADD_R2, 0, 1, () -> A.getValue() == (byte)-2 && !PSW.getBit(7) && PSW.getBit(2) && PSW.getBit(6)
+        && PSW.getBit(0));
+        A.setValue((byte)-127);
+        testController.state.getR(3).setValue((byte)-10);
+        testOpcode(ADD_R3, 0, 1, () -> A.getValue() == (byte)119 && PSW.getBit(2) && PSW.getBit(7) && !PSW.getBit(6));
+        testController.state.getR(4).setValue((byte)-128);
+        testOpcode(ADD_R4, 0, 1, () -> A.getValue() == (byte)-9 && !PSW.getBit(2) && !PSW.getBit(7) && !PSW.getBit(6));
+        A.setValue((byte)127);
+        testController.state.getR(5).setValue((byte)-1);
+        testOpcode(ADD_R5, 0, 1, () -> A.getValue() == (byte)126 && !PSW.getBit(2) && PSW.getBit(7) && PSW.getBit(6));
+    }
+
+    @Test
+    public void testAddc() {
+        System.out.println("__________Testing ADDC...");
+        final byte ADDC_IMM  = 0x34;
+        final byte ADDC_DIR  = 0x35;
+        final byte ADDC_IND0 = 0x36;
+        final byte ADDC_IND1 = 0x37;
+        final byte ADDC_R0   = 0x38;
+        final byte ADDC_R1   = 0x39;
+        final byte ADDC_R2   = 0x2a;
+        final byte ADDC_R3   = 0x3b;
+        final byte ADDC_R4   = 0x3c;
+        final byte ADDC_R5   = 0x3d;
+        final byte ADDC_R6   = 0x3e;
+        final byte ADDC_R7   = 0x3f;
+        final ByteRegister A = testController.state.sfrs.A;
+        final FlagRegister PSW = testController.state.sfrs.PSW;
+        final ByteRegister R0 = testController.state.R0;
+        final RAM ram = testController.state.internalRAM;
+
+        PSW.setBit(true, 7);
+        testOpcode(ADDC_IMM, 0, new byte[]{42}, 1, () -> A.getValue() == (byte)43);
+        ram.set(0, (byte)12);
+        PSW.setBit(false, 7);
+        testOpcode(ADDC_DIR, 0, new byte[]{0}, 1, () -> A.getValue() == (byte)55);
+        PSW.setBit(true, 7);
+        testOpcode(ADDC_IND0, 0, 1, () -> A.getValue() == (byte)56);
+        testOpcode(ADDC_IND1, 0, 1, () -> A.getValue() == (byte)68);
+        for (int i = 0; i < 8; ++i) {
+            A.setValue((byte)0);
+            PSW.setBit(true, 7);
+            testController.state.getR(i).setValue((byte)i);
+            final int finI = i;
+            testOpcode((byte)(ADDC_R0+i), 0,1, () -> A.getValue() == (byte)(finI+1));
+            PSW.setBit(false, 7);
+            testOpcode((byte)(ADDC_R0+i), 0, 1, () -> A.getValue() == (byte)(finI + 1 + finI));
+        }
+    }
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
         testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
     }
