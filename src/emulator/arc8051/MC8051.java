@@ -31,6 +31,8 @@ public class MC8051 implements Emulator {
     }
 
     State8051 state;
+    private final boolean ignoreSOSU; //ignore stack overflow/underflow
+
 
     /**
      * Create a new 8051 microcontroller object.<br>
@@ -42,17 +44,35 @@ public class MC8051 implements Emulator {
      *        The size must be 65536 bytes.
      */
     public MC8051(ROM codeMemory, RAM externalRAM) {
-        this(new State8051(codeMemory, externalRAM));
+        this(new State8051(codeMemory, externalRAM), false);
+    }
+
+    /**
+     * Create a new 8051 microcontroller object.<br>
+     * @param externalRAM
+     *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
+     *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
+     * @param codeMemory
+     *        The 8051's "code memory". The instructions will be read from this object. Must not be {@code null}.
+     *        The size must be 65536 bytes.
+     * @param ignoreSOSU
+     *        Do not throw an exception on stack underflow or overflow
+     */
+    public MC8051(ROM codeMemory, RAM externalRAM, boolean ignoreSOSU) {
+        this(new State8051(codeMemory, externalRAM), ignoreSOSU);
     }
 
     /**
      * Start with a specific state.
      * @param state
      *        The state. Must not be {@code null}.
+     * @param ignoreSOSU
+     *        Do not throw an exception on stack underflow or overflow
      */
-    public MC8051(State8051 state) {
+    public MC8051(State8051 state, boolean ignoreSOSU) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
         this.state.setRRegisters(generateRRegisters());
+        this.ignoreSOSU = ignoreSOSU;
     }
 
     /**
@@ -95,8 +115,8 @@ public class MC8051 implements Emulator {
             case       0x03: retValue = rr_a(); break;
             case       0x04: retValue = inc(this.state.sfrs.A); break;
             case       0x05: retValue = inc(getCodeByte()); break;
-            case       0x06: retValue = inc(this.state.R0.getValue()); break;
-            case       0x07: retValue = inc(this.state.R1.getValue()); break;
+            case       0x06: retValue = inc_indirect(this.state.R0.getValue()); break;
+            case       0x07: retValue = inc_indirect(this.state.R1.getValue()); break;
             case       0x08: retValue = inc(this.state.R0); break;
             case       0x09: retValue = inc(this.state.R1); break;
             case       0x0A: retValue = inc(this.state.R2); break;
@@ -109,50 +129,50 @@ public class MC8051 implements Emulator {
             case       0x11: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x12: retValue = lcall(getCodeByte(), getCodeByte()); break;
             case       0x13: retValue = rrc_a(); break;
-            case       0x14: break;
-            case       0x15: break;
-            case       0x16: break;
-            case       0x17: break;
-            case       0x18: break;
-            case       0x19: break;
-            case       0x1A: break;
-            case       0x1B: break;
-            case       0x1C: break;
-            case       0x1D: break;
-            case       0x1E: break;
-            case       0x1F: break;
+            case       0x14: retValue = dec(this.state.sfrs.A); break;
+            case       0x15: retValue = dec(getCodeByte()); break;
+            case       0x16: retValue = dec_indirect(this.state.R0.getValue()); break;
+            case       0x17: retValue = dec_indirect(this.state.R1.getValue()); break;
+            case       0x18: retValue = dec(this.state.R0); break;
+            case       0x19: retValue = dec(this.state.R1); break;
+            case       0x1A: retValue = dec(this.state.R2); break;
+            case       0x1B: retValue = dec(this.state.R3); break;
+            case       0x1C: retValue = dec(this.state.R4); break;
+            case       0x1D: retValue = dec(this.state.R5); break;
+            case       0x1E: retValue = dec(this.state.R6); break;
+            case       0x1F: retValue = dec(this.state.R7); break;
             case       0x20: retValue = jb(getCodeByte(), getCodeByte()); break;
             case       0x21: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x22: break;
-            case       0x23: break;
-            case       0x24: break;
-            case       0x25: break;
-            case       0x26: break;
-            case       0x27: break;
-            case       0x28: break;
-            case       0x29: break;
-            case       0x2A: break;
-            case       0x2B: break;
-            case       0x2C: break;
-            case       0x2D: break;
-            case       0x2E: break;
-            case       0x2F: break;
+            case       0x22: retValue = ret(); break;
+            case       0x23: retValue = rl_a(); break;
+            case       0x24: retValue = add_immediate(getCodeByte()); break;
+            case       0x25: retValue = add_direct(getCodeByte()); break;
+            case       0x26: retValue = add_indirect(this.state.R0.getValue()); break;
+            case       0x27: retValue = add_indirect(this.state.R1.getValue()); break;
+            case       0x28: retValue = add_r(0); break;
+            case       0x29: retValue = add_r(1); break;
+            case       0x2A: retValue = add_r(2); break;
+            case       0x2B: retValue = add_r(3); break;
+            case       0x2C: retValue = add_r(4); break;
+            case       0x2D: retValue = add_r(5); break;
+            case       0x2E: retValue = add_r(6); break;
+            case       0x2F: retValue = add_r(7); break;
             case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
             case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x32: break;
             case       0x33: break;
-            case       0x34: break;
-            case       0x35: break;
-            case       0x36: break;
-            case       0x37: break;
-            case       0x38: break;
-            case       0x39: break;
-            case       0x3A: break;
-            case       0x3B: break;
-            case       0x3C: break;
-            case       0x3D: break;
-            case       0x3E: break;
-            case       0x3F: break;
+            case       0x34: retValue = addc_immediate(getCodeByte()); break;
+            case       0x35: retValue = addc_direct(getCodeByte()); break;
+            case       0x36: retValue = addc_indirect(this.state.R0.getValue()); break;
+            case       0x37: retValue = addc_indirect(this.state.R1.getValue()); break;
+            case       0x38: retValue = addc_r(0); break;
+            case       0x39: retValue = addc_r(1); break;
+            case       0x3A: retValue = addc_r(2); break;
+            case       0x3B: retValue = addc_r(3); break;
+            case       0x3C: retValue = addc_r(4); break;
+            case       0x3D: retValue = addc_r(5); break;
+            case       0x3E: retValue = addc_r(6); break;
+            case       0x3F: retValue = addc_r(7); break;
             case       0x40: retValue = jc(getCodeByte()); break;
             case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case       0x42: break;
@@ -437,7 +457,7 @@ public class MC8051 implements Emulator {
      */
     private void updateParityFlag() {
         boolean parity = false;
-        for (byte b = this.state.sfrs.A.getValue(); b > 0; b = (byte)(b & (b - 1))) parity = !parity;
+        for (byte b = this.state.sfrs.A.getValue(); b != 0; b = (byte)(b & (b - 1))) parity = !parity;
         this.state.sfrs.PSW.setBit(parity, 0);
     }
 
@@ -599,7 +619,7 @@ public class MC8051 implements Emulator {
         byte result = this.state.internalRAM.get(resultingAddress);
         --resultingAddress;
         this.state.sfrs.SP.setValue((byte)resultingAddress);
-        if (resultingAddress < 0 && exceptionOnUnderflow)
+        if (resultingAddress < 0 && exceptionOnUnderflow && !ignoreSOSU)
             throw new IllegalArgumentException("Stack underflow.");
         return result;
     }
@@ -694,6 +714,22 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>Rotate Left</b><br>
+     * This instruction rotates the accumulator one bit to the left.
+     * Bit 7 of the accumulator is rotated to bit 0.<br>
+     * @return the number of cycles (1)
+     */
+    private int rl_a() {
+        final int a = this.state.sfrs.A.getValue() & 0xFF;
+        int result = a << 1; //rotate a one bit to the left
+        if ((a & 0x80) == 0x80) { //if bit 7 is set
+            result |= 1; //set bit 0 in result
+        }
+        this.state.sfrs.A.setValue((byte)result);
+        return 1;
+    }
+
+    /**
      * <b>Rotate Right (with) Carry</b><br>
      * This instruction rotates the accumulator one bit to the right. Bit 0 is rotated into C and C into bit 7.
      * @return the number of cycles (1)
@@ -735,6 +771,21 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>Increment (Indirect Address)</b><br>
+     * Increment the byte at the indirect address by one. <br>
+     * NOTE: The difference between a direct and an indirect address is that an indirect address always refers to the
+     * "normal" RAM whereas a direct address refers to the SFR area when it is >= 0x80.
+     * @param indirectAddress
+     *     the direct address; must be < 0x80 or the address of a SFR
+     * @return the number of cycles (1)
+     */
+    private int inc_indirect(byte indirectAddress) {
+        this.state.internalRAM.set(indirectAddress & 0xFF,
+                (byte)(this.state.internalRAM.get(indirectAddress & 0xFF) + 1));
+        return 1;
+    }
+
+    /**
      * <b>Increment (DPTR)</b><br>
      * Increment the data pointer.
      * @return the number of cycles (2)
@@ -745,6 +796,47 @@ public class MC8051 implements Emulator {
         this.state.sfrs.DPH.setValue((byte)(dptr >>> 8));
         this.state.sfrs.DPL.setValue((byte)dptr);
         return 2;
+    }
+
+    /**
+     * <b>Decrement (Register)</b><br>
+     * Decrement a register by one.
+     * @param r
+     *     the register
+     * @return the number of cycles (1)
+     */
+    private int dec(ByteRegister r) {
+        r.setValue((byte)(r.getValue() - 1));
+        return 1;
+    }
+
+    /**
+     * <b>Decrement (Direct Address)</b><br>
+     * Decrement the byte at the direct address by one.
+     * @param directAddress
+     *     the direct address; must be < 0x80 or the address of a SFR
+     * @return the number of cycles (1)
+     * @throws IndexOutOfBoundsException when an address in the SFR memory is used that does not contain an SFR
+     */
+    private int dec(byte directAddress) throws IndexOutOfBoundsException {
+        setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) - 1));
+        return 1;
+    }
+
+
+    /**
+     * <b>Decrement (Indirect Address)</b><br>
+     * Decrement the byte at the indirect address by one.<br>
+     * NOTE: The difference between a direct and an indirect address is that an indirect address always refers to the
+     * "normal" RAM whereas a direct address refers to the SFR area when it is >= 0x80.
+     * @param indirectAddress
+     *     the direct address; must be < 0x80 or the address of a SFR
+     * @return the number of cycles (1)
+     */
+    private int dec_indirect(byte indirectAddress) {
+        this.state.internalRAM.set(indirectAddress & 0xFF,
+                (byte)(this.state.internalRAM.get(indirectAddress & 0xFF) - 1));
+        return 1;
     }
 
     /**
@@ -853,6 +945,16 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>Return (from a LCALL/ACALL)</b><br>
+     * Get a code memory address (2 bytes) from the stack and jump to that address.
+     * @return the number of cycles (2)
+     */
+    private int ret() {
+        ljmp(_pop(!this.ignoreSOSU), _pop(!this.ignoreSOSU));
+        return 2;
+    }
+
+    /**
      * <b>Push</b><br>
      * Increment the stack pointer and push a byte onto the stack.
      * @param value the value to be stored on the stack
@@ -863,7 +965,7 @@ public class MC8051 implements Emulator {
         int resultingAddress = (this.state.sfrs.SP.getValue() & 0xFF) + 1;
         this.state.internalRAM.set(resultingAddress & 0xFF, value);
         this.state.sfrs.SP.setValue((byte)resultingAddress);
-        if (resultingAddress > 0xFF)
+        if (resultingAddress > 0xFF && !ignoreSOSU)
             throw new IllegalStateException("Stack overflow.");
         return 2;
     }
@@ -876,7 +978,108 @@ public class MC8051 implements Emulator {
      * @see #setDirectAddress(byte, byte)
      */
     private int pop(byte direct) throws IllegalStateException {
-        setDirectAddress(direct, _pop(true));
+        setDirectAddress(direct, _pop(!ignoreSOSU));
         return 2;
+    }
+
+    /**
+     * <b>ADD (#immediateValue)</b><br>
+     * Add an immediate value to the accumulator and store the result in the accumulator.
+     * @param immediate the value to be added to the accumulator
+     * @return the number of cycles (1)
+     */
+    private int add_immediate(byte immediate) {
+        final byte bA = this.state.sfrs.A.getValue();
+        final int a = bA & 0xFF;
+        int result = a + (immediate & 0xFF);
+        this.state.sfrs.PSW.setBit(result > 0xFF, 7); //bit 7 is the C (carry) flag
+        //bit 6 is the AC (auxiliary carry) flag
+        //it is set, if there is a carry out of bit 3
+        this.state.sfrs.PSW.setBit((a & 0xF) + (immediate & 0xF) > 0xF, 6);
+        //bit 2 is the OV (overflow) flag
+        //(I think) it is set, when the two addends have the same sign, but the result's sign differs
+        //In actual hardware this is implemented using an XOR of the 7th and the 8th bit's carry
+        this.state.sfrs.PSW.setBit((bA & 0x80) == (immediate & 0x80) && (result & 0x80) != (bA & 0x80), 2);
+        this.state.sfrs.A.setValue((byte)result);
+        return 1;
+    }
+
+    /**
+     * <b>ADD (@Ri)</b><br>
+     * Add an indirectly addressed value to the accumulator and store the result in the accumulator.
+     * @param indirectAddress the address (usually the content of either R0 or R1)
+     * @return the number of cycles (1)
+     * @see #add_immediate(byte)
+     */
+    private int add_indirect(byte indirectAddress) {
+        return add_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>ADD (direct address)</b><br>
+     * Add a directly addressed value to the accumulator and store the result in the accumulator.
+     * @param directAddress the address
+     * @return the number of cycles (1)
+     * @see #getDirectAddress(byte)
+     * @see #add_immediate(byte)
+     */
+    private int add_direct(byte directAddress) {
+        return add_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>Add (RX)</b><br>
+     * Add the value of a R register to the accumulator and store the result in the accumulator.
+     * @param ordinal the R register's number; must be >= 0 and <= 7
+     * @return the number of cycles (1)
+     * @see #add_immediate(byte)
+     */
+    private int add_r(int ordinal) {
+        return add_immediate(getR(ordinal));
+    }
+
+    /**
+     * <b>Add (#immediateValue and C flag)</b><br>
+     * Add an immediate value and the carry flag to the accumulator and store the result in the accumulator.
+     * @param immediateValue the value to be added to the accumulator
+     * @return the number of cycles (1)
+     * @see #add_immediate(byte)
+     */
+    private int addc_immediate(byte immediateValue) {
+        return add_immediate((byte)(immediateValue + (byte)(this.state.sfrs.PSW.getBit(7) ? 1 : 0)));
+    }
+
+    /**
+     * <b>ADDC (@Ri)</b><br>
+     * Add an indirectly addressed value and the carry flag to the accumulator and store the result in the accumulator.
+     * @param indirectAddress the address (usually the content of either R0 or R1)
+     * @return the number of cycles (1)
+     * @see #addc_immediate(byte)
+     */
+    private int addc_indirect(byte indirectAddress) {
+        return addc_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>ADDC (direct address)</b><br>
+     * Add a directly addressed value and the carry flag to the accumulator and store the result in the accumulator.
+     * @param directAddress the address
+     * @return the number of cycles (1)
+     * @see #getDirectAddress(byte)
+     * @see #addc_immediate(byte)
+     */
+    private int addc_direct(byte directAddress) {
+        return addc_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>Add (RX)</b><br>
+     * Add the value of a R register and the carry flag to the accumulator and store the result in the accumulator.
+     * @param ordinal the R register's number; must be >= 0 and <= 7
+     * @return the number of cycles (1)
+     * @see #addc_immediate(byte)
+     */
+    private int addc_r(int ordinal) {
+        return addc_immediate(getR(ordinal));
     }
 }
