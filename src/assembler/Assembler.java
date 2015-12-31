@@ -25,14 +25,10 @@ public interface Assembler {
      *      The output the result will be written to.<br>
      *      The resulting bytes can be directly interpreted
      *      by the emulator or a microcomputer.
-     * @param problems
-     *      All warnings and/or errors that occur while assembling will
-     *      be added to this List.
      *
      * @return
-     *      whether the assembling was successful.<br>
-     *      This method should return <code>false</code>, if the assembler detected
-     *      one or more errors.
+     *      All warnings and/or errors that occur while assembling will
+     *      be returned.
      */
-    boolean assemble(BufferedReader input, BufferedWriter output, List<Problem> problems);
+    boolean assemble(BufferedReader input, BufferedWriter output);
 }
