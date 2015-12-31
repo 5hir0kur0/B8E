@@ -19,14 +19,10 @@ public interface Preprocessor {
      * @param output
      *      The output the result will be written to.<br>
      *      The result can be interpreted by an assembler.
-     * @param problems
-     *      All warnings and/or errors that occur while assembling will
-     *      be added to this List.
      *
      * @return
-     *      whether the preprocessing was successful.<br>
-     *      This method should return <code>false</code>, if the preprocessor detected
-     *      one or more errors.
+     *      All warnings and/or errors that occur while assembling will
+     *      be returned.
      */
-    boolean preprocess(BufferedReader input, BufferedWriter output, List<Problem> problems);
+    List<Problem> preprocess(BufferedReader input, BufferedWriter output);
 }
