@@ -1,14 +1,12 @@
 package emulator.arc8051;
 
-import com.sun.javaws.exceptions.InvalidArgumentException;
 import emulator.*;
 
-import java.beans.PropertyChangeEvent;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * This class represents the 8051 microcontroller.
+ * This class represents the 8051 micro controller.
  * <br>
  * NOTE: <br>
  *   The reason for all the bitwise ANDs is that Java uses signed arithmetic and thus exhibits weird behaviour
@@ -115,8 +113,8 @@ public class MC8051 implements Emulator {
             case       0x03: retValue = rr_a(); break;
             case       0x04: retValue = inc(this.state.sfrs.A); break;
             case       0x05: retValue = inc(getCodeByte()); break;
-            case       0x06: retValue = inc_indirect(this.state.R0.getValue()); break;
-            case       0x07: retValue = inc_indirect(this.state.R1.getValue()); break;
+            case       0x06: retValue = inc_indirect(getR(0)); break;
+            case       0x07: retValue = inc_indirect(getR(1)); break;
             case       0x08: retValue = inc(this.state.R0); break;
             case       0x09: retValue = inc(this.state.R1); break;
             case       0x0A: retValue = inc(this.state.R2); break;
@@ -131,8 +129,8 @@ public class MC8051 implements Emulator {
             case       0x13: retValue = rrc_a(); break;
             case       0x14: retValue = dec(this.state.sfrs.A); break;
             case       0x15: retValue = dec(getCodeByte()); break;
-            case       0x16: retValue = dec_indirect(this.state.R0.getValue()); break;
-            case       0x17: retValue = dec_indirect(this.state.R1.getValue()); break;
+            case       0x16: retValue = dec_indirect(getR(0)); break;
+            case       0x17: retValue = dec_indirect(getR(1)); break;
             case       0x18: retValue = dec(this.state.R0); break;
             case       0x19: retValue = dec(this.state.R1); break;
             case       0x1A: retValue = dec(this.state.R2); break;
@@ -147,8 +145,8 @@ public class MC8051 implements Emulator {
             case       0x23: retValue = rl_a(); break;
             case       0x24: retValue = add_immediate(getCodeByte()); break;
             case       0x25: retValue = add_direct(getCodeByte()); break;
-            case       0x26: retValue = add_indirect(this.state.R0.getValue()); break;
-            case       0x27: retValue = add_indirect(this.state.R1.getValue()); break;
+            case       0x26: retValue = add_indirect(getR(0)); break;
+            case       0x27: retValue = add_indirect(getR(1)); break;
             case       0x28: retValue = add_r(0); break;
             case       0x29: retValue = add_r(1); break;
             case       0x2A: retValue = add_r(2); break;
@@ -160,11 +158,11 @@ public class MC8051 implements Emulator {
             case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
             case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x32: break;
-            case       0x33: break;
+            case       0x33: retValue = rlc_a(); break;
             case       0x34: retValue = addc_immediate(getCodeByte()); break;
             case       0x35: retValue = addc_direct(getCodeByte()); break;
-            case       0x36: retValue = addc_indirect(this.state.R0.getValue()); break;
-            case       0x37: retValue = addc_indirect(this.state.R1.getValue()); break;
+            case       0x36: retValue = addc_indirect(getR(0)); break;
+            case       0x37: retValue = addc_indirect(getR(1)); break;
             case       0x38: retValue = addc_r(0); break;
             case       0x39: retValue = addc_r(1); break;
             case       0x3A: retValue = addc_r(2); break;
@@ -175,55 +173,55 @@ public class MC8051 implements Emulator {
             case       0x3F: retValue = addc_r(7); break;
             case       0x40: retValue = jc(getCodeByte()); break;
             case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x42: break;
-            case       0x43: break;
-            case       0x44: break;
-            case       0x45: break;
-            case       0x46: break;
-            case       0x47: break;
-            case       0x48: break;
-            case       0x49: break;
-            case       0x4A: break;
-            case       0x4B: break;
-            case       0x4C: break;
-            case       0x4D: break;
-            case       0x4E: break;
-            case       0x4F: break;
+            case       0x42: retValue = orl_direct_a(getCodeByte()); break;
+            case       0x43: retValue = orl(getCodeByte(), getCodeByte()); break;
+            case       0x44: retValue = orl_a_immediate(getCodeByte()); break;
+            case       0x45: retValue = orl_a(getCodeByte()); break;
+            case       0x46: retValue = orl_a_indirect(getR(0)); break;
+            case       0x47: retValue = orl_a_indirect(getR(1)); break;
+            case       0x48: retValue = orl_a_immediate(getR(0)); break;
+            case       0x49: retValue = orl_a_immediate(getR(1)); break;
+            case       0x4A: retValue = orl_a_immediate(getR(2)); break;
+            case       0x4B: retValue = orl_a_immediate(getR(3)); break;
+            case       0x4C: retValue = orl_a_immediate(getR(4)); break;
+            case       0x4D: retValue = orl_a_immediate(getR(5)); break;
+            case       0x4E: retValue = orl_a_immediate(getR(6)); break;
+            case       0x4F: retValue = orl_a_immediate(getR(7)); break;
             case       0x50: retValue = jnc(getCodeByte()); break;
             case       0x51: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x52: break;
-            case       0x53: break;
-            case       0x54: break;
-            case       0x55: break;
-            case       0x56: break;
-            case       0x57: break;
-            case       0x58: break;
-            case       0x59: break;
-            case       0x5A: break;
-            case       0x5B: break;
-            case       0x5C: break;
-            case       0x5D: break;
-            case       0x5E: break;
-            case       0x5F: break;
-            case       0x60: break;
+            case       0x52: retValue = anl_direct_a(getCodeByte()); break;
+            case       0x53: retValue = anl(getCodeByte(), getCodeByte()); break;
+            case       0x54: retValue = anl_a_immediate(getCodeByte()); break;
+            case       0x55: retValue = anl_a(getCodeByte()); break;
+            case       0x56: retValue = anl_a_indirect(getR(0)); break;
+            case       0x57: retValue = anl_a_indirect(getR(1)); break;
+            case       0x58: retValue = anl_a_immediate(getR(0)); break;
+            case       0x59: retValue = anl_a_immediate(getR(1)); break;
+            case       0x5A: retValue = anl_a_immediate(getR(2)); break;
+            case       0x5B: retValue = anl_a_immediate(getR(3)); break;
+            case       0x5C: retValue = anl_a_immediate(getR(4)); break;
+            case       0x5D: retValue = anl_a_immediate(getR(5)); break;
+            case       0x5E: retValue = anl_a_immediate(getR(6)); break;
+            case       0x5F: retValue = anl_a_immediate(getR(7)); break;
+            case       0x60: retValue = jz(getCodeByte()); break;
             case       0x61: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x62: break;
-            case       0x63: break;
-            case       0x64: break;
-            case       0x65: break;
-            case       0x66: break;
-            case       0x67: break;
-            case       0x68: break;
-            case       0x69: break;
-            case       0x6A: break;
-            case       0x6B: break;
-            case       0x6C: break;
-            case       0x6D: break;
-            case       0x6E: break;
-            case       0x6F: break;
-            case       0x70: break;
+            case       0x62: retValue = xrl_direct_a(getCodeByte()); break;
+            case       0x63: retValue = xrl(getCodeByte(), getCodeByte()); break;
+            case       0x64: retValue = xrl_a_immediate(getCodeByte()); break;
+            case       0x65: retValue = xrl_a(getCodeByte()); break;
+            case       0x66: retValue = xrl_a_indirect(getR(0)); break;
+            case       0x67: retValue = xrl_a_indirect(getR(1)); break;
+            case       0x68: retValue = xrl_a_immediate(getR(0)); break;
+            case       0x69: retValue = xrl_a_immediate(getR(1)); break;
+            case       0x6A: retValue = xrl_a_immediate(getR(2)); break;
+            case       0x6B: retValue = xrl_a_immediate(getR(3)); break;
+            case       0x6C: retValue = xrl_a_immediate(getR(4)); break;
+            case       0x6D: retValue = xrl_a_immediate(getR(5)); break;
+            case       0x6E: retValue = xrl_a_immediate(getR(6)); break;
+            case       0x6F: retValue = xrl_a_immediate(getR(7)); break;
+            case       0x70: retValue = jnz(getCodeByte()); break;
             case       0x71: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x72: break;
+            case       0x72: retValue = orl_c(getCodeByte(), false); break;
             case       0x73: break;
             case       0x74: break;
             case       0x75: break;
@@ -239,7 +237,7 @@ public class MC8051 implements Emulator {
             case       0x7F: break;
             case (byte)0x80: break;
             case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0x82: break;
+            case (byte)0x82: retValue = anl_c(getCodeByte(), false); break;
             case (byte)0x83: break;
             case (byte)0x84: break;
             case (byte)0x85: break;
@@ -269,7 +267,7 @@ public class MC8051 implements Emulator {
             case (byte)0x9D: break;
             case (byte)0x9E: break;
             case (byte)0x9F: break;
-            case (byte)0xA0: break;
+            case (byte)0xA0: retValue = orl_c(getCodeByte(), true); break;
             case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0xA2: break;
             case (byte)0xA3: retValue = inc_dptr(); break;
@@ -285,7 +283,7 @@ public class MC8051 implements Emulator {
             case (byte)0xAD: break;
             case (byte)0xAE: break;
             case (byte)0xAF: break;
-            case (byte)0xB0: break;
+            case (byte)0xB0: retValue = anl_c(getCodeByte(), true); break;
             case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
             case (byte)0xB2: break;
             case (byte)0xB3: break;
@@ -746,6 +744,22 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>Rotate Left (with) Carry</b><br>
+     * This instruction rotates the accumulator one bit to the left. Bit 7 is rotated into C and C into bit 0.
+     * @return the number of cycles (1)
+     */
+    private int rlc_a() {
+        int a = this.state.sfrs.A.getValue() & 0xFF;
+        final boolean oldC = this.state.sfrs.PSW.getBit(7);
+        final boolean newC = (a & 0x80) == 0x80;
+        a <<= 1;
+        if (oldC) a |= 1;
+        this.state.sfrs.A.setValue((byte)a);
+        this.state.sfrs.PSW.setBit(newC, 7);
+        return 1;
+    }
+
+    /**
      * <b>Increment (Register)</b><br>
      * Increment a register by one.
      * @param r
@@ -899,6 +913,28 @@ public class MC8051 implements Emulator {
      */
     private int jnc(byte offset) {
         if (!this.state.sfrs.PSW.getBit(7)) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if A == 0)</b><br>
+     * Jump by a certain offset if the accumulator equals zero.
+     * @param offset the offset to jump by if the accumulator is 0
+     * @return the number of cycles (2)
+     */
+    private int jz(byte offset) {
+        if (this.state.sfrs.A.getValue() == (byte)0) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>Jump (if A != 0)</b><br>
+     * Jump by a certain offset if the accumulator does not equal zero.
+     * @param offset the offset to jump by if the accumulator is not 0
+     * @return the number of cycles (2)
+     */
+    private int jnz(byte offset) {
+        if (this.state.sfrs.A.getValue() != (byte)0) jumpToOffset(offset);
         return 2;
     }
 
@@ -1081,5 +1117,227 @@ public class MC8051 implements Emulator {
      */
     private int addc_r(int ordinal) {
         return addc_immediate(getR(ordinal));
+    }
+
+    /**
+     * <b>ORL (direct, #immediate)</b>
+     * <br>
+     * Perform a logical OR on the byte at the direct address and the immediate byte; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @param immediateValue the immediate value
+     * @return the number of cycles (2)
+     * @see #setDirectAddress(byte, byte)
+     * @see #getDirectAddress(byte)
+     */
+    private int orl(byte directAddress, byte immediateValue) {
+        setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress)|immediateValue));
+        return 2;
+    }
+
+    /**
+     * <b>ORL (direct, A)</b>
+     * <br>
+     * Perform a logical OR on the byte at the direct address and the accumulator; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @return the number of cycles (1)
+     * @see #orl(byte, byte)
+     */
+    private int orl_direct_a(byte directAddress) {
+        orl(directAddress, this.state.sfrs.A.getValue());
+        return 1;
+    }
+
+    /**
+     * <b>ORL (A, #immediate)</b><br>
+     * Perform a logical OR on the accumulator and the immediate value; store the result in the accumulator.
+     * @param immediateValue the immediate value
+     * @return the number of cycles (1)
+     * @see #orl(byte, byte)
+     */
+    private int orl_a_immediate(byte immediateValue) {
+        orl(this.state.sfrs.getAddress(this.state.sfrs.A), immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>ORL (A, direct)</b><br>
+     * Perform a logical OR on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param directAddress the direct address to be used
+     * @return the number of cycles (1)
+     * @see #orl_a_immediate(byte)
+     */
+    private int orl_a(byte directAddress) {
+        return orl_a_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>ORL (A, @Ri)</b><br>
+     * Perform a logical OR on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param indirectAddress the indirect address to be used
+     * @return the number of cycles (1)
+     * @see #orl_a_immediate(byte)
+     */
+    private int orl_a_indirect(byte indirectAddress) {
+        return orl_a_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>ORL (C, (/)bit)</b><br>
+     * Perform a logical OR on C and the specified bit (or the negated bit); store the result in C.
+     * @param bitAddress the bit to be used
+     * @param negateBit if this is {@code true}, the bit will be negated, before the OR is performed
+     * @return the number of cycles (2)
+     */
+    private int orl_c(byte bitAddress, boolean negateBit) {
+        boolean bit = getBit(bitAddress);
+        bit = negateBit ? !bit : bit;
+        boolean c = this.state.sfrs.PSW.getBit(7);
+        this.state.sfrs.PSW.setBit(bit || c, 7);
+        return 2;
+    }
+
+    /**
+     * <b>XRL (direct, #immediate)</b>
+     * <br>
+     * Perform a logical XOR on the byte at the direct address and the immediate byte; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @param immediateValue the immediate value
+     * @return the number of cycles (2)
+     * @see #setDirectAddress(byte, byte)
+     * @see #getDirectAddress(byte)
+     */
+    private int xrl(byte directAddress, byte immediateValue) {
+        setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) ^ immediateValue));
+        return 2;
+    }
+
+    /**
+     * <b>XRL (direct, A)</b>
+     * <br>
+     * Perform a logical XOR on the byte at the direct address and the accumulator; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @return the number of cycles (1)
+     * @see #xrl(byte, byte)
+     */
+    private int xrl_direct_a(byte directAddress) {
+        xrl(directAddress, this.state.sfrs.A.getValue());
+        return 1;
+    }
+
+    /**
+     * <b>XRL (A, #immediate)</b><br>
+     * Perform a logical XOR on the accumulator and the immediate value; store the result in the accumulator.
+     * @param immediateValue the immediate value
+     * @return the number of cycles (1)
+     * @see #xrl(byte, byte)
+     */
+    private int xrl_a_immediate(byte immediateValue) {
+        xrl(this.state.sfrs.getAddress(this.state.sfrs.A), immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>XRL (A, direct)</b><br>
+     * Perform a logical XOR on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param directAddress the direct address to be used
+     * @return the number of cycles (1)
+     * @see #xrl_a_immediate(byte)
+     */
+    private int xrl_a(byte directAddress) {
+        return xrl_a_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>XRL (A, @Ri)</b><br>
+     * Perform a logical XOR on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param indirectAddress the indirect address to be used
+     * @return the number of cycles (1)
+     * @see #xrl_a_immediate(byte)
+     */
+    private int xrl_a_indirect(byte indirectAddress) {
+        return xrl_a_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>ANL (direct, #immediate)</b>
+     * <br>
+     * Perform a logical AND on the byte at the direct address and the immediate byte; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @param immediateValue the immediate value
+     * @return the number of cycles (2)
+     * @see #setDirectAddress(byte, byte)
+     * @see #getDirectAddress(byte)
+     */
+    private int anl(byte directAddress, byte immediateValue) {
+        setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) & immediateValue));
+        return 2;
+    }
+
+    /**
+     * <b>ANL (direct, A)</b>
+     * <br>
+     * Perform a logical AND on the byte at the direct address and the accumulator; store the result at the direct
+     * address.
+     * @param directAddress the direct address
+     * @return the number of cycles (1)
+     * @see #anl(byte, byte)
+     */
+    private int anl_direct_a(byte directAddress) {
+        anl(directAddress, this.state.sfrs.A.getValue());
+        return 1;
+    }
+
+    /**
+     * <b>ANL (A, #immediate)</b><br>
+     * Perform a logical AND on the accumulator and the immediate value; store the result in the accumulator.
+     * @param immediateValue the immediate value
+     * @return the number of cycles (1)
+     * @see #anl(byte, byte)
+     */
+    private int anl_a_immediate(byte immediateValue) {
+        anl(this.state.sfrs.getAddress(this.state.sfrs.A), immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>ANL (A, direct)</b><br>
+     * Perform a logical AND on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param directAddress the direct address to be used
+     * @return the number of cycles (1)
+     * @see #anl_a_immediate(byte)
+     */
+    private int anl_a(byte directAddress) {
+        return anl_a_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>ANL (A, @Ri)</b><br>
+     * Perform a logical AND on the accumulator and the byte at the direct address; store the result in the accumulator.
+     * @param indirectAddress the indirect address to be used
+     * @return the number of cycles (1)
+     * @see #anl_a_immediate(byte)
+     */
+    private int anl_a_indirect(byte indirectAddress) {
+        return anl_a_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>ANL (C, (/)bit)</b><br>
+     * Perform a logical AND on C and the specified bit (or the negated bit); store the result in C.
+     * @param bitAddress the bit to be used
+     * @param negateBit if this is {@code true}, the bit will be negated, before the OR is performed
+     * @return the number of cycles (2)
+     */
+    private int anl_c(byte bitAddress, boolean negateBit) {
+        boolean bit = getBit(bitAddress);
+        bit = negateBit ? !bit : bit;
+        boolean c = this.state.sfrs.PSW.getBit(7);
+        this.state.sfrs.PSW.setBit(bit && c, 7);
+        return 2;
     }
 }
