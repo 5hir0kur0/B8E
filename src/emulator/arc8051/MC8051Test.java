@@ -336,6 +336,24 @@ public class MC8051Test {
     }
 
     @Test
+    public void testJMP() {
+        System.out.println("__________Testing JMP...");
+        final byte JMP = 0x73;
+        final byte a = (byte)r.nextInt(256);
+        final char dptr = (char)r.nextInt(0xfff);
+        final ByteRegister DPL = testController.state.sfrs.DPL;
+        final ByteRegister DPH = testController.state.sfrs.DPH;
+        A.setValue(a);
+        DPL.setValue((byte)dptr);
+        DPH.setValue((byte)(dptr>>>8));
+        testOpcode(JMP, 0, 2, () -> {
+            final int pc = testController.state.PCH.getValue() << 8 & 0xFF00 | testController.state.PCL.getValue() & 0xff;
+            final int res = dptr + (a&0xff);
+            return  res == pc;
+        });
+    }
+
+    @Test
     public void testAcall() {
         System.out.println("__________Testing ACALL...");
         final byte ACALL_STATIC = 0b00010001;
@@ -632,6 +650,102 @@ public class MC8051Test {
             testController.state.getR(i).setValue(random);
             A.setValue((byte)0x88);
             testOpcode((byte)(XRL_A_R0+i), 0, 1, () -> A.getValue() == (byte)(random ^ 0x88));
+        }
+    }
+
+    @Test
+    public void testMov() {
+        System.out.println("__________Testing MOV...");
+        final byte MOV_A_immed = 0x74;
+        final byte MOV_direct_immed = 0x75;
+        final byte MOV_ind_immed0 = 0x76;
+        final byte MOV_ind_immed1 = 0x77;
+        final byte MOV_R0_immed = 0x78;
+        final byte MOV_direct_direct = (byte)0x85;
+        final byte MOV_direct_ind0 = (byte)0x86;
+        final byte MOV_direct_ind1 = (byte)0x87;
+        final byte MOV_direct_R0 = (byte)0x88;
+        final byte MOV_DPTR_immed = (byte)0x90;
+        final byte MOV_bit_C = (byte)0x92;
+        final byte MOV_C_bit = (byte)0xA2;
+        final byte MOV_ind_dir0 = (byte)0xA6;
+        final byte MOV_ind_dir1 = (byte)0xA7;
+        final byte MOV_R0_dir = (byte)0xA8;
+        final byte MOV_A_dir = (byte)0xE5;
+        final byte MOV_A_ind0 = (byte)0xE6;
+        final byte MOV_A_ind1 = (byte)0xE7;
+        final byte MOV_A_R0 = (byte)0xE8;
+        final byte MOV_dir_A = (byte)0xF5;
+        final byte MOV_ind_A0 = (byte)0xF6;
+        final byte MOV_ind_A1 = (byte)0xF7;
+        final byte MOV_R0_A = (byte)0xF8;
+        testOpcode(MOV_A_immed, 0, new byte[]{0x42}, 1, () -> A.getValue() == (byte)0x42);
+        testOpcode(MOV_direct_immed, 0, new byte[]{10, 42}, 2, () -> ram.get(10) == (byte)42);
+        testOpcode(MOV_ind_immed0, 0, new byte[]{22}, 1, () -> ram.get(0) == (byte)22);
+        testController.state.R1.setValue((byte)33);
+        testOpcode(MOV_ind_immed1, 0, new byte[]{22}, 1, () -> ram.get(33) == (byte) 22);
+        for (int i = 0; i < 8; ++i) {
+            final int fI = i;
+            testOpcode((byte)(MOV_R0_immed+i), 0, new byte[]{90}, 1,
+                    () -> testController.state.getR(fI).getValue() == (byte)90);
+        }
+        final byte direct1 = 0x22;
+        final byte direct2 = 0x42;
+        ram.set(direct2 & 0xff, (byte)44);
+        testOpcode(MOV_direct_direct, 0, new byte[]{direct2, direct1}, 2, () -> ram.get(direct1 & 0xff) == (byte)44);
+        testController.state.R0.setValue((byte)33);
+        ram.set(33, (byte)21);
+        testOpcode(MOV_direct_ind0, 0, new byte[]{50}, 2, () -> ram.get(50) == (byte)21);
+        ram.set(1, (byte)33);
+        ram.set(33, (byte)22);
+        testOpcode(MOV_direct_ind1, 0, new byte[]{50}, 2, () -> ram.get(50) == (byte) 22);
+        for (int i = 0; i < 8; ++i) {
+            final int fI = i;
+            testController.state.getR(fI).setValue((byte)0x22);
+            testOpcode((byte) (MOV_direct_R0 + i), 0, new byte[]{10}, 2, () -> ram.get(10) == (byte) 0x22);
+        }
+        testOpcode(MOV_DPTR_immed, 0, new byte[]{22,23}, 2, () -> testController.state.sfrs.DPH.getValue() == (byte)22
+                && testController.state.sfrs.DPL.getValue() == (byte)23);
+        PSW.setBit(true, 7);
+        testOpcode(MOV_bit_C, 0, new byte[]{1}, 2, () -> testController.getBit((byte) 1));
+        testController.setBit(true, (byte)42);
+        PSW.setBit(false, 7);
+        testOpcode(MOV_C_bit, 0, new byte[]{42}, 2, () -> PSW.getBit(7));
+        testController.state.R0.setValue((byte)18);
+        ram.set(42, (byte)33);
+        testOpcode(MOV_ind_dir0, 0, new byte[]{42}, 2, () -> ram.get(18) == (byte)33);
+        testController.state.R1.setValue((byte)19);
+        ram.set(42, (byte)33);
+        testOpcode(MOV_ind_dir1, 0, new byte[]{42}, 2, () -> ram.get(19) == (byte)33);
+        for (int i = 0; i < 8; ++i) {
+            final byte direct = (byte)r.nextInt(0x80);
+            ram.set(direct & 0xff, (byte)111);
+            final int fI = i;
+            testOpcode((byte)(MOV_R0_dir+i), 0, new byte[]{direct},2,
+                    () -> testController.state.getR(fI).getValue() == (byte)111);
+        }
+        ram.set(1, (byte)88);
+        testOpcode(MOV_A_dir, 0, new byte[]{1}, 1, () -> A.getValue() == (byte)88);
+        ram.set(2, (byte)0xFF);
+        testController.state.R0.setValue((byte)2);
+        testController.state.R1.setValue((byte)2);
+        testOpcode(MOV_A_ind0, 0, 1, () -> A.getValue() == (byte)0xFF);
+        testOpcode(MOV_A_ind1, 0, 1, () -> A.getValue() == (byte)0xFF);
+        for (int i = 0; i < 8; ++i) {
+            final byte random = (byte)r.nextInt(0x100);
+            testController.state.getR(i).setValue(random);
+            testOpcode((byte)(MOV_A_R0+i), 0, 1, () -> A.getValue() == random);
+        }
+        byte randomA = (byte)r.nextInt(0x100);
+        A.setValue(randomA);
+        testOpcode(MOV_dir_A, 0, new byte[]{22}, 1, () -> ram.get(22) == randomA);
+        testController.state.R0.setValue((byte)0x88);
+        testController.state.R1.setValue((byte)0x89);
+        testOpcode(MOV_ind_A0, 0, 1, () -> ram.get(0x88) == randomA);
+        testOpcode(MOV_ind_A1, 0, 1, () -> ram.get(0x89) == randomA);
+        for (int i = 0; i < 8; ++i) {
+            final int fI = i;
+            testOpcode((byte)(MOV_R0_A+i), 0, 1, () -> testController.state.getR(fI).getValue() == randomA);
         }
     }
 
