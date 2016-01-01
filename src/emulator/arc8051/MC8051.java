@@ -33,7 +33,7 @@ public class MC8051 implements Emulator {
 
 
     /**
-     * Create a new 8051 microcontroller object.<br>
+     * Create a new 8051 micro controller object.<br>
      * @param externalRAM
      *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
      *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
@@ -222,38 +222,38 @@ public class MC8051 implements Emulator {
             case       0x70: retValue = jnz(getCodeByte()); break;
             case       0x71: retValue = acall(currentInstruction, getCodeByte()); break;
             case       0x72: retValue = orl_c(getCodeByte(), false); break;
-            case       0x73: break;
-            case       0x74: break;
-            case       0x75: break;
-            case       0x76: break;
-            case       0x77: break;
-            case       0x78: break;
-            case       0x79: break;
-            case       0x7A: break;
-            case       0x7B: break;
-            case       0x7C: break;
-            case       0x7D: break;
-            case       0x7E: break;
-            case       0x7F: break;
+            case       0x73: retValue = jmp_a_dptr(); break;
+            case       0x74: retValue = mov_a_immediate(getCodeByte()); break;
+            case       0x75: retValue = mov_direct_immediate(getCodeByte(), getCodeByte()); break;
+            case       0x76: retValue = mov_indirect_immediate(getR(0), getCodeByte()); break;
+            case       0x77: retValue = mov_indirect_immediate(getR(1), getCodeByte()); break;
+            case       0x78: retValue = mov_r_immediate(0, getCodeByte()); break;
+            case       0x79: retValue = mov_r_immediate(1, getCodeByte()); break;
+            case       0x7A: retValue = mov_r_immediate(2, getCodeByte()); break;
+            case       0x7B: retValue = mov_r_immediate(3, getCodeByte()); break;
+            case       0x7C: retValue = mov_r_immediate(4, getCodeByte()); break;
+            case       0x7D: retValue = mov_r_immediate(5, getCodeByte()); break;
+            case       0x7E: retValue = mov_r_immediate(6, getCodeByte()); break;
+            case       0x7F: retValue = mov_r_immediate(7, getCodeByte()); break;
             case (byte)0x80: break;
             case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0x82: retValue = anl_c(getCodeByte(), false); break;
             case (byte)0x83: break;
             case (byte)0x84: break;
-            case (byte)0x85: break;
-            case (byte)0x86: break;
-            case (byte)0x87: break;
-            case (byte)0x88: break;
-            case (byte)0x89: break;
-            case (byte)0x8A: break;
-            case (byte)0x8B: break;
-            case (byte)0x8C: break;
-            case (byte)0x8D: break;
-            case (byte)0x8E: break;
-            case (byte)0x8F: break;
-            case (byte)0x90: break;
-            case (byte)0x91: retValue = acall(currentInstruction, getCodeByte());
-            case (byte)0x92: break;
+            case (byte)0x85: retValue = mov_direct_direct(getCodeByte(), getCodeByte()); break;
+            case (byte)0x86: retValue = mov_direct_indirect(getCodeByte(), getR(0)); break;
+            case (byte)0x87: retValue = mov_direct_indirect(getCodeByte(), getR(1)); break;
+            case (byte)0x88: retValue = mov_direct_immediate(getCodeByte(), getR(0)); break;
+            case (byte)0x89: retValue = mov_direct_immediate(getCodeByte(), getR(1)); break;
+            case (byte)0x8A: retValue = mov_direct_immediate(getCodeByte(), getR(2)); break;
+            case (byte)0x8B: retValue = mov_direct_immediate(getCodeByte(), getR(3)); break;
+            case (byte)0x8C: retValue = mov_direct_immediate(getCodeByte(), getR(4)); break;
+            case (byte)0x8D: retValue = mov_direct_immediate(getCodeByte(), getR(5)); break;
+            case (byte)0x8E: retValue = mov_direct_immediate(getCodeByte(), getR(6)); break;
+            case (byte)0x8F: retValue = mov_direct_immediate(getCodeByte(), getR(7)); break;
+            case (byte)0x90: retValue = mov_dptr(getCodeByte(), getCodeByte()); break;
+            case (byte)0x91: retValue = acall(currentInstruction, getCodeByte()); break;
+            case (byte)0x92: retValue = mov_bit_c(getCodeByte()); break;
             case (byte)0x93: break;
             case (byte)0x94: break;
             case (byte)0x95: break;
@@ -269,20 +269,20 @@ public class MC8051 implements Emulator {
             case (byte)0x9F: break;
             case (byte)0xA0: retValue = orl_c(getCodeByte(), true); break;
             case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xA2: break;
+            case (byte)0xA2: retValue = mov_c_bit(getCodeByte()); break;
             case (byte)0xA3: retValue = inc_dptr(); break;
             case (byte)0xA4: break;
-            case (byte)0xA5: break;
-            case (byte)0xA6: break;
-            case (byte)0xA7: break;
-            case (byte)0xA8: break;
-            case (byte)0xA9: break;
-            case (byte)0xAA: break;
-            case (byte)0xAB: break;
-            case (byte)0xAC: break;
-            case (byte)0xAD: break;
-            case (byte)0xAE: break;
-            case (byte)0xAF: break;
+            case (byte)0xA5: break; //reserved
+            case (byte)0xA6: retValue = mov_indirect_direct(getR(0), getCodeByte()); break;
+            case (byte)0xA7: retValue = mov_indirect_direct(getR(1), getCodeByte()); break;
+            case (byte)0xA8: retValue = mov_r_direct(0, getCodeByte()); break;
+            case (byte)0xA9: retValue = mov_r_direct(1, getCodeByte()); break;
+            case (byte)0xAA: retValue = mov_r_direct(2, getCodeByte()); break;
+            case (byte)0xAB: retValue = mov_r_direct(3, getCodeByte()); break;
+            case (byte)0xAC: retValue = mov_r_direct(4, getCodeByte()); break;
+            case (byte)0xAD: retValue = mov_r_direct(5, getCodeByte()); break;
+            case (byte)0xAE: retValue = mov_r_direct(6, getCodeByte()); break;
+            case (byte)0xAF: retValue = mov_r_direct(7, getCodeByte()); break;
             case (byte)0xB0: retValue = anl_c(getCodeByte(), true); break;
             case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
             case (byte)0xB2: break;
@@ -336,33 +336,33 @@ public class MC8051 implements Emulator {
             case (byte)0xE2: break;
             case (byte)0xE3: break;
             case (byte)0xE4: break;
-            case (byte)0xE5: break;
-            case (byte)0xE6: break;
-            case (byte)0xE7: break;
-            case (byte)0xE8: break;
-            case (byte)0xE9: break;
-            case (byte)0xEA: break;
-            case (byte)0xEB: break;
-            case (byte)0xEC: break;
-            case (byte)0xED: break;
-            case (byte)0xEE: break;
-            case (byte)0xEF: break;
+            case (byte)0xE5: retValue = mov_a_direct(getCodeByte()); break;
+            case (byte)0xE6: retValue = mov_a_indirect(getR(0)); break;
+            case (byte)0xE7: retValue = mov_a_indirect(getR(1)); break;
+            case (byte)0xE8: retValue = mov_a_immediate(getR(0)); break;
+            case (byte)0xE9: retValue = mov_a_immediate(getR(1)); break;
+            case (byte)0xEA: retValue = mov_a_immediate(getR(2)); break;
+            case (byte)0xEB: retValue = mov_a_immediate(getR(3)); break;
+            case (byte)0xEC: retValue = mov_a_immediate(getR(4)); break;
+            case (byte)0xED: retValue = mov_a_immediate(getR(5)); break;
+            case (byte)0xEE: retValue = mov_a_immediate(getR(6)); break;
+            case (byte)0xEF: retValue = mov_a_immediate(getR(7)); break;
             case (byte)0xF0: break;
             case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
             case (byte)0xF2: break;
             case (byte)0xF3: break;
             case (byte)0xF4: break;
-            case (byte)0xF5: break;
-            case (byte)0xF6: break;
-            case (byte)0xF7: break;
-            case (byte)0xF8: break;
-            case (byte)0xF9: break;
-            case (byte)0xFA: break;
-            case (byte)0xFB: break;
-            case (byte)0xFC: break;
-            case (byte)0xFD: break;
-            case (byte)0xFE: break;
-            case (byte)0xFF: break;
+            case (byte)0xF5: retValue = mov_direct_a(getCodeByte()); break;
+            case (byte)0xF6: retValue = mov_indirect_immediate(getR(0), this.state.sfrs.A.getValue()); break;
+            case (byte)0xF7: retValue = mov_indirect_immediate(getR(1), this.state.sfrs.A.getValue()); break;
+            case (byte)0xF8: retValue = mov_r_immediate(0, this.state.sfrs.A.getValue()); break;
+            case (byte)0xF9: retValue = mov_r_immediate(1, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFA: retValue = mov_r_immediate(2, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFB: retValue = mov_r_immediate(3, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFC: retValue = mov_r_immediate(4, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFD: retValue = mov_r_immediate(5, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFE: retValue = mov_r_immediate(6, this.state.sfrs.A.getValue()); break;
+            case (byte)0xFF: retValue = mov_r_immediate(7, this.state.sfrs.A.getValue()); break;
         }
         //TODO put the following in a finally-block and add exception handling
         //TODO add updateTimers()-Method
@@ -533,14 +533,14 @@ public class MC8051 implements Emulator {
      */
     private BitAddress decodeBitAddress(byte bitAddress) throws IllegalArgumentException {
         int address = bitAddress & 0xFF; //trying to prevent strange behaviour with negative bytes...
-        int retAddress = -1;
-        byte retBitMask = -1;
+        int retAddress;
+        byte retBitMask;
 
         if (address < 0x80) { //the address is in the lower part of the internal RAM
             final int START_OF_BIT_MEMORY = 0x20;
             retAddress = START_OF_BIT_MEMORY + address / 8;
         } else {
-            ByteRegister tmp = null;
+            ByteRegister tmp;
             switch (address - address % 8) {
                 case 0x80: tmp = this.state.sfrs.P0; break; // P0
                 case 0x88: tmp = this.state.sfrs.TCON; break; // TCON
@@ -935,6 +935,19 @@ public class MC8051 implements Emulator {
      */
     private int jnz(byte offset) {
         if (this.state.sfrs.A.getValue() != (byte)0) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>JMP (@A+DPTR)</b><br>
+     * Add the content of the accumulator to the content of the DPTR (data pointer) and jump to the resulting address.
+     * @return the number of cycles (2)
+     */
+    private int jmp_a_dptr() {
+        final int dptr = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
+        final int pc = dptr + (this.state.sfrs.A.getValue() & 0xFF);
+        this.state.PCH.setValue((byte) (pc >>> 8));
+        this.state.PCL.setValue((byte)pc);
         return 2;
     }
 
@@ -1339,5 +1352,156 @@ public class MC8051 implements Emulator {
         boolean c = this.state.sfrs.PSW.getBit(7);
         this.state.sfrs.PSW.setBit(bit && c, 7);
         return 2;
+    }
+
+    /**
+     * <b>MOV (@Ri, #immediate)</b>
+     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
+     * @param immediateValue the value to be stored at this address
+     * @return the number of cycles (1)
+     */
+    private int mov_indirect_immediate(byte indirectAddress, byte immediateValue) {
+        this.state.internalRAM.set(indirectAddress & 0xFF, immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>MOV (@Ri, direct)</b><br>
+     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
+     * @param directAddress the direct address from which the value that is stored at the indirect address is read
+     * @return the number of cycles (2)
+     */
+    private int mov_indirect_direct(byte indirectAddress, byte directAddress) {
+        mov_indirect_immediate(indirectAddress, getDirectAddress(directAddress));
+        return 2;
+    }
+
+    /**
+     * <b>MOV (direct, #immediate)</b>
+     * @param directAddress the direct address at which the immediate value is stored
+     * @param immediateValue the immediate value to be stored at said address
+     * @return the number of cycles (2)
+     */
+    private int mov_direct_immediate(byte directAddress, byte immediateValue) {
+        setDirectAddress(directAddress, immediateValue);
+        return 2;
+    }
+
+    /**
+     * <b>MOV (A, #immediate)</b>
+     * @param immediateValue the immediate value to be moved to the accumulator
+     * @return the number of cycles (1)
+     */
+    private int mov_a_immediate(byte immediateValue) {
+        mov_direct_immediate(this.state.sfrs.getAddress(this.state.sfrs.A), immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>MOV (A, @Ri)</b>
+     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
+     * @return the number of cycles (1)
+     */
+    private int mov_a_indirect(byte indirectAddress) {
+        return mov_a_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>MOV (A, direct)</b>
+     * @param directAddress the direct address whose value is stored in the accumulator
+     * @return the number of cycles (1)
+     */
+    private int mov_a_direct(byte directAddress) {
+        return mov_a_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>MOV (bit, C)</b>
+     * @param bitAddress the bit address to which the value of the carry flag is copied
+     * @return the number of cycles (2)
+     */
+    private int mov_bit_c(byte bitAddress) {
+        setBit(this.state.sfrs.PSW.getBit(7), bitAddress);
+        return 2;
+    }
+
+    /**
+     * <b>MOV (C, bit)</b>
+     * @param bitAddress the bit address whose value is copied to the carry flag
+     * @return the number of cycles (2)
+     */
+    private int mov_c_bit(byte bitAddress) {
+        this.state.sfrs.PSW.setBit(getBit(bitAddress), 7);
+        return 2;
+    }
+
+    /**
+     * <b>MOV (direct, direct)</b><br>
+     * NOTE: The reason the parameters are flipped is that they appear in that order in machine code. In assembly they
+     * are written differently:<br>
+     *     Machine code: sourceAddress     , destinationAddress
+     *     Assembly    : destinationAddress, sourceAddress
+     * @param srcDirect the direct source address
+     * @param destDirect the indirect source address
+     * @return the number of cycles (2)
+     */
+    private int mov_direct_direct(byte srcDirect, byte destDirect) {
+        mov_direct_immediate(destDirect, getDirectAddress(srcDirect));
+        return 2;
+    }
+
+    /**
+     * <b>MOV (direct, @Ri)</b>
+     * @param directAddress the direct address to be used
+     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
+     * @return the number of cycles (2)
+     */
+    private int mov_direct_indirect(byte directAddress, byte indirectAddress) {
+        mov_direct_immediate(directAddress, this.state.internalRAM.get(indirectAddress & 0xFF));
+        return 2;
+    }
+
+    /**
+     * <b>MOV (DPTR, #immediate)</b>
+     * @param immediateHigh the new value of DPH
+     * @param immediateLow the new value of DPL
+     * @return the number of cycles (2)
+     */
+    private int mov_dptr(byte immediateHigh, byte immediateLow) {
+        this.state.sfrs.DPH.setValue(immediateHigh);
+        this.state.sfrs.DPL.setValue(immediateLow);
+        return 2;
+    }
+
+    /**
+     * <b>MOV (Rn, #immediate)</b>
+     * @param ordinal specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
+     * @param immediateValue the immediate value to be stored at the specified R register
+     * @return the number of cycles (1)
+     */
+    private int mov_r_immediate(int ordinal, byte immediateValue) {
+        this.state.internalRAM.set(getRAddress(ordinal), immediateValue);
+        return 1;
+    }
+
+    /**
+     * <b>MOV (Rn, direct)</b>
+     * @param ordinal specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
+     * @param directAddress the direct address whose content is copied to the specified R register
+     * @return the number of cycles (2)
+     */
+    private int mov_r_direct(int ordinal, byte directAddress) {
+        mov_r_immediate(ordinal, getDirectAddress(directAddress));
+        return 2;
+    }
+
+    /**
+     * <b>MOV (direct, A)</b>
+     * @param directAddress the direct address whose content is moved to the accumulator
+     * @return the number of cycles (1)
+     */
+    private int mov_direct_a(byte directAddress) {
+        mov_direct_immediate(directAddress, this.state.sfrs.A.getValue());
+        return 1;
     }
 }
