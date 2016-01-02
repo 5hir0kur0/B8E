@@ -235,11 +235,11 @@ public class MC8051 implements Emulator {
             case       0x7D: retValue = mov_r_immediate(5, getCodeByte()); break;
             case       0x7E: retValue = mov_r_immediate(6, getCodeByte()); break;
             case       0x7F: retValue = mov_r_immediate(7, getCodeByte()); break;
-            case (byte)0x80: break;
+            case (byte)0x80: retValue = sjmp(getCodeByte()); break;
             case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0x82: retValue = anl_c(getCodeByte(), false); break;
-            case (byte)0x83: break;
-            case (byte)0x84: break;
+            case (byte)0x83: retValue = movc_a(this.state.PCH, this.state.PCL); break;
+            case (byte)0x84: retValue = div_ab(); break;
             case (byte)0x85: retValue = mov_direct_direct(getCodeByte(), getCodeByte()); break;
             case (byte)0x86: retValue = mov_direct_indirect(getCodeByte(), getR(0)); break;
             case (byte)0x87: retValue = mov_direct_indirect(getCodeByte(), getR(1)); break;
@@ -254,19 +254,19 @@ public class MC8051 implements Emulator {
             case (byte)0x90: retValue = mov_dptr(getCodeByte(), getCodeByte()); break;
             case (byte)0x91: retValue = acall(currentInstruction, getCodeByte()); break;
             case (byte)0x92: retValue = mov_bit_c(getCodeByte()); break;
-            case (byte)0x93: break;
-            case (byte)0x94: break;
-            case (byte)0x95: break;
-            case (byte)0x96: break;
-            case (byte)0x97: break;
-            case (byte)0x98: break;
-            case (byte)0x99: break;
-            case (byte)0x9A: break;
-            case (byte)0x9B: break;
-            case (byte)0x9C: break;
-            case (byte)0x9D: break;
-            case (byte)0x9E: break;
-            case (byte)0x9F: break;
+            case (byte)0x93: retValue = movc_a(this.state.sfrs.DPH, this.state.sfrs.DPL); break;
+            case (byte)0x94: retValue = subb_immediate(getCodeByte()); break;
+            case (byte)0x95: retValue = subb_direct(getCodeByte()); break;
+            case (byte)0x96: retValue = subb_indirect(getR(0)); break;
+            case (byte)0x97: retValue = subb_indirect(getR(1)); break;
+            case (byte)0x98: retValue = subb_r(0); break;
+            case (byte)0x99: retValue = subb_r(1); break;
+            case (byte)0x9A: retValue = subb_r(2); break;
+            case (byte)0x9B: retValue = subb_r(3); break;
+            case (byte)0x9C: retValue = subb_r(4); break;
+            case (byte)0x9D: retValue = subb_r(5); break;
+            case (byte)0x9E: retValue = subb_r(6); break;
+            case (byte)0x9F: retValue = subb_r(7); break;
             case (byte)0xA0: retValue = orl_c(getCodeByte(), true); break;
             case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0xA2: retValue = mov_c_bit(getCodeByte()); break;
@@ -692,6 +692,17 @@ public class MC8051 implements Emulator {
     private int ljmp(byte highByte, byte lowByte) {
         this.state.PCH.setValue(highByte);
         this.state.PCL.setValue(lowByte);
+        return 2;
+    }
+
+    /**
+     * <b>SJMP (by offset)</b>
+     * Jump by a certain offset. The base address is the address of the byte after the instruction and the argument.
+     * @param offset the offset to jump by
+     * @return the number of cycles (2)
+     */
+    private int sjmp(byte offset) {
+        jumpToOffset(offset);
         return 2;
     }
 
@@ -1133,6 +1144,68 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>SUBB (A, #immediate)</b><br>
+     * Subtract a value and the carry flag from the accumulator.
+     * @param immediateValue the value to be subtracted from A
+     * @return the number of cycles (1)
+     * @see #add_immediate(byte)
+     */
+    private int subb_immediate(byte immediateValue) {
+//        final boolean ac = (immediateValue & 0xF) > (this.state.sfrs.A.getValue() & 0xF);
+//        //final boolean carry = (immediateValue & 0xFF) > (this.state.sfrs.A.getValue() & 0xFF);
+//        //apparently the SUBB instruction is implemented in hardware by taking the 2's complement of the operand,
+//        //performing and ADD instruction and inverting the carry flag...
+//        add_immediate((byte)-(immediateValue+(this.state.sfrs.PSW.getBit(7) ? 1 : 0)));
+//        this.state.sfrs.PSW.setBit(!this.state.sfrs.PSW.getBit(7), 7); //invert the carry flag
+//        this.state.sfrs.PSW.setBit(ac, 6);
+//        //this.state.sfrs.PSW.setBit(carry, 7);
+//        return 1;
+        int operand = immediateValue;
+        if (this.state.sfrs.PSW.getBit(7)) operand += 1;
+        //final boolean carry = (operand & 0xFF) > (this.state.sfrs.A.getValue() & 0xFF);
+        final boolean auxiliary_carry = (operand & 0xF) > (this.state.sfrs.A.getValue() & 0xF);
+        final int result = this.state.sfrs.A.getValue() - operand;
+        final boolean ov = result > 127 || result < -128;
+        final boolean carry = (immediateValue & 0xFF + (this.state.sfrs.PSW.getBit(7) ? 1 : 0)) > (this.state.sfrs.A.getValue() & 0xFF);
+        this.state.sfrs.A.setValue((byte)result);
+        this.state.sfrs.PSW.setBit(carry, 7);
+        this.state.sfrs.PSW.setBit(auxiliary_carry, 6);
+        this.state.sfrs.PSW.setBit(ov, 2);
+        return 1;
+    }
+
+    /**
+     * <b>Subb (A, @Ri)</b>
+     * @param indirectAddress the indirect address that determines the byte to be subtracted from A (normally the
+     *                        content of R0 or R1)
+     * @return the number of cycles (1)
+     * @see #subb_immediate(byte)
+     */
+    private int subb_indirect(byte indirectAddress) {
+        return subb_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
+    }
+
+    /**
+     * <b>SUBB (A, directAddress)</b>
+     * @param directAddress the direct address that determines the byte to be subtracted from A
+     * @return the number of cycles (1)
+     * @see #subb_immediate(byte)
+     */
+    private int subb_direct(byte directAddress) {
+        return subb_immediate(getDirectAddress(directAddress));
+    }
+
+    /**
+     * <b>SUBB (A, Rn)</b>
+     * @param ordinal determines the R register whose value is subtracted from A; must be >= 0 and <= 7
+     * @return the number of cycles (1)
+     * @see #subb_immediate(byte)
+     */
+    private int subb_r(int ordinal) {
+        return subb_immediate(getR(ordinal));
+    }
+
+    /**
      * <b>ORL (direct, #immediate)</b>
      * <br>
      * Perform a logical OR on the byte at the direct address and the immediate byte; store the result at the direct
@@ -1503,5 +1576,46 @@ public class MC8051 implements Emulator {
     private int mov_direct_a(byte directAddress) {
         mov_direct_immediate(directAddress, this.state.sfrs.A.getValue());
         return 1;
+    }
+
+    /**
+     * <b>MOVC (A, @A+DPTR/PC)</b><br>
+     * Copy code memory to the accumulator.
+     * @param high high byte of the DPTR/PC register
+     * @param low byte of the DPTR/PC register
+     * @return the number of cycles (2)
+     */
+    private int movc_a(ByteRegister high, ByteRegister low) {
+        final char address = (char)((this.state.sfrs.A.getValue() & 0xFF)
+                + (high.getValue() << 8 & 0xFF00 | low.getValue() & 0xFF));
+        this.state.sfrs.A.setValue(this.state.codeMemory.get(address));
+        return 2;
+    }
+
+    /**
+     * <b>DIV AB</b><br>
+     * Divide the A register by the B register and store the result in A and the remainder in B.
+     * The carry flag is always cleared.
+     * If a division by zero is attempted, the OV flag is set, otherwise it is cleared.
+     * (The states of A and B after a division by zero are undefined.)
+     * @return the number of cycles (4)
+     */
+    private int div_ab() {
+        final ByteRegister A = this.state.sfrs.A;
+        final ByteRegister B = this.state.sfrs.B;
+        final FlagRegister PSW = this.state.sfrs.PSW;
+        PSW.setBit(false, 7); //DIV always clears the carry flag
+        if (B.getValue() == (byte)0) {
+            PSW.setBit(true, 2); //the OV flag is set if the program tries to divide by 0
+        } else {
+            //when the operands are valid, the OV flag is cleared
+            PSW.setBit(false, 2);
+            final byte oldA = A.getValue();
+            //the division is unsigned; the result is stored in A
+            A.setValue((byte)((A.getValue() & 0xFF) / (B.getValue() & 0xFF)));
+            //the remainder is stored in B
+            B.setValue((byte)((oldA & 0xFF) % (B.getValue() & 0xFF)));
+        }
+        return 4;
     }
 }

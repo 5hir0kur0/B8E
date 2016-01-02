@@ -22,6 +22,8 @@ public class MC8051Test {
     ByteRegister B;
     FlagRegister PSW;
     RAM ram;
+    ByteRegister PCH;
+    ByteRegister PCL;
 
     @Before
     public void setUp() throws Exception {
@@ -31,6 +33,8 @@ public class MC8051Test {
         B = testController.state.sfrs.B;
         PSW = testController.state.sfrs.PSW;
         ram = testController.state.internalRAM;
+        PCH = testController.state.PCH;
+        PCL = testController.state.PCL;
     }
 
     @Test
@@ -502,13 +506,6 @@ public class MC8051Test {
         final byte ADDC_IND0 = 0x36;
         final byte ADDC_IND1 = 0x37;
         final byte ADDC_R0   = 0x38;
-        final byte ADDC_R1   = 0x39;
-        final byte ADDC_R2   = 0x2a;
-        final byte ADDC_R3   = 0x3b;
-        final byte ADDC_R4   = 0x3c;
-        final byte ADDC_R5   = 0x3d;
-        final byte ADDC_R6   = 0x3e;
-        final byte ADDC_R7   = 0x3f;
         final ByteRegister A = testController.state.sfrs.A;
         final FlagRegister PSW = testController.state.sfrs.PSW;
         final ByteRegister R0 = testController.state.R0;
@@ -531,6 +528,44 @@ public class MC8051Test {
             PSW.setBit(false, 7);
             testOpcode((byte)(ADDC_R0+i), 0, 1, () -> A.getValue() == (byte)(finI + 1 + finI));
         }
+    }
+
+    @Test
+    public void testSUBB() {
+        System.out.println("__________Testing SUBB...");
+        final byte SUBB_A_immed = (byte)0x94;
+        final byte SUBB_A_dir   = (byte)0x95;
+        final byte SUBB_A_ind0  = (byte)0x96;
+        final byte SUBB_A_ind1  = (byte)0x97;
+        final byte SUBB_A_R0    = (byte)0x98;
+        A.setValue((byte)0x42);
+        testOpcode(SUBB_A_immed, 0, new byte[]{0x5}, 1, () -> A.getValue() == (byte) 0x3D && PSW.getBit(6)
+                && !PSW.getBit(2) && !PSW.getBit(7));
+        A.setValue((byte)1);
+        PSW.setBit(true, 7);
+        testOpcode(SUBB_A_immed, 0, new byte[]{(byte)0xFF}, 1, () -> A.getValue() == (byte)0x01 && PSW.getBit(7) && !PSW.getBit(6)
+                && !PSW.getBit(2));
+        final byte directAddr = (byte)r.nextInt(0x80);
+        ram.set(directAddr, (byte) 0x84);
+        A.setValue((byte) 0x22);
+        PSW.setBit(false, 7);
+        testOpcode(SUBB_A_dir, 0, new byte[]{directAddr}, 1, () -> A.getValue() == (byte)0x9E && PSW.getBit(7)
+                && PSW.getBit(6) && PSW.getBit(2) && PSW.getBit(0));
+        testController.state.R0.setValue(directAddr);
+        ram.set(directAddr, (byte) 0xFF);
+        A.setValue((byte) 0xFF);
+        PSW.setBit(false, 7);
+        testOpcode(SUBB_A_ind0, 0, 1, () -> A.getValue() == 0 && !PSW.getBit(7) && !PSW.getBit(6) && !PSW.getBit(2));
+        testController.state.R1.setValue(directAddr);
+        ram.set(directAddr, (byte) 0xFF);
+        A.setValue((byte) 1);
+        PSW.setBit(false, 7);
+        testOpcode(SUBB_A_ind1, 0, 1, () -> A.getValue() == (byte)0x02 && PSW.getBit(7) && PSW.getBit(6)
+                && !PSW.getBit(2));
+        A.setValue((byte)0x80);
+        testController.state.R0.setValue((byte)1);
+        PSW.setBit(false, 7);
+        testOpcode(SUBB_A_R0, 0, 1, () -> A.getValue() == (byte)7F && !PSW.getBit(7) && PSW.getBit(6) && PSW.getBit(2));
     }
 
     @Test
@@ -747,6 +782,50 @@ public class MC8051Test {
             final int fI = i;
             testOpcode((byte)(MOV_R0_A+i), 0, 1, () -> testController.state.getR(fI).getValue() == randomA);
         }
+    }
+
+    @Test
+    public void testSJMP() {
+        System.out.println("___________Testing SJMP...");
+        final byte SJMP = (byte)0x80;
+        final int address = r.nextInt(0xfff)+128;
+        final byte offset = (byte)r.nextInt(0x100);
+        final int result = address + offset + 2;
+        testOpcode(SJMP, address, new byte[]{offset}, 2, ()->((PCH.getValue()&0xff)<<8|PCL.getValue()&0xff) == result);
+    }
+
+    @Test
+    public void testMOVC() {
+        System.out.println("__________Testing MOVC...");
+        final byte MOVC_A_PC = (byte)0x83;
+        final byte MOVC_A_DPTR = (byte)0x93;
+        final RAM code = (RAM)testController.state.codeMemory;
+        final byte a = (byte)r.nextInt(0x80);
+        final char dptr = (char)(128+r.nextInt(0xfff));
+        code.set(dptr+(a&0xff), (byte)0x42);
+        testController.state.sfrs.DPL.setValue((byte)dptr);
+        testController.state.sfrs.DPH.setValue((byte) (dptr >> 8));
+        A.setValue(a);
+        testOpcode(MOVC_A_DPTR, 0, 2, () -> A.getValue() == (byte) 0x42);
+        final char pc = dptr;
+        A.setValue(a);
+        code.set(pc + (a&0xff) + 1, (byte)0x55);
+        testOpcode(MOVC_A_PC, pc, 2, () -> A.getValue() == (byte)0x55);
+    }
+
+    @Test
+    public void testDIV() {
+        System.out.println("__________Testing DIV...");
+        final byte DIV_AB = (byte)0x84;
+        final byte a = (byte)(r.nextInt(0x100));
+        final byte b = (byte)(r.nextInt(0xff)+1);
+        A.setValue(a);
+        B.setValue(b);
+        testOpcode(DIV_AB, 0, 4, () -> A.getValue() == (byte)((a&0xff)/(b&0xff))
+                && B.getValue() == (byte)((a&0xff)%(b&0xff))
+                && !PSW.getBit(7) && !PSW.getBit(2));
+        B.setValue((byte)0);
+        testOpcode(DIV_AB, 0, 4, () -> !PSW.getBit(7) && PSW.getBit(2));
     }
 
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
