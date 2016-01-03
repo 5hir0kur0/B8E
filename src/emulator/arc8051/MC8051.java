@@ -1151,22 +1151,16 @@ public class MC8051 implements Emulator {
      * @see #add_immediate(byte)
      */
     private int subb_immediate(byte immediateValue) {
-//        final boolean ac = (immediateValue & 0xF) > (this.state.sfrs.A.getValue() & 0xF);
-//        //final boolean carry = (immediateValue & 0xFF) > (this.state.sfrs.A.getValue() & 0xFF);
-//        //apparently the SUBB instruction is implemented in hardware by taking the 2's complement of the operand,
-//        //performing and ADD instruction and inverting the carry flag...
-//        add_immediate((byte)-(immediateValue+(this.state.sfrs.PSW.getBit(7) ? 1 : 0)));
-//        this.state.sfrs.PSW.setBit(!this.state.sfrs.PSW.getBit(7), 7); //invert the carry flag
-//        this.state.sfrs.PSW.setBit(ac, 6);
-//        //this.state.sfrs.PSW.setBit(carry, 7);
-//        return 1;
-        int operand = immediateValue;
-        if (this.state.sfrs.PSW.getBit(7)) operand += 1;
-        //final boolean carry = (operand & 0xFF) > (this.state.sfrs.A.getValue() & 0xFF);
-        final boolean auxiliary_carry = (operand & 0xF) > (this.state.sfrs.A.getValue() & 0xF);
-        final int result = this.state.sfrs.A.getValue() - operand;
+        //NOTE: I did a lot of experimentation with this method as I could not find very clear documentation
+        //      It *seems* to work now, but I wouldn't be surprised to see that it fails in some edge cases. :-)
+        byte operand = immediateValue;
+        byte a = this.state.sfrs.A.getValue();
+        final boolean current_carry = this.state.sfrs.PSW.getBit(7);
+        if (this.state.sfrs.PSW.getBit(7)) operand++;
+        final boolean carry = (((immediateValue & 0xFF)+(current_carry ? 1 : 0)) & 0x1FF) > (a & 0xFF);
+        final boolean auxiliary_carry = (operand & 0xF) > (a & 0xF);
+        final int result = a - operand;
         final boolean ov = result > 127 || result < -128;
-        final boolean carry = (immediateValue & 0xFF + (this.state.sfrs.PSW.getBit(7) ? 1 : 0)) > (this.state.sfrs.A.getValue() & 0xFF);
         this.state.sfrs.A.setValue((byte)result);
         this.state.sfrs.PSW.setBit(carry, 7);
         this.state.sfrs.PSW.setBit(auxiliary_carry, 6);
