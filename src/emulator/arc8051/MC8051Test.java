@@ -96,6 +96,7 @@ public class MC8051Test {
         testController.state.PCH.setValue((byte)0x0F);
         testController.state.PCL.setValue((byte)0xFF);
         ram.set(0xFFF, STATIC_AJMP);
+        ram.set(0xFFF+1, (byte)0);
         System.out.println("Testing the base address...");
         System.out.printf("Opcode: %02X%n", STATIC_AJMP & 0xFF);
         testController.next();
@@ -538,13 +539,30 @@ public class MC8051Test {
         final byte SUBB_A_ind0  = (byte)0x96;
         final byte SUBB_A_ind1  = (byte)0x97;
         final byte SUBB_A_R0    = (byte)0x98;
+        final byte SUBB_A_R1    = (byte)0x99;
+        final byte SUBB_A_R2    = (byte)0x9A;
+        final byte SUBB_A_R3    = (byte)0x9B;
+        final byte SUBB_A_R4    = (byte)0x9C;
+        final byte SUBB_A_R5    = (byte)0x9D;
+        final byte SUBB_A_R6    = (byte)0x9E;
+        final byte SUBB_A_R7    = (byte)0x9F;
+        Runnable printPsw = () -> {
+            System.out.println("C: "+PSW.getBit(7)+" AC: "+PSW.getBit(6)+" OV: "+PSW.getBit(2));
+            System.out.printf("A = %02X%n", A.getValue() & 0xFF);
+        };
         A.setValue((byte)0x42);
-        testOpcode(SUBB_A_immed, 0, new byte[]{0x5}, 1, () -> A.getValue() == (byte) 0x3D && PSW.getBit(6)
-                && !PSW.getBit(2) && !PSW.getBit(7));
+        testOpcode(SUBB_A_immed, 0, new byte[]{0x5}, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte) 0x3D && PSW.getBit(6)
+                    && !PSW.getBit(2) && !PSW.getBit(7);
+        });
         A.setValue((byte)1);
         PSW.setBit(true, 7);
-        testOpcode(SUBB_A_immed, 0, new byte[]{(byte)0xFF}, 1, () -> A.getValue() == (byte)0x01 && PSW.getBit(7) && !PSW.getBit(6)
-                && !PSW.getBit(2));
+        testOpcode(SUBB_A_immed, 0, new byte[]{(byte)0xFF}, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0x01 && PSW.getBit(7) && !PSW.getBit(6)
+                    && !PSW.getBit(2);
+        });
         final byte directAddr = (byte)r.nextInt(0x80);
         ram.set(directAddr, (byte) 0x84);
         A.setValue((byte) 0x22);
@@ -565,7 +583,59 @@ public class MC8051Test {
         A.setValue((byte)0x80);
         testController.state.R0.setValue((byte)1);
         PSW.setBit(false, 7);
-        testOpcode(SUBB_A_R0, 0, 1, () -> A.getValue() == (byte)7F && !PSW.getBit(7) && PSW.getBit(6) && PSW.getBit(2));
+        testOpcode(SUBB_A_R0, 0, 1, () -> {
+                printPsw.run();
+                return A.getValue() == (byte)0x7F && !PSW.getBit(7) && PSW.getBit(6) && PSW.getBit(2);
+        });
+        A.setValue((byte)0x80);
+        testController.state.R1.setValue((byte)1);
+        PSW.setBit(true, 7);
+        testOpcode(SUBB_A_R1, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0x7E && !PSW.getBit(7) && PSW.getBit(6) && PSW.getBit(2);
+        });
+        A.setValue((byte)0x80);
+        testController.state.R2.setValue((byte)0x80);
+        PSW.setBit(true, 7);
+        testOpcode(SUBB_A_R2, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0xFF && PSW.getBit(7) && PSW.getBit(6) && !PSW.getBit(2);
+        });
+        A.setValue((byte)1);
+        testController.state.R3.setValue((byte)0x80);
+        PSW.setBit(true, 7);
+        testOpcode(SUBB_A_R3, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0x80 && PSW.getBit(7) && !PSW.getBit(6) && PSW.getBit(2);
+        });
+        A.setValue((byte)0);
+        testController.state.R4.setValue((byte)0);
+        PSW.setBit(false, 7);
+        testOpcode(SUBB_A_R4, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0 && !PSW.getBit(7) && !PSW.getBit(6) && !PSW.getBit(2);
+        });
+        A.setValue((byte)0);
+        testController.state.R5.setValue((byte)0);
+        PSW.setBit(true, 7);
+        testOpcode(SUBB_A_R5, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0xFF && PSW.getBit(7) && PSW.getBit(6) && !PSW.getBit(2);
+        });
+        A.setValue((byte)0x80);
+        PSW.setBit(false, 7);
+        testController.state.R6.setValue((byte)1);
+        testOpcode(SUBB_A_R6, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0x7F && !PSW.getBit(7) && PSW.getBit(6) && PSW.getBit(2);
+        });
+        A.setValue((byte)0x7F);
+        PSW.setBit(true, 7);
+        testController.state.R7.setValue((byte)0xF0);
+        testOpcode(SUBB_A_R7, 0, 1, () -> {
+            printPsw.run();
+            return A.getValue() == (byte)0x8E && PSW.getBit(7) && !PSW.getBit(6) && PSW.getBit(2);
+        });
     }
 
     @Test
