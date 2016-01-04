@@ -96,10 +96,10 @@ public abstract class Mnemonic {
      *
      * @return
      *      the byte length of the resulting instruction.<br>
-     *      This method calls {@link #getInstructionFromOperands(long, MnemonicNameToken, OperandToken...)}
+     *      This method calls {@link #getInstructionFromOperands(long, Tokens.MnemonicNameToken, OperandToken...)}
      *      and returns the length of the resulting array.
      */
-    public int getByteNumber(long codePoint, MnemonicNameToken name, OperandToken... operands) {
+    public int getByteNumber(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands) {
         return getInstructionFromOperands(codePoint, name, operands).length;
     }
 
@@ -119,5 +119,5 @@ public abstract class Mnemonic {
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name, OperandToken... operands);
+    public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands);
 }
