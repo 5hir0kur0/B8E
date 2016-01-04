@@ -1,8 +1,8 @@
 package assembler.arc8051;
 
 import assembler.Mnemonic;
-import assembler.MnemonicNameToken;
 import assembler.OperandToken;
+import assembler.Tokens;
 
 /**
  * A mnemonic for a microcomputer with a
@@ -45,7 +45,7 @@ public abstract class Mnemonic8051 extends Mnemonic {
     }
 
     @Override
-    public byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name, OperandToken... operands) {
+    public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands) {
         return getInstructionFromOperands(codePoint, name, operands);
     }
 
@@ -66,6 +66,6 @@ public abstract class Mnemonic8051 extends Mnemonic {
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(long codePoint, MnemonicNameToken name,
+    public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name,
                                                       OperandToken8051... operands);
 }

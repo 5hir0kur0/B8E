@@ -12,7 +12,7 @@ import java.util.List;
 public interface Preprocessor {
 
     /**
-     * Preprocessos an input.
+     * Preprocesses an input.
      *
      * @param input
      *      The input that will be preprocessed.
