@@ -4,6 +4,7 @@ import assembler.util.Problem;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.StringWriter;
 import java.util.List;
 
 /**
@@ -24,5 +25,5 @@ public interface Preprocessor {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    List<Problem> preprocess(BufferedReader input, BufferedWriter output);
+    List<Problem> preprocess(BufferedReader input, StringWriter output);
 }
