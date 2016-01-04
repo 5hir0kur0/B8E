@@ -271,8 +271,8 @@ public class MC8051 implements Emulator {
             case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0xA2: retValue = mov_c_bit(getCodeByte()); break;
             case (byte)0xA3: retValue = inc_dptr(); break;
-            case (byte)0xA4: break;
-            case (byte)0xA5: break; //reserved
+            case (byte)0xA4: retValue = mul_ab(); break;
+            case (byte)0xA5: retValue = reserved(); throw new UnsupportedOperationException("0xA5 used.");
             case (byte)0xA6: retValue = mov_indirect_direct(getR(0), getCodeByte()); break;
             case (byte)0xA7: retValue = mov_indirect_direct(getR(1), getCodeByte()); break;
             case (byte)0xA8: retValue = mov_r_direct(0, getCodeByte()); break;
@@ -285,41 +285,41 @@ public class MC8051 implements Emulator {
             case (byte)0xAF: retValue = mov_r_direct(7, getCodeByte()); break;
             case (byte)0xB0: retValue = anl_c(getCodeByte(), true); break;
             case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xB2: break;
-            case (byte)0xB3: break;
-            case (byte)0xB4: break;
-            case (byte)0xB5: break;
-            case (byte)0xB6: break;
-            case (byte)0xB7: break;
-            case (byte)0xB8: break;
-            case (byte)0xB9: break;
-            case (byte)0xBA: break;
-            case (byte)0xBB: break;
-            case (byte)0xBC: break;
-            case (byte)0xBD: break;
-            case (byte)0xBE: break;
-            case (byte)0xBF: break;
+            case (byte)0xB2: retValue = cpl(getCodeByte()); break;
+            case (byte)0xB3: retValue = cpl_c(); break;
+            case (byte)0xB4: retValue = cjne_a_immediate(getCodeByte(), getCodeByte()); break;
+            case (byte)0xB5: retValue = cjne_a_direct(getCodeByte(), getCodeByte()); break;
+            case (byte)0xB6: retValue = cjne_indirect_immediate(getR(0), getCodeByte(), getCodeByte()); break;
+            case (byte)0xB7: retValue = cjne_indirect_immediate(getR(1), getCodeByte(), getCodeByte()); break;
+            case (byte)0xB8: retValue = cjne_r_immediate(0, getCodeByte(), getCodeByte()); break;
+            case (byte)0xB9: retValue = cjne_r_immediate(1, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBA: retValue = cjne_r_immediate(2, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBB: retValue = cjne_r_immediate(3, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBC: retValue = cjne_r_immediate(4, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBD: retValue = cjne_r_immediate(5, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBE: retValue = cjne_r_immediate(6, getCodeByte(), getCodeByte()); break;
+            case (byte)0xBF: retValue = cjne_r_immediate(7, getCodeByte(), getCodeByte()); break;
             case (byte)0xC0: retValue = pop(getCodeByte()); break;
             case (byte)0xC1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xC2: break;
-            case (byte)0xC3: break;
-            case (byte)0xC4: break;
-            case (byte)0xC5: break;
-            case (byte)0xC6: break;
-            case (byte)0xC7: break;
-            case (byte)0xC8: break;
-            case (byte)0xC9: break;
-            case (byte)0xCA: break;
-            case (byte)0xCB: break;
-            case (byte)0xCC: break;
-            case (byte)0xCD: break;
-            case (byte)0xCE: break;
-            case (byte)0xCF: break;
+            case (byte)0xC2: retValue = clr(getCodeByte()); break;
+            case (byte)0xC3: retValue = clr_c(); break;
+            case (byte)0xC4: retValue = swap_a(); break;
+            case (byte)0xC5: retValue = xch_a_direct(getCodeByte()); break;
+            case (byte)0xC6: retValue = xch_a_indirect(getR(0)); break;
+            case (byte)0xC7: retValue = xch_a_indirect(getR(1)); break;
+            case (byte)0xC8: retValue = xch_a_r(0); break;
+            case (byte)0xC9: retValue = xch_a_r(1); break;
+            case (byte)0xCA: retValue = xch_a_r(2); break;
+            case (byte)0xCB: retValue = xch_a_r(3); break;
+            case (byte)0xCC: retValue = xch_a_r(4); break;
+            case (byte)0xCD: retValue = xch_a_r(5); break;
+            case (byte)0xCE: retValue = xch_a_r(6); break;
+            case (byte)0xCF: retValue = xch_a_r(7); break;
             case (byte)0xD0: retValue = push(getCodeByte()); break;
             case (byte)0xD1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xD2: break;
-            case (byte)0xD3: break;
-            case (byte)0xD4: break;
+            case (byte)0xD2: retValue = setb(getCodeByte()); break;
+            case (byte)0xD3: retValue = setb_c(); break;
+            case (byte)0xD4: retValue = da_a(); break;
             case (byte)0xD5: break;
             case (byte)0xD6: break;
             case (byte)0xD7: break;
@@ -335,7 +335,7 @@ public class MC8051 implements Emulator {
             case (byte)0xE1: retValue = ajmp(currentInstruction, getCodeByte()); break;
             case (byte)0xE2: break;
             case (byte)0xE3: break;
-            case (byte)0xE4: break;
+            case (byte)0xE4: retValue = clr_a(); break;
             case (byte)0xE5: retValue = mov_a_direct(getCodeByte()); break;
             case (byte)0xE6: retValue = mov_a_indirect(getR(0)); break;
             case (byte)0xE7: retValue = mov_a_indirect(getR(1)); break;
@@ -351,7 +351,7 @@ public class MC8051 implements Emulator {
             case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
             case (byte)0xF2: break;
             case (byte)0xF3: break;
-            case (byte)0xF4: break;
+            case (byte)0xF4: retValue = cpl_a(); break;
             case (byte)0xF5: retValue = mov_direct_a(getCodeByte()); break;
             case (byte)0xF6: retValue = mov_indirect_immediate(getR(0), this.state.sfrs.A.getValue()); break;
             case (byte)0xF7: retValue = mov_indirect_immediate(getR(1), this.state.sfrs.A.getValue()); break;
@@ -1611,5 +1611,246 @@ public class MC8051 implements Emulator {
             B.setValue((byte)((oldA & 0xFF) % (B.getValue() & 0xFF)));
         }
         return 4;
+    }
+
+    /**
+     * <b>MUL (AB)</b><br>
+     * Perform an unsigned multiplication of A and B. The low byte of the result is stored in A, the high byte in B.
+     * @return the number of cycles (4)
+     */
+    private int mul_ab() {
+        this.state.sfrs.PSW.setBit(false, 7); //MUL always clears the carry flag
+        final byte a = this.state.sfrs.A.getValue();
+        final byte b = this.state.sfrs.B.getValue();
+        final int result = (a & 0xFF) * (b & 0xFF);
+        this.state.sfrs.PSW.setBit(result > 0xFF, 2); //if the result does not fit, set OV; otherwise clear it
+        this.state.sfrs.A.setValue((byte)result);
+        this.state.sfrs.B.setValue((byte)(result >>> 8));
+        return 4;
+    }
+
+    /**
+     * <b>0xA5 (this opcode is reserved/not defined)</b>
+     * @return a negative value
+     */
+    private int reserved() {
+        return -42;
+    }
+
+    /**
+     * <b>CPL (bit)</b><br>
+     * Complement the specified bit.
+     * @param bitAddress address of the bit that should be complemented
+     * @return the number of cycles (1)
+     */
+    private int cpl(byte bitAddress) {
+        setBit(!getBit(bitAddress), bitAddress);
+        return 1;
+    }
+
+    /**
+     * <b>CPL (A)</b><br>
+     * Complement the accumulator.
+     * @return the number of cycles (1)
+     */
+    private int cpl_a() {
+        this.state.sfrs.A.setValue((byte)~this.state.sfrs.A.getValue());
+        return 1;
+    }
+
+    /**
+     * <b>CPL (C)</b><br>
+     * Complement the C flag.
+     * @return the number of cycles (1)
+     */
+    private int cpl_c() {
+        final int C = 7;
+        this.state.sfrs.PSW.setBit(!this.state.sfrs.PSW.getBit(C), C);
+        return 1;
+    }
+
+    /**
+     * Helper function for the CJNE mnemonics.
+     * @param immediate1 byte 1 for the comparison
+     * @param immediate2 byte 2 for the comparison
+     * @param offset the offset to jump by if the bytes aren't equal
+     * @return the number of cycles (2)
+     */
+    private int _cjne(byte immediate1, byte immediate2, byte offset) {
+        final int C = 7;
+        if (immediate1 != immediate2) jumpToOffset(offset);
+        this.state.sfrs.PSW.setBit((immediate1 & 0xFF) < (immediate2 & 0xFF), C);
+        return 2;
+    }
+
+    /**
+     * <b>CJNE (@Ri, #immediate, LABEL)</b>
+     * @param indirectAddress the indirect address used to get byte 1 for the comparison (usually the content of R0/R1)
+     * @param immediateValue byte 2 for the comparison
+     * @param offset the offset to jump by if the bytes aren't equal
+     * @return the number of cycles (2)
+     */
+    private int cjne_indirect_immediate(byte indirectAddress, byte immediateValue, byte offset) {
+        return _cjne(this.state.internalRAM.get(indirectAddress & 0xFF), immediateValue, offset);
+    }
+
+    /**
+     * <b>CJNE (A, #immediate, LABEL)</b>
+     * @param immediateValue byte 2 for the comparison
+     * @param offset the offset to jump by if byte 2 isn't equal to A
+     * @return the number of cycles (2)
+     */
+    private int cjne_a_immediate(byte immediateValue, byte offset) {
+        return _cjne(this.state.sfrs.A.getValue(), immediateValue, offset);
+    }
+
+    /**
+     * <b>CJNE (A, directAddress, LABEL)</b>
+     * @param directAddress the direct address used to get byte 2 of the comparison
+     * @param offset the offset to jump by if A and byte 2 aren't equal
+     * @return the number of cycles (2)
+     * @see #getDirectAddress(byte)
+     */
+    private int cjne_a_direct(byte directAddress, byte offset) {
+        return _cjne(this.state.sfrs.A.getValue(), getDirectAddress(directAddress), offset);
+    }
+
+    /**
+     * <b>CJNE (Rn, #immediate, LABEL)</b>
+     * @param ordinal the R register's number; must be >= 0 and <= 7
+     * @param immediateValue byte 2 for the comparison
+     * @param offset the offset to jump by if R&lt;ordinal&gt; and byte 2 aren't equal
+     * @return the number of cycles (2)
+     */
+    private int cjne_r_immediate(int ordinal, byte immediateValue, byte offset) {
+        return _cjne(getR(ordinal), immediateValue, offset);
+    }
+
+    /**
+     * <b>CLR (A)</b>
+     * @return the number of cycles (1)
+     */
+    private int clr_a() {
+        this.state.sfrs.A.setValue((byte)0);
+        return 1;
+    }
+
+    /**
+     * <b>CLR (bitAddress)</b>
+     * @param bitAddress the bit to be cleared
+     * @return the number of cycles (1)
+     */
+    private int clr(byte bitAddress) {
+        setBit(false, bitAddress);
+        return 1;
+    }
+
+    /**
+     * <b>CLR (C)</b>
+     * @return the number of cycles (1)
+     */
+    private int clr_c() {
+        this.state.sfrs.PSW.setBit(false, 7); //bit 7 is the carry flag
+        return 1;
+    }
+
+    /**
+     * <b>SWAP (A)</b>
+     * <br>
+     * Swap the high and the low nibble of the accumulator.
+     * @return the number of cycles (1)
+     */
+    private int swap_a() {
+        final byte a = this.state.sfrs.A.getValue();
+        //swap high and low nibble of the accumulator
+        this.state.sfrs.A.setValue((byte)((a << 4) & 0xF0 | (a >> 4) & 0xF));
+        return 1;
+    }
+
+    /**
+     * <b>XCH (A, @Ri)</b>
+     * @param indirectAddress the indirect address to be exchanged with A
+     * @return the number of cycles (1)
+     */
+    private int xch_a_indirect(byte indirectAddress) {
+        final byte a = this.state.sfrs.A.getValue();
+        this.state.sfrs.A.setValue(this.state.internalRAM.get(indirectAddress & 0xFF));
+        this.state.internalRAM.set(indirectAddress & 0xFF, a);
+        return 1;
+    }
+
+    /**
+     * <b>XCH (A, direct)</b>
+     * @param directAddress the direct address to be exchanged with A
+     * @return the number of cycles (1)
+     */
+    private int xch_a_direct(byte directAddress) {
+        final byte a = this.state.sfrs.A.getValue();
+        this.state.sfrs.A.setValue(getDirectAddress(directAddress));
+        setDirectAddress(directAddress, a);
+        return 1;
+    }
+
+    /**
+     * <b>XCH (A, Rn)</b>
+     * @param ordinal specifies the R register to use; must be >= 0 and <= 7
+     * @return the number of cycles (1)
+     */
+    private int xch_a_r(int ordinal) {
+        return xch_a_indirect((byte)getRAddress(ordinal));
+    }
+
+    /**
+     * <b>SETB (C)</b><br>
+     * Set the carry flag to 1.
+     * @return the number of cycles (1)
+     */
+    private int setb_c() {
+        this.state.sfrs.PSW.setBit(true, 7); //bit 7 is the carry flag
+        return 1;
+    }
+
+    /**
+     * <b>SETB (bitAddress)</b><br>
+     * Set a bit to 1.
+     * @param bitAddress specifies the bit to be set to 1
+     * @return the number fo cycles (1)
+     */
+    private int setb(byte bitAddress) {
+        setBit(true, bitAddress);
+        return 1;
+    }
+
+    /**
+     * <b>DA (A)</b>
+     * <br>
+     * This instruction is used after two BCD numbers have been added using {@code ADD} or {@code ADDC}.
+     * For an in-depth explanation see http://www.keil.com/support/man/docs/is51/is51_da.htm
+     * @return the number of cycles (1)
+     */
+    private int da_a() {
+        final byte a = this.state.sfrs.A.getValue();
+        byte result = a;
+
+        //if bits 0-3 are > 9 or the AC flag is set, 6 is added to the accumulator
+        if ((a & 0xF) > 9 || this.state.sfrs.PSW.getBit(6)) {
+            int tmp = (result & 0xFF) + 6;
+            //if the addition causes an overflow, the C bit is set; it is not cleared otherwise
+            if ((tmp & 0x100) == 0x100) this.state.sfrs.PSW.setBit(true, 7);
+            result = (byte)tmp;
+        }
+
+        //if the carry flag (bit 7) is set or the four bits of the high-nibble exceed nine, these bits are incremented
+        //by 6
+        if (((a >> 4) & 0xF) > 9 || this.state.sfrs.PSW.getBit(7)) {
+            int tmp = (result & 0xFF) + 0x60;
+            //if the sum exceeds nine, the carry flag is set; it is not cleared otherwise
+            if ((tmp & 0x100) == 0x100) this.state.sfrs.PSW.setBit(true, 7);
+            result = (byte)tmp;
+        }
+
+        this.state.sfrs.A.setValue(result);
+
+        return 1;
     }
 }
