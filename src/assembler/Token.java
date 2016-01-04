@@ -8,7 +8,7 @@ import java.util.Objects;
  *
  * @author Noxgrim
  */
-public class Token {
+public class Token implements Comparable<Token> {
     /** The type of the token. */
     protected TokenType type;
     /** The value of the token. */
@@ -39,12 +39,19 @@ public class Token {
         return value;
     }
 
+    @Override
+    public int compareTo(Token o) {
+        if (type != o.type)
+            return type.compareTo(o.type);
+        else
+            return value.compareTo(o.value);
+    }
 
     /**
      * The different types a token can have.
      */
     public enum TokenType {
-        MNEMONIC_NAME, OPERAND, LABEL
+        MNEMONIC_NAME, OPERAND, LABEL, SYMBOL, COMMENT
     }
 
 }
