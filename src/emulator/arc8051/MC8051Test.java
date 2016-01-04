@@ -898,6 +898,176 @@ public class MC8051Test {
         testOpcode(DIV_AB, 0, 4, () -> !PSW.getBit(7) && PSW.getBit(2));
     }
 
+    @Test
+    public void testMUL() {
+        System.out.println("__________Testing MUL...");
+        final byte MUL = (byte)0xA4;
+        A.setValue((byte)6);
+        B.setValue((byte)7);
+        testOpcode(MUL, 0, 4, () -> A.getValue() == (byte)42 && B.getValue() == 0 && !PSW.getBit(2) && !PSW.getBit(7));
+        A.setValue((byte)0xFF);
+        B.setValue((byte)0xFf);
+        testOpcode(MUL, 0, 4, () -> A.getValue() == (byte)0x01 && B.getValue() == (byte)0xFE && PSW.getBit(2)
+                && !PSW.getBit(7) && PSW.getBit(0));
+    }
+
+    @Test(expected=UnsupportedOperationException.class)
+    public void testReserved() {
+        final byte RESERVED = (byte)0xA5;
+        System.out.println("__________Testing <reserved>...");
+        testOpcode(RESERVED, 0, 1, () -> false);
+    }
+
+    @Test
+    public void testCPL() {
+        System.out.println("__________Testing CPL...");
+        final byte CPL_bit = (byte)0xB2;
+        final byte CPL_C = (byte)0xB3;
+        final byte CPL_A = (byte)0xF4;
+        testOpcode(CPL_bit, 0, new byte[]{22}, 1, () -> testController.getBit((byte)22));
+        testOpcode(CPL_bit, 0, new byte[]{22}, 1, () -> !testController.getBit((byte)22));
+        testOpcode(CPL_C, 0, 1, () -> testController.state.sfrs.PSW.getBit(7));
+        testOpcode(CPL_C, 0, 1, () -> !testController.state.sfrs.PSW.getBit(7));
+        final byte a = (byte)r.nextInt(256);
+        A.setValue(a);
+        testOpcode(CPL_A, 0, 1, () -> A.getValue() == (byte) ~a);
+    }
+
+    @Test
+    public void testCJNE() {
+        System.out.println("__________Testing CJNE...");
+        final byte CJNE_A_immed  = (byte)0xB4;
+        final byte CJNE_A_dir    = (byte)0xB5;
+        final byte CJNE_ind_imm0 = (byte)0xB6;
+        final byte CJNE_ind_imm1 = (byte)0xB7;
+        final byte CJNE_R0_imm   = (byte)0xB8;
+        final int address = 128 + r.nextInt(0xfff);
+        A.setValue((byte)1);
+        testOpcode(CJNE_A_immed, address, new byte[]{42, -5}, 2, () -> {
+            int pc = PCH.getValue() << 8  & 0xFF00 | PCL.getValue() & 0xFF;
+            int result = address + 3 - 5;
+            return pc == result && PSW.getBit(7);
+        });
+        ram.set(22, (byte)21);
+        A.setValue((byte)21);
+        testOpcode(CJNE_A_dir, address, new byte[]{22, 0}, 2, () -> {
+            int pc = PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF;
+            int result = address + 3;
+            return pc == result && !PSW.getBit(7);
+        });
+        testController.state.R0.setValue((byte)10);
+        ram.set(10, (byte)100);
+        testOpcode(CJNE_ind_imm0, address, new byte[]{50, -40}, 2, () -> {
+            int pc = PCH.getValue() << 8  & 0xFF00 | PCL.getValue() & 0xFF;
+            int result = address + 3 - 40;
+            return pc == result && !PSW.getBit(7);
+        });
+        testController.state.R1.setValue((byte)10);
+        ram.set(10, (byte)50);
+        testOpcode(CJNE_ind_imm1, address, new byte[]{60, -40}, 2, () -> {
+            int pc = PCH.getValue() << 8  & 0xFF00 | PCL.getValue() & 0xFF;
+            int result = address + 3 - 40;
+            return pc == result && PSW.getBit(7);
+        });
+        for (int i = 0; i < 8; ++i) {
+            testController.state.getR(i).setValue((byte)0x2A);
+            testOpcode((byte)(CJNE_R0_imm+i), address, new byte[]{0x2A, 22}, 2, () -> {
+                int pc = PCH.getValue() << 8  & 0xFF00 | PCL.getValue() & 0xFF;
+                return pc == address + 3 && !PSW.getBit(7);
+            });
+        }
+    }
+
+    @Test
+    public void testCLR() {
+        System.out.println("__________Testing CLR...");
+        final byte CLR_bit = (byte)0xC2;
+        final byte CLR_C = (byte)0xC3;
+        final byte CLR_A = (byte)0xE4;
+        final byte bitaddr = 10;
+        testController.setBit(true, bitaddr);
+        testOpcode(CLR_bit, 0, new byte[]{bitaddr}, 1, () -> !testController.getBit(bitaddr));
+        PSW.setBit(true, 7);
+        testOpcode(CLR_C, 0, 1, () -> !PSW.getBit(7));
+        A.setValue((byte)3);
+        testOpcode(CLR_A, 0, 1, () -> A.getValue() == 0);
+    }
+
+    @Test
+    public void testSWAP() {
+        System.out.println("__________Testing SWAP...");
+        final byte SWAP_A = (byte)0xC4;
+        A.setValue((byte)0xFE);
+        testOpcode(SWAP_A, 0, 1, () -> A.getValue() == (byte)0xEF);
+    }
+
+    @Test
+    public void testXCH() {
+        System.out.println("__________Testing XCH...");
+        final byte XCH_A_direct = (byte)0xC5;
+        final byte XCH_A_ind0   = (byte)0xC6;
+        final byte XCH_A_ind1   = (byte)0xC7;
+        final byte XCH_A_R0     = (byte)0xC8;
+        final byte val1 = 0x11;
+        final byte val2 = 0x22;
+        A.setValue(val1);
+        final byte direct = 120;
+        ram.set(direct, val2);
+        testOpcode(XCH_A_direct, 0, new byte[]{direct}, 1, () -> A.getValue() == val2 && ram.get(direct) == val1);
+        final byte indirect = 100;
+        testController.state.R0.setValue(indirect);
+        ram.set(indirect, val2);
+        A.setValue(val1);
+        testOpcode(XCH_A_ind0, 0, new byte[]{indirect}, 1, () -> A.getValue() == val2 && ram.get(indirect) == val1);
+        testController.state.R1.setValue(indirect);
+        ram.set(indirect, val2);
+        A.setValue(val1);
+        testOpcode(XCH_A_ind1, 0, new byte[]{indirect}, 1, () -> A.getValue() == val2 && ram.get(indirect) == val1);
+        for (int i = 0; i < 8; ++i) {
+            testController.state.getR(i).setValue(val2);
+            A.setValue(val1);
+            final int fI = i;
+            testOpcode((byte)(XCH_A_R0+i), 0, 1, () -> A.getValue() == val2
+                    && testController.state.getR(fI).getValue() == val1);
+        }
+    }
+
+    @Test
+    public void testSETB() {
+        System.out.println("__________Testing SETB...");
+        final byte SETB_bit = (byte)0xD2;
+        final byte SETB_C = (byte)0xD3;
+        final byte bitaddr = 12;
+        testController.setBit(false, bitaddr);
+        testOpcode(SETB_bit, 0, new byte[]{bitaddr}, 1, () -> testController.getBit(bitaddr));
+        PSW.setBit(false, 7);
+        testOpcode(SETB_C, 0, 1, () -> PSW.getBit(7));
+    }
+
+    @Test
+    public void testDA() {
+        System.out.println("__________Testing DA...");
+        final byte DA_A = (byte)0xD4;
+        final byte ADD_A_imm = 0x24;
+        A.setValue((byte)0x42);
+        testOpcode(DA_A, 0, 1, () -> !PSW.getBit(7) && A.getValue() == (byte)0x42);
+        A.setValue((byte)0x42);
+        testOpcode(ADD_A_imm, 0, new byte[]{0x42}, 1, () -> A.getValue() == (byte)(0x42+0x42));
+        testOpcode(DA_A, 0, 1, () -> !PSW.getBit(7) && A.getValue() == (byte)0x84);
+        A.setValue((byte)0x51);
+        testOpcode(ADD_A_imm, 0, new byte[]{0x51}, 1, () -> A.getValue() == (byte)(0x51+0x51));
+        testOpcode(DA_A, 0, 1, () -> PSW.getBit(7) && A.getValue() == (byte)0x02);
+        A.setValue((byte)0x99);
+        PSW.setBit(false, 7);
+        testOpcode(DA_A, 0, 1, () -> !PSW.getBit(7) && A.getValue() == (byte)0x99);
+        A.setValue((byte)(0x21 + 0x75));
+        testOpcode(DA_A, 0, 1, () -> A.getValue() == (byte)0x96 && !PSW.getBit(7));
+        A.setValue((byte)0);
+        testOpcode(DA_A, 0, 1, () -> A.getValue() == 0 && !PSW.getBit(7));
+        A.setValue((byte)0x4A);
+        testOpcode(DA_A, 0, 1, () -> A.getValue() == (byte)0x50 && !PSW.getBit(7));
+    }
+
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
         testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
     }
