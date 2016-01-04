@@ -54,7 +54,7 @@ public class Problem<T> implements Comparable<Problem> {
 
     @Override
     public String toString() {
-        return "Problem ["+path.toUri().toString()+":"+line+"]: \""+message+" (Caused by: "+cause.toString()+")";
+        return "Problem ["+(path == null ? "?":path.toString())+":"+(line!=-1?line:"?")+"]: \""+message+" (Caused by: "+cause.toString()+")";
     }
 
     public enum Type {
@@ -69,17 +69,17 @@ public class Problem<T> implements Comparable<Problem> {
 
         this.type = Objects.requireNonNull(type, "'type' cannot be 'null'!");
         this.path = path;
-        if ((this.line = line) < 0)
-            throw new IllegalArgumentException("'line' cannot be negative or zero!");
+        if ((this.line = line) < -1)
+            throw new IllegalArgumentException("'line' cannot be smaller than -1!");
         this.cause = cause;
     }
 
     public Problem(String message, Type type, T cause) {
-        this(message, type, null, 0, cause);
+        this(message, type, null, -1, cause);
     }
 
     public Problem(String message, Type type) {
-        this(message, type, null, 0, null);
+        this(message, type, null, -1, null);
     }
 
 

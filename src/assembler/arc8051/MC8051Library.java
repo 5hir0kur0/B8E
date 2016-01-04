@@ -1,7 +1,10 @@
 package assembler.arc8051;
 
+import assembler.Mnemonic;
 import assembler.Token;
 import assembler.Tokens;
+import assembler.util.MnemonicProvider;
+import assembler.util.Problem;
 import assembler.util.Problem.Type;
 import assembler.util.Settings;
 import assembler.util.Settings.Errors.ErrorHandling;
@@ -19,8 +22,8 @@ public class MC8051Library {
 
 
     public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\D\\w][\\w]*?):");
-    public static final Pattern ADDRESS_PATTERN         = Pattern.compile("((0b)|(0)|(0d)|(0x)([0-9a-f]*))|" +
-                                                                          "((\\d[0-9a-f]*)([boqdh])?)");
+    public static final Pattern ADDRESS_PATTERN         = Pattern.compile("(((0b)|(0\\d)|(0d)|(0x))([0-9a-f]*))|" +
+                                                                          "((\\d[0-9a-f]*?)([boqdh])?)");
     public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*(\\w)\\s");
     public static final Pattern COMMENTARY_PATTERN      = Pattern.compile("\\s;(.*)");
     public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#"+ADDRESS_PATTERN.toString());
@@ -137,6 +140,25 @@ public class MC8051Library {
     public static List<TokenProblem> getProblems() {
         return problems;
     }
+
+    /**
+     * Provides the Mnemonic's and the Problem List
+     * they are using.
+     */
+    public static final MnemonicProvider PROVIDER = new MnemonicProvider() {
+        @Override
+        public Mnemonic[] getMnemonics() {
+            return MC8051Library.mnemonics;
+        }
+        @Override
+        public List<Problem> getProblems() {
+            return getProblems();
+        }
+        @Override
+        public void clearProblems() {
+            getProblems().clear();
+        }
+    };
 
     /**
      * Returns the register bank that is assumed if

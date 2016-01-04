@@ -3,6 +3,7 @@ package assembler;
 import assembler.util.Problem;
 
 import java.io.BufferedReader;
+import java.io.StringReader;
 import java.util.List;
 
 /**
@@ -27,5 +28,5 @@ public interface Tokenizer {
      * @return
      *      a list of tokens that can be processed by the assembler.
      */
-    List<Token> tokenize(BufferedReader input, List<Problem> problems);
+    List<Token> tokenize(StringReader input, List<Problem> problems);
 }

@@ -1,9 +1,14 @@
 package assembler;
 
+import assembler.util.ExceptionProblem;
+import assembler.util.MnemonicProvider;
 import assembler.util.Problem;
+import sun.plugin2.jvm.CircularByteBuffer;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -21,10 +26,9 @@ public class Assembler {
      */
     private Tokenizer tokenizer;
     /**
-     * An array of mnemonics to lookup the specific
-     * mnemonics.
+     * Provides the needed Mnemonics
      */
-    private Mnemonic[] mnemonics;
+    private MnemonicProvider provider;
     /**
      * The preprocessor used by the assembler.
      */
@@ -34,15 +38,15 @@ public class Assembler {
     public Assembler(Mnemonic[] mnemonics, Preprocessor preprocessor, Tokenizer tokenizer) {
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be 'null'!");
         this.preprocessor = Objects.requireNonNull(preprocessor, "Preprocessor cannot be 'null'");
-        this.mnemonics = Objects.requireNonNull(mnemonics, "Mnemonics cannot be 'null'");
+        this.provider = Objects.requireNonNull(provider, "Mnemonic Provider cannot be 'null'");
     }
     /**
      * Assembles a given input and writes the result in an output.<br>
      *
      * First the input is preprocessed and then assembled.
      *
-     * @param input
-     *      The input that will be assembled.
+     * @param path
+     *      The file that will be assembled.
      * @param output
      *      The output the result will be written to.<br>
      *      The resulting bytes can be directly interpreted
@@ -52,11 +56,33 @@ public class Assembler {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    public List<Problem> assemble(BufferedReader input, BufferedWriter output) {
-        List<Problem> problems = preprocessor.preprocess(input, output, );
+    public List<Problem> assemble(Path path, BufferedWriter output) {
+        List<Problem> problems = new ArrayList<>();
+        try (BufferedReader input = Files.newBufferedReader(path);
+             StringWriter prepOutput  = new StringWriter()){
 
+            problems.addAll(preprocessor.preprocess(input, prepOutput));
 
-        Collections.sort(problems);
+            try (StringReader tokenInput = new StringReader(prepOutput.toString())) {
+
+                List<Token> tokens = tokenizer.tokenize(tokenInput, problems);
+                problems.addAll(_assemble(tokens, output));
+            }
+
+            Collections.sort(problems);
+        } catch (IOException e) {
+            problems.add(new ExceptionProblem("Could not read properly from File!", Problem.Type.ERROR, e));
+        }
+        return problems;
+    }
+
+    private List<Problem> _assemble(List<Token> tokens, BufferedWriter output) {
+        List<Problem> problems = new ArrayList<>();
+        provider.clearProblems();
+
+        List<LabelToken> labels;
+        long codePoint;
+
         return problems;
     }
 }
