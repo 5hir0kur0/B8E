@@ -365,8 +365,8 @@ public class MC8051 implements Emulator {
             case (byte)0xFF: retValue = mov_r_immediate(7, this.state.sfrs.A.getValue()); break;
         }
         //TODO put the following in a finally-block and add exception handling
-        //TODO add updateTimers()-Method
         updateParityFlag();
+        updateTimers(retValue);
         //The value of the R registers can be changed through memory.
         //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
         //time, so that it fires property-change-events
@@ -478,6 +478,83 @@ public class MC8051 implements Emulator {
             };
         }
         return rRegisters;
+    }
+
+    private void updateTimers(int cycles) {
+        if (cycles < 0) cycles = 1;
+        //TMOD bits
+        final byte tmod     = this.state.sfrs.TMOD.getValue();
+        final boolean GATE1 = (tmod & 0x80) != 0;
+        final boolean CT1   = (tmod & 0x40) != 0;
+        //final boolean T1M1  = (tmod & 0x20) != 0;
+        //final boolean T1M0  = (tmod & 0x10) != 0;
+        final boolean GATE0 = (tmod & 0x08) != 0;
+        final boolean CT0   = (tmod & 0x04) != 0;
+        //final boolean T0M1  = (tmod & 0x02) != 0;
+        //final boolean T0M0  = (tmod & 0x01) != 0;
+        final int MODE0     =  tmod & 0x03;
+        final int MODE1     =  tmod & 0x30;
+        //TCON flags
+        final boolean TR1   = this.state.sfrs.TCON.getBit(6);
+        final boolean TR0   = this.state.sfrs.TCON.getBit(4);
+
+        final int howMuch0;
+        final int howMuch1;
+
+        if (CT0) //timer 0 counts events
+            howMuch0 = this.state.sfrs.P3.getBit(4) ? 1 : 0; //P3.4 is T0
+        else //timer 0 counts cycles
+            howMuch0 = cycles;
+
+        if (CT1) //timer 1 counts events
+            howMuch1 = this.state.sfrs.P3.getBit(5) ? 1 : 0; //P3.5 is T1
+        else //timer 1 counts cycles
+            howMuch1 = cycles;
+
+        if ((!GATE0 || this.state.sfrs.P3.getBit(2)) && TR0) //P3.2 is INT0
+            incrementTimer(this.state.sfrs.TH0, this.state.sfrs.TL0, 5, MODE0, howMuch0); //bit 5 in TCON is TF0
+        if ((!GATE1 || this.state.sfrs.P3.getBit(3)) && TR1) //P3.3 is INT1
+            incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, 7, MODE1, howMuch1); //bit 7 in TCON is TF1
+    }
+
+    private void incrementTimer(ByteRegister high, ByteRegister low, int ovflag, int mode, int howMuch) {
+        switch (mode) {
+            case 0: //13-bit mode
+                final byte oldHigh = high.getValue();
+                byte h = oldHigh;
+                byte l = low.getValue();
+                for (int i = 0; i < howMuch; ++i) {
+                    if (++l > 0x1F) { //only the last 5 bits of the timer are used
+                        l = 0;
+                        ++h;
+                    }
+                }
+                if ((oldHigh & 0xFF) > (h & 0xFF)) this.state.sfrs.TCON.setBit(true, ovflag);
+                high.setValue(h);
+                low.setValue(l);
+                break;
+            case 1: //16-bit mode
+                int timer = high.getValue() << 8 & 0xFF00 | low.getValue() & 0xFF;
+                timer += howMuch;
+                if (timer > 0xFFFF) this.state.sfrs.TCON.setBit(true, ovflag);
+                high.setValue((byte)(timer >>> 8));
+                low.setValue((byte)timer);
+                break;
+            case 2: //8-bit mode
+                int timerLow = (low.getValue() & 0xFF) + howMuch;
+                if (timerLow > 0xFF) {
+                    this.state.sfrs.TCON.setBit(true, ovflag);
+                    timerLow = high.getValue();
+                }
+                low.setValue((byte)timerLow);
+                break;
+            case 3: //split mode
+                //TODO: implement split mode
+                throw new UnsupportedOperationException("Split mode is not implemented yet.");
+                //break;
+            default:
+                throw new IllegalStateException("Invalid timer mode: "+mode); //this can basically never happen
+        }
     }
 
     /**
