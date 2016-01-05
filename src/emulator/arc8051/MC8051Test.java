@@ -1068,6 +1068,84 @@ public class MC8051Test {
         testOpcode(DA_A, 0, 1, () -> A.getValue() == (byte)0x50 && !PSW.getBit(7));
     }
 
+    @Test
+    public void testDJNZ() {
+        System.out.println("__________Testing DJNZ...");
+        final byte DJNZ_dir = (byte)0xD5;
+        final byte DJNZ_R0  = (byte)0xD8;
+        final byte DJNZ_R1  = (byte)0xD9;
+        final byte randomGtOne = (byte)(1 + r.nextInt(0xff));
+        final byte directAddr  = (byte)r.nextInt(0x80);
+        final int address = 128 + r.nextInt(0xfff);
+        final byte offset = (byte)r.nextInt(256);
+        ram.set(directAddr, randomGtOne);
+        testOpcode(DJNZ_dir, address, new byte[]{directAddr, offset}, 2, () -> {
+            final int pc = PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF;
+            final int result = address + 3 + offset;
+            return pc == result;
+        });
+        testController.state.R0.setValue((byte)1);
+        testOpcode(DJNZ_R0, address, new byte[]{55}, 2, () -> {
+            final int pc = PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF;
+            return pc == address + 2;
+        });
+        for (int i = 0; i < 7; ++i) {
+            testController.state.getR(i+1).setValue((byte)42);
+            final int fI = i;
+            testOpcode((byte)(DJNZ_R1+i), address, new byte[]{offset}, 2, () -> {
+                final int pc = PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF;
+                final int result = address + 2 + offset;
+                return pc == result && testController.state.getR(fI+1).getValue() == (byte)41;
+            });
+        }
+    }
+
+    @Test
+    public void testXCHD() {
+        System.out.println("__________Testing XCHD...");
+        final byte XCHD_R0 = (byte)0xD6;
+        final byte XCHD_R1 = (byte)0xD7;
+        testController.state.R0.setValue((byte)0x13);
+        ram.set(0x13, (byte)0x13);
+        A.setValue((byte)0xF2);
+        testOpcode(XCHD_R0, 0, 1, () -> A.getValue() == (byte)0xF3 && ram.get(0x13) == (byte)0x12);
+        testController.state.R1.setValue((byte)0x42);
+        ram.set(0x42, (byte)0x42);
+        A.setValue((byte)0xF5);
+        testOpcode(XCHD_R1, 0, 1, () -> A.getValue() == (byte)0xF2 && ram.get(0x42) == (byte)0x45);
+    }
+
+    @Test
+    public void testMOVX() {
+        System.out.println("__________Testing MOVX...");
+        final byte MOVX_A_DPTR = (byte)0xE0;
+        final byte MOVX_A_IND0 = (byte)0xE2;
+        final byte MOVX_A_IND1 = (byte)0xE3;
+        final byte MOVX_DPTR_A = (byte)0xF0;
+        final byte MOVX_IND0_A = (byte)0xF2;
+        final byte MOVX_IND1_A = (byte)0xF3;
+        final ByteRegister DPH = testController.state.sfrs.DPH;
+        final ByteRegister DPL = testController.state.sfrs.DPL;
+        final RAM extRAM       = testController.state.externalRAM;
+        int dptr = r.nextInt(0xFFFF);  DPH.setValue((byte)(dptr >> 8)); DPL.setValue((byte)dptr);
+        extRAM.set(dptr, (byte)42);
+        testOpcode(MOVX_A_DPTR, 0, 2, () -> A.getValue() == (byte)42);
+        testController.state.R0.setValue((byte)dptr);
+        extRAM.set(dptr & 0xFF, (byte)0xAA);
+        testOpcode(MOVX_A_IND0, 0, 2, () -> A.getValue() == (byte)0xAA);
+        testController.state.R1.setValue((byte)dptr);
+        extRAM.set(dptr & 0xFF, (byte)0xBB);
+        testOpcode(MOVX_A_IND1, 0, 2, () -> A.getValue() == (byte)0xBB);
+        A.setValue((byte)0x33);
+        testOpcode(MOVX_DPTR_A, 0, 2, () -> extRAM.get(dptr) == (byte)0x33);
+        testController.state.R0.setValue((byte)dptr);
+        A.setValue((byte)0x88);
+        testOpcode(MOVX_IND0_A, 0, 2, () -> extRAM.get(dptr & 0xFF) == (byte)0x88);
+        testController.state.R1.setValue((byte)dptr);
+        A.setValue((byte)0x88);
+        testOpcode(MOVX_IND1_A, 0, 2, () -> extRAM.get(dptr & 0xFF) == (byte)0x88);
+    }
+
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
         testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
     }
