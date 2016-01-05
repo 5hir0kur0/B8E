@@ -320,21 +320,21 @@ public class MC8051 implements Emulator {
             case (byte)0xD2: retValue = setb(getCodeByte()); break;
             case (byte)0xD3: retValue = setb_c(); break;
             case (byte)0xD4: retValue = da_a(); break;
-            case (byte)0xD5: break;
-            case (byte)0xD6: break;
-            case (byte)0xD7: break;
-            case (byte)0xD8: break;
-            case (byte)0xD9: break;
-            case (byte)0xDA: break;
-            case (byte)0xDB: break;
-            case (byte)0xDC: break;
-            case (byte)0xDD: break;
-            case (byte)0xDE: break;
-            case (byte)0xDF: break;
-            case (byte)0xE0: break;
+            case (byte)0xD5: retValue = djnz(getCodeByte(), getCodeByte()); break;
+            case (byte)0xD6: retValue = xchd_a(getR(0)); break;
+            case (byte)0xD7: retValue = xchd_a(getR(1)); break;
+            case (byte)0xD8: retValue = djnz_r(0, getCodeByte()); break;
+            case (byte)0xD9: retValue = djnz_r(1, getCodeByte()); break;
+            case (byte)0xDA: retValue = djnz_r(2, getCodeByte()); break;
+            case (byte)0xDB: retValue = djnz_r(3, getCodeByte()); break;
+            case (byte)0xDC: retValue = djnz_r(4, getCodeByte()); break;
+            case (byte)0xDD: retValue = djnz_r(5, getCodeByte()); break;
+            case (byte)0xDE: retValue = djnz_r(6, getCodeByte()); break;
+            case (byte)0xDF: retValue = djnz_r(7, getCodeByte()); break;
+            case (byte)0xE0: retValue = movx_a_dptr(); break;
             case (byte)0xE1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xE2: break;
-            case (byte)0xE3: break;
+            case (byte)0xE2: retValue = movx_a_indirect(getR(0)); break;
+            case (byte)0xE3: retValue = movx_a_indirect(getR(1)); break;
             case (byte)0xE4: retValue = clr_a(); break;
             case (byte)0xE5: retValue = mov_a_direct(getCodeByte()); break;
             case (byte)0xE6: retValue = mov_a_indirect(getR(0)); break;
@@ -347,10 +347,10 @@ public class MC8051 implements Emulator {
             case (byte)0xED: retValue = mov_a_immediate(getR(5)); break;
             case (byte)0xEE: retValue = mov_a_immediate(getR(6)); break;
             case (byte)0xEF: retValue = mov_a_immediate(getR(7)); break;
-            case (byte)0xF0: break;
+            case (byte)0xF0: retValue = movx_dptr_a(); break;
             case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xF2: break;
-            case (byte)0xF3: break;
+            case (byte)0xF2: retValue = movx_indirect_a(getR(0)); break;
+            case (byte)0xF3: retValue = movx_indirect_a(getR(1)); break;
             case (byte)0xF4: retValue = cpl_a(); break;
             case (byte)0xF5: retValue = mov_direct_a(getCodeByte()); break;
             case (byte)0xF6: retValue = mov_indirect_immediate(getR(0), this.state.sfrs.A.getValue()); break;
@@ -1587,6 +1587,46 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * <b>MOVX (@Ri, A)</b><br>
+     * @param indirectAddress indirect address in external RAM the value of A is moved to
+     * @return the number of cycles (2)
+     */
+    private int movx_indirect_a(byte indirectAddress) {
+        this.state.externalRAM.set(indirectAddress & 0xFF, this.state.sfrs.A.getValue());
+        return 2;
+    }
+
+    /**
+     * <b>MOVX (@DPTR, A)</b>
+     * @return the number of cycles (2)
+     */
+    private int movx_dptr_a() {
+        final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
+        this.state.externalRAM.set(address, this.state.sfrs.A.getValue());
+        return 2;
+    }
+
+    /**
+     * <b>MOVX (A, @Ri)</b>
+     * @param indirectAddress the indirect address in external RAM to move to A
+     * @return the number of cycles (2)
+     */
+    private int movx_a_indirect(byte indirectAddress) {
+        this.state.sfrs.A.setValue(this.state.externalRAM.get(indirectAddress & 0xFF));
+        return 2;
+    }
+
+    /**
+     * <b>MOVX (A, @DPTR)</b>
+     * @return the number of cycles (2)
+     */
+    private int movx_a_dptr() {
+        final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
+        this.state.sfrs.A.setValue(this.state.externalRAM.get(address));
+        return 2;
+    }
+
+    /**
      * <b>DIV AB</b><br>
      * Divide the A register by the B register and store the result in A and the remainder in B.
      * The carry flag is always cleared.
@@ -1851,6 +1891,46 @@ public class MC8051 implements Emulator {
 
         this.state.sfrs.A.setValue(result);
 
+        return 1;
+    }
+
+    /**
+     * <b>DJNZ (direct, offset)</b><br>
+     * Decrement the byte at the specified direct address and jump to the specified address if it is not {@code 0}.
+     * @param directAddress the direct address to decrement
+     * @param offset the offset to jump by if the byte at {@code directAddress} isn't {@code 0}
+     * @return the number of cycles (2)
+     * @see #dec(byte)
+     * @see #getDirectAddress(byte)
+     */
+    private int djnz(byte directAddress, byte offset) {
+        dec(directAddress);
+        if (getDirectAddress(directAddress) != (byte)0) jumpToOffset(offset);
+        return 2;
+    }
+
+    /**
+     * <b>DJNZ (Rn, offset)</b><br>
+     * Decrement the specified R register and jump by the specified offset it is not {@code 0}.
+     * @param ordinal specifies the R register to use; must be >= 0 and <= 7
+     * @param offset the offset to jump by if the R register isn't {@code 0}
+     * @return the number of cycles (2)
+     */
+    private int djnz_r(int ordinal, byte offset) {
+        return djnz((byte)getRAddress(ordinal), offset);
+    }
+
+    /**
+     * <b>XCHD (A, @Ri)</b><br>
+     * Swap the low-nibble of the accumulator and the indirectly addressed byte.
+     * @param indirectAddress the byte whose low-nibble is swapped with the accumulator's
+     * @return the number of cycles (1)
+     */
+    private int xchd_a(byte indirectAddress) {
+        final byte a = this.state.sfrs.A.getValue();
+        final byte b = this.state.internalRAM.get(indirectAddress & 0xFF);
+        this.state.sfrs.A.setValue((byte)(a & 0xF0 | b & 0xF));
+        this.state.internalRAM.set(indirectAddress & 0xFF, (byte)(b & 0xF0 | a & 0xF));
         return 1;
     }
 }
