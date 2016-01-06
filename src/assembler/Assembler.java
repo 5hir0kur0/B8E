@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents an unit that can assemble (compile) written
+ * Represents a unit that can assemble (compile) written
  * assembly into machine code and hex files.
  *
  * @author Noxgrim
@@ -35,10 +35,10 @@ public class Assembler {
     private Preprocessor preprocessor;
 
 
-    public Assembler(Mnemonic[] mnemonics, Preprocessor preprocessor, Tokenizer tokenizer) {
+    public Assembler(MnemonicProvider provider, Preprocessor preprocessor, Tokenizer tokenizer) {
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be 'null'!");
-        this.preprocessor = Objects.requireNonNull(preprocessor, "Preprocessor cannot be 'null'");
-        this.provider = Objects.requireNonNull(provider, "Mnemonic Provider cannot be 'null'");
+        this.preprocessor = Objects.requireNonNull(preprocessor, "Preprocessor cannot be 'null'!");
+        this.provider = Objects.requireNonNull(provider, "Mnemonic Provider cannot be 'null'!");
     }
     /**
      * Assembles a given input and writes the result in an output.<br>

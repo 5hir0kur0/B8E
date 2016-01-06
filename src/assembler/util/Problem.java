@@ -17,6 +17,7 @@ public class Problem<T> implements Comparable<Problem> {
 
     @Override
     public int compareTo(Problem o) {
+        Objects.requireNonNull(o, "Object to be compared cannot be 'null'.");
         if (type != o.type)
             return type.compareTo(o.type);
         else if (path != null && o.path != null && !path.equals(o.path))
@@ -54,7 +55,8 @@ public class Problem<T> implements Comparable<Problem> {
 
     @Override
     public String toString() {
-        return "Problem ["+(path == null ? "?":path.toString())+":"+(line!=-1?line:"?")+"]: \""+message+" (Caused by: "+cause.toString()+")";
+        return this.getClass().getSimpleName() + " ["+(path == null ? "?":path.toString())+":"+(line!=-1?line:"?")+"]:"+
+                " \""+message+"\" (Caused by: "+cause.toString()+")";
     }
 
     public enum Type {

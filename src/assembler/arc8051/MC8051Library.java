@@ -21,16 +21,16 @@ import java.util.regex.Pattern;
 public class MC8051Library {
 
 
-    public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\D\\w][\\w]*?):");
+    public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\w&&[\\D]][\\w]*?):");
     public static final Pattern ADDRESS_PATTERN         = Pattern.compile("(((0b)|(0\\d)|(0d)|(0x))([0-9a-f]*))|" +
                                                                           "((\\d[0-9a-f]*?)([boqdh])?)");
-    public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*(\\w)\\s");
+    public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*([\\w&&[\\D]]+\\w*?)\\s");
     public static final Pattern COMMENTARY_PATTERN      = Pattern.compile("\\s;(.*)");
     public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#"+ADDRESS_PATTERN.toString());
     public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/"+ADDRESS_PATTERN.toString());
     public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]"+ADDRESS_PATTERN.toString());
-    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([^@\\D]+?[\\w\\s]*?[^:]])");
-    public static final Pattern SYMBOL_INDIRECT_PATTERN = Pattern.compile("@(\\D+[\\w\\s]*?[^:])");
+    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]+?[\\w\\s]*?[^:]])");
+    public static final Pattern SYMBOL_INDIRECT_PATTERN = Pattern.compile("@([\\w&&[\\D]]+?[\\w\\s]*?[^:])");
 
     /** Reserved symbols. Contains "A", "C" and all R-Registers. */
     public static final String[] RESERVED_NAMES = {"A", "C", "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"};
