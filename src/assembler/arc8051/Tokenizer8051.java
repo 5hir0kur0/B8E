@@ -171,7 +171,6 @@ public class Tokenizer8051 implements Tokenizer {
                 }
             }
         } catch (NumberFormatException e) {
-            e.printStackTrace();
             problems.add(new TokenizingProblem("Illegal digits in "+numberSystem+" number.",
                     Problem.Type.ERROR, matcher.group(0)));
         }

@@ -37,7 +37,7 @@ public class AssemblerTest {
     public void setUp() throws Exception {
         prepr = new Preprocessor8051();
         tokenizer = new Tokenizer8051();
-        testAssem = new Assembler(MC8051Library.mnemonics, prepr, tokenizer);
+        testAssem = new Assembler(MC8051Library.PROVIDER, prepr, tokenizer);
         random = new Random();
     }
 
@@ -111,5 +111,11 @@ public class AssemblerTest {
             e.printStackTrace();
             fail("Unexpected Exception.");
         }
+    }
+
+    @Test
+    public void testTokenizer_tokenize() {
+        HashMap<String, String> map = new HashMap<>();
+
     }
 }
