@@ -30,6 +30,8 @@ public class MC8051 implements Emulator {
 
     State8051 state;
     private final boolean ignoreSOSU; //ignore stack overflow/underflow
+    private byte TMOD_OLD; //used by updateTimers() to keep track of the previous state TMOD when in mode 3
+    private boolean TR1_OLD; //used by updateTimers() to keep track of the previous state of TR1 when in mode 3
 
 
     /**
@@ -480,6 +482,13 @@ public class MC8051 implements Emulator {
         return rRegisters;
     }
 
+    /**
+     * Update the values of the SFR TH0, TL0, TH1, TL1.
+     * NOTE: The implementation of split mode is a bit ugly and untested, so I'm not sure if it works...
+     * 13-bit mode is also untested.
+     * Those modes are basically deprecated and not used most of the time.
+     * @param cycles the number of cycles (used when the timers are used as "timers" [as opposed to "counters"])
+     */
     private void updateTimers(int cycles) {
         if (cycles < 0) cycles = 1;
         //TMOD bits
@@ -493,31 +502,72 @@ public class MC8051 implements Emulator {
         //final boolean T0M1  = (tmod & 0x02) != 0;
         //final boolean T0M0  = (tmod & 0x01) != 0;
         final int MODE0     =  tmod & 0x03;
-        final int MODE1     =  tmod & 0x30;
+        final int MODE1     =  (tmod & 0x30) >> 4 ;
         //TCON flags
         final boolean TR1   = this.state.sfrs.TCON.getBit(6);
         final boolean TR0   = this.state.sfrs.TCON.getBit(4);
 
         final int howMuch0;
         final int howMuch1;
+        if (MODE0 != 3) {
+            if (MODE1 == 3) throw new IllegalStateException("Timer 1 cannot be put in mode 3 when timer 0 isn't");
+            this.TMOD_OLD = tmod;
+            this.TR1_OLD = TR1;
+            if (CT0) //timer 0 counts events
+                howMuch0 = this.state.sfrs.P3.getBit(4) ? 1 : 0; //P3.4 is T0
+            else //timer 0 counts cycles
+                howMuch0 = cycles;
 
-        if (CT0) //timer 0 counts events
-            howMuch0 = this.state.sfrs.P3.getBit(4) ? 1 : 0; //P3.4 is T0
-        else //timer 0 counts cycles
-            howMuch0 = cycles;
+            if (CT1) //timer 1 counts events
+                howMuch1 = this.state.sfrs.P3.getBit(5) ? 1 : 0; //P3.5 is T1
+            else //timer 1 counts cycles
+                howMuch1 = cycles;
 
-        if (CT1) //timer 1 counts events
-            howMuch1 = this.state.sfrs.P3.getBit(5) ? 1 : 0; //P3.5 is T1
-        else //timer 1 counts cycles
-            howMuch1 = cycles;
+            if ((!GATE0 || this.state.sfrs.P3.getBit(2)) && TR0) //P3.2 is INT0
+                incrementTimer(this.state.sfrs.TH0, this.state.sfrs.TL0, 5, MODE0, howMuch0); //bit 5 in TCON is TF0
+            if ((!GATE1 || this.state.sfrs.P3.getBit(3)) && TR1) //P3.3 is INT1
+                incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, 7, MODE1, howMuch1); //bit 7 in TCON is TF1
+        } else { //mode 3 (split mode)
+            if (MODE1 != 3) throw new IllegalStateException("When timer 0 is in mode 3, timer 1 must be too");
+            final boolean GATE1_OLD = (this.TMOD_OLD & 0x80) != 0;
+            final boolean CT1_OLD   = (this.TMOD_OLD & 0x40) != 0;
+            final int MODE1_OLD     = (this.TMOD_OLD & 0x30) >> 4;
+            if (CT1_OLD)
+                throw new IllegalStateException("Timer 1 cannot count events when timer 0 is in mode 3");
+            if (GATE1_OLD)
+                throw new IllegalStateException("Timer 1 cannot be used with GATE when timer 0 is in mode 3");
+            if (this.TR1_OLD)
+                //-1 is given, because timer 1 does not have an OV flag when timer 0 is in mode 3
+                incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, -1, MODE1_OLD, cycles);
 
-        if ((!GATE0 || this.state.sfrs.P3.getBit(2)) && TR0) //P3.2 is INT0
-            incrementTimer(this.state.sfrs.TH0, this.state.sfrs.TL0, 5, MODE0, howMuch0); //bit 5 in TCON is TF0
-        if ((!GATE1 || this.state.sfrs.P3.getBit(3)) && TR1) //P3.3 is INT1
-            incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, 7, MODE1, howMuch1); //bit 7 in TCON is TF1
+            if (CT0) //timer 0 (low) counts events
+                howMuch0 = this.state.sfrs.P3.getBit(4) ? 1 : 0; //P3.4 is T0
+            else //timer 0 (low) counts cycles
+                howMuch0 = cycles;
+
+            if (CT1) //timer 1 (high) counts events
+                howMuch1 = this.state.sfrs.P3.getBit(5) ? 1 : 0; //P3.5 is T1
+            else //timer 1 (high) counts cycles
+                howMuch1 = cycles;
+
+            if ((!GATE0 || this.state.sfrs.P3.getBit(2)) && TR0) //P3.2 is INT0
+                incrementTimer(null, this.state.sfrs.TL0, 5, MODE0, howMuch0); //bit 5 in TCON is TF0
+            if ((!GATE1 || this.state.sfrs.P3.getBit(3)) && TR1) //P3.3 is INT1
+                incrementTimer(this.state.sfrs.TH1, null, 7, MODE1, howMuch1); //bit 7 in TCON is TF1
+        }
     }
 
+    /**
+     * Increment a timer register.
+     * @param high the register's high byte (should be {@code null} for mode 3 when low is not {@code null})
+     * @param low the registers's low byte (should be {@code null} for mode 3 when high is not {@code null})
+     * @param ovflag the timer's overflow flag; must either be < 0 (when the timer has no overflow flag [this cannot
+     *               happen in mode 3]) or >= 0 and <= 7
+     * @param mode the timer mode; must be >= 0 and <= 3
+     * @param howMuch specifies by how much the timer should be incremented; must be > 0
+     */
     private void incrementTimer(ByteRegister high, ByteRegister low, int ovflag, int mode, int howMuch) {
+        if (howMuch < 1) throw new IllegalArgumentException("Invalid timer increment value: "+howMuch);
         switch (mode) {
             case 0: //13-bit mode
                 final byte oldHigh = high.getValue();
@@ -529,29 +579,34 @@ public class MC8051 implements Emulator {
                         ++h;
                     }
                 }
-                if ((oldHigh & 0xFF) > (h & 0xFF)) this.state.sfrs.TCON.setBit(true, ovflag);
+                if ((oldHigh & 0xFF) > (h & 0xFF) && ovflag > -1) this.state.sfrs.TCON.setBit(true, ovflag);
                 high.setValue(h);
                 low.setValue(l);
                 break;
             case 1: //16-bit mode
                 int timer = high.getValue() << 8 & 0xFF00 | low.getValue() & 0xFF;
                 timer += howMuch;
-                if (timer > 0xFFFF) this.state.sfrs.TCON.setBit(true, ovflag);
+                if (timer > 0xFFFF && ovflag > -1) this.state.sfrs.TCON.setBit(true, ovflag);
                 high.setValue((byte)(timer >>> 8));
                 low.setValue((byte)timer);
                 break;
             case 2: //8-bit mode
                 int timerLow = (low.getValue() & 0xFF) + howMuch;
                 if (timerLow > 0xFF) {
-                    this.state.sfrs.TCON.setBit(true, ovflag);
+                    if (ovflag > -1) this.state.sfrs.TCON.setBit(true, ovflag);
                     timerLow = high.getValue();
                 }
                 low.setValue((byte)timerLow);
                 break;
             case 3: //split mode
-                //TODO: implement split mode
-                throw new UnsupportedOperationException("Split mode is not implemented yet.");
-                //break;
+                ByteRegister tmp = low;
+                if (null == tmp) tmp = high;
+                int newVal = (tmp.getValue() & 0xFF) + howMuch;
+                if (newVal > 0xFF) {
+                    this.state.sfrs.TCON.setBit(true, ovflag);
+                }
+                tmp.setValue((byte)newVal);
+                break;
             default:
                 throw new IllegalStateException("Invalid timer mode: "+mode); //this can basically never happen
         }
@@ -2009,5 +2064,12 @@ public class MC8051 implements Emulator {
         this.state.sfrs.A.setValue((byte)(a & 0xF0 | b & 0xF));
         this.state.internalRAM.set(indirectAddress & 0xFF, (byte)(b & 0xF0 | a & 0xF));
         return 1;
+    }
+
+    @Override
+    public String toString() {
+        final int pc = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
+        return "MC8051[A="+(this.state.sfrs.A.getValue() & 0xFF)+"; PC="+pc+"; SP="
+                +(this.state.sfrs.SP.getValue() & 0xFF)+"; PSW="+this.state.sfrs.PSW.getBinaryDisplayValue()+"]";
     }
 }
