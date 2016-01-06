@@ -244,13 +244,12 @@ public class MC8051Test {
     public void testParity() {
         final byte[] testA = {0b01110000, 0b01111111, 0b00101010, (byte)0b11111111, 0b00000000, 0b00000001};
         final boolean [] results = {true, true,       true,        false,           false,      true};
-        final byte MOV_A = 0x74;
+        assertTrue(!testController.state.sfrs.PSW.getBit(0));
         for (int i = 0; i < testA.length; ++i) {
             final boolean desiredRes = results[i];
-            //TODO uncomment when MOV is implemented
-            //testOpcode(MOV_A, 0, new byte[]{testA[i]}, 1, () -> testController.state.sfrs.PSW.getBit(0) == desiredRes);
+            A.setValue(testA[i]);
+            testOpcode((byte)0, 0, 1, () -> PSW.getBit(0) == desiredRes);
         }
-        assertTrue(!testController.state.sfrs.PSW.getBit(0));
     }
 
     @Test
@@ -1144,6 +1143,44 @@ public class MC8051Test {
         testController.state.R1.setValue((byte)dptr);
         A.setValue((byte)0x88);
         testOpcode(MOVX_IND1_A, 0, 2, () -> extRAM.get(dptr & 0xFF) == (byte)0x88);
+    }
+
+    @Test
+    public void testTimers() {
+        //TODO: Add tests for mode 0 and 3 (maybe) and test event counting
+        System.out.println("__________Testing Timers....");
+        final byte TMOD = 0x11; //both timers should counts cycles as 16-bit counters
+        testController.state.sfrs.TMOD.setValue(TMOD);
+        //set TR1 and TR0
+        testController.state.sfrs.TCON.setBit(true, 6);
+        testController.state.sfrs.TCON.setBit(true, 4);
+        final int num = r.nextInt(0xff)+12;
+        for (int i = 0; i < num; ++i) {
+            testController.next();
+        }
+        final int timer1_16 = testController.state.sfrs.TH0.getValue() << 8 & 0xFF00
+                | testController.state.sfrs.TL0.getValue() & 0xFF;
+        final int timer2_16 = testController.state.sfrs.TH1.getValue() << 8 & 0xFF00
+                | testController.state.sfrs.TL1.getValue() & 0xFF;
+        assertTrue(timer1_16 == num && timer2_16 == num);
+        final byte TMOD2 = 0x22; //both timers should be 8-bit auto-reload timer and count cycles
+        testController.state.sfrs.TMOD.setValue(TMOD2);
+        testController.state.sfrs.TL0.setValue((byte)0);
+        testController.state.sfrs.TL1.setValue((byte)0);
+        testController.state.sfrs.TH0.setValue((byte)0x42);
+        testController.state.sfrs.TH1.setValue((byte)0x2A);
+        //set TR1 and TR0
+        testController.state.sfrs.TCON.setBit(true, 6);
+        testController.state.sfrs.TCON.setBit(true, 4);
+        for (int i = 0; i < 256; ++i) {
+            testController.next();
+        }
+        assertTrue(testController.state.sfrs.TH0.getValue() == (byte)0x42
+                && testController.state.sfrs.TL0.getValue() == (byte)0x42
+                && testController.state.sfrs.TCON.getBit(5)); // bit 5 is TF0
+        assertTrue(testController.state.sfrs.TH1.getValue() == (byte)0x2A
+                && testController.state.sfrs.TL1.getValue() == (byte)0x2A
+                && testController.state.sfrs.TCON.getBit(7)); // bit 7 is TF1
     }
 
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
