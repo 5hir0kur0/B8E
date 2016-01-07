@@ -1,6 +1,7 @@
 package assembler.util;
 
 import assembler.Mnemonic;
+import assembler.OperandToken;
 
 import java.util.List;
 
@@ -27,4 +28,6 @@ public interface MnemonicProvider {
      * Clears the Problem List.
      */
     void clearProblems();
+
+    OperandToken createNewJumpOperand(long address);
 }

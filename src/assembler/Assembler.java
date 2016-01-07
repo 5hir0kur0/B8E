@@ -85,17 +85,15 @@ public class Assembler {
 
         List<LabelToken> labels = new ArrayList<>();
         List<Unresolved> unres  = new ArrayList<>();
+        List<Watched> watched   = new ArrayList<>();
         long codePoint = 0;
 
         for (int index = 0; index < tokens.size(); ++index) {
             Token t = tokens.get(index);
+            final int startIndex = index;
 
             switch (t.getType()) {
                 case MNEMONIC_NAME: {
-                    ArrayList<OperandToken> operands = new ArrayList<>();
-
-                    while (index+1 < tokens.size() && tokens.get(index+1).getType() == Token.TokenType.OPERAND)
-                        operands.add((OperandToken)tokens.get(++index));
                     Mnemonic m = Arrays.stream(provider.getMnemonics()).filter((x) -> x.getName().equals(t.getValue()))
                             .findFirst().orElse(null);
 
@@ -104,13 +102,58 @@ public class Assembler {
                         continue;
                     }
 
+                    ArrayList<Token> operands = new ArrayList<>();
+
+                    while (index+1 < tokens.size() &&
+                            (tokens.get(index+1).getType() == Token.TokenType.OPERAND ||
+                             tokens.get(index+1).getType() == Token.TokenType.SYMBOL))
+                        operands.add(tokens.get(++index));
+
+                    if (operands.size() < m.getMinimumOperands()) {
+                        problems.add(new TokenProblem("Mnemonic must have at least " + m.getMinimumOperands() +
+                                " operands!", Problem.Type.ERROR, t));
+                        continue;
+                    }
+
+                    int length = 0;
+
+                    if (m instanceof LabelConsumer) {
+                        outer:
+                        for (int i = 0; i < operands.size(); i++) {
+                            if (operands.get(i) instanceof Tokens.SymbolToken) {
+                                Tokens.SymbolToken st = (Tokens.SymbolToken) operands.get(i);
+                                for (LabelToken lt : labels)
+                                    // Replace Symbol token with actual address if label is already stored
+                                    if (lt.getValue().equalsIgnoreCase(st.getValue())) {
+                                        operands.set(i, provider.createNewJumpOperand(lt.getCodePoint()));
+                                        continue outer;
+                                    }
+                                // Some labels are not resolved.
+                                length =((LabelConsumer) t).getLength(codePoint,
+                                        (OperandToken[]) operands.stream().toArray());
+                                unres.add(new Unresolved(codePoint, length, startIndex, st.getValue()));
+                                for (int j = length; j > 0; --j)
+                                    result.add((byte)0);
+                            }
+                        }
+                    }
+
+                    // TODO: Check for position dependent mnemonics
+                    // TODO: Check for minimal operands
+
                     byte[] codes = m.getInstructionFromOperands(codePoint, (Tokens.MnemonicNameToken) t,
                             (OperandToken[]) operands.stream().toArray());
 
-                    int lenght = codes.length;
+
+                    length = codes.length != 0 ? codes.length : length;
+
+                    if (m.isPositionSensitive())
+                        watched.add(new Watched(codePoint, length, startIndex));
 
                     for (byte b : codes)
                         result.add(b);
+                    updateUnresolved(labels, unres, result);
+                    codePoint+= length;
 
                     break;
                 }
@@ -136,21 +179,39 @@ public class Assembler {
         return problems;
     }
 
-    private boolean updateUnresolved(List<LabelToken> labels, List<Unresolved> unres, List<Byte> output) {
+    private boolean updateUnresolved(List<LabelToken> labels, List<Unresolved> unres, List<Byte> result) {
+        boolean ret = false;
+        for (Unresolved u : unres) {
+            LabelToken lt = labels.stream().filter(x -> x.getValue().equalsIgnoreCase(u.label)).findFirst().orElse(null);
+            if (lt != null) {
 
+            }
+        }
+        return ret;
+    }
+
+    private boolean updateWatched() {
         return false;
     }
 
-    private static class Unresolved {
+    private static class Unresolved extends Watched{
+        String label;
+
+        public Unresolved(long codePoint, int length, int tokensPos, String label) {
+            super(codePoint, length, tokensPos);
+            this.label = label;
+        }
+    }
+
+    private static class Watched {
         long codePoint;
         int length;
+        int tokensPos;
 
-        String wantedLabel;
-
-        public Unresolved(long codePoint, int length, String wantedLabel) {
+        public Watched(long codePoint, int length, int tokensPos) {
             this.codePoint = codePoint;
             this.length = length;
-            this.wantedLabel = wantedLabel;
+            this.tokensPos = tokensPos;
         }
     }
 }
