@@ -3,15 +3,17 @@ package assembler;
 import assembler.util.ExceptionProblem;
 import assembler.util.MnemonicProvider;
 import assembler.util.Problem;
-import sun.plugin2.jvm.CircularByteBuffer;
+import assembler.util.TokenProblem;
+import com.sun.corba.se.impl.io.TypeMismatchException;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Represents a unit that can assemble (compile) written
@@ -79,10 +81,76 @@ public class Assembler {
     private List<Problem> _assemble(List<Token> tokens, BufferedWriter output) {
         List<Problem> problems = new ArrayList<>();
         provider.clearProblems();
+        List<Byte> result = new ArrayList<>(tokens.size());
 
-        List<LabelToken> labels;
-        long codePoint;
+        List<LabelToken> labels = new ArrayList<>();
+        List<Unresolved> unres  = new ArrayList<>();
+        long codePoint = 0;
+
+        for (int index = 0; index < tokens.size(); ++index) {
+            Token t = tokens.get(index);
+
+            switch (t.getType()) {
+                case MNEMONIC_NAME: {
+                    ArrayList<OperandToken> operands = new ArrayList<>();
+
+                    while (index+1 < tokens.size() && tokens.get(index+1).getType() == Token.TokenType.OPERAND)
+                        operands.add((OperandToken)tokens.get(++index));
+                    Mnemonic m = Arrays.stream(provider.getMnemonics()).filter((x) -> x.getName().equals(t.getValue()))
+                            .findFirst().orElse(null);
+
+                    if (m == null) {
+                        problems.add(new TokenProblem("Unknown Mnemonic!", Problem.Type.ERROR, t));
+                        continue;
+                    }
+
+                    byte[] codes = m.getInstructionFromOperands(codePoint, (Tokens.MnemonicNameToken) t,
+                            (OperandToken[]) operands.stream().toArray());
+
+                    int lenght = codes.length;
+
+                    for (byte b : codes)
+                        result.add(b);
+
+                    break;
+                }
+                case OPERAND:
+                    break;
+                case LABEL: {
+                    if (!(t instanceof LabelToken))
+                        throw new TypeMismatchException("Token is of Type is 'Label' but Token itself " +
+                                "isn't a LabelToken!");
+                    LabelToken lt = (LabelToken) t;
+                    lt.setCodePoint(codePoint);
+                    labels.add(lt);
+                    updateUnresolved(labels, unres, result);
+                    break;
+                }
+                case SYMBOL:
+                    break;
+                case COMMENT:
+                    break;
+            }
+        }
 
         return problems;
+    }
+
+    private boolean updateUnresolved(List<LabelToken> labels, List<Unresolved> unres, List<Byte> output) {
+
+        return false;
+    }
+
+    private static class Unresolved {
+        long codePoint;
+        int length;
+
+        String wantedLabel;
+
+        public Unresolved(long codePoint, int length, String wantedLabel) {
+            this.codePoint = codePoint;
+            this.length = length;
+            this.wantedLabel = wantedLabel;
+        }
     }
 }

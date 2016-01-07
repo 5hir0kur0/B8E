@@ -1006,7 +1006,7 @@ public class MC8051Library {
             long jump = Long.parseLong(operands[0].getValue());
 
             if (operands[0].getOperandType() == OperandType8051.ADDRESS_OFFSET) {
-                jump = getFromOffset(codePoint, jump, 0);
+                jump = getFromOffset(codePoint, jump, 0, operands[0]);
             }
 
             if ((jump >>> 11L // Shift 11 right to clear changing bits
@@ -1448,7 +1448,7 @@ public class MC8051Library {
             long jump = Integer.parseInt(operands[0].getValue());
 
             if (type == OperandType8051.ADDRESS_OFFSET)
-                jump = getFromOffset(codePoint, jump, 3);
+                jump = getFromOffset(codePoint, jump, 3, operands[0]);
 
             result = new byte[] { opc1,
                                  (byte)(jump >>> 8 & 0xffL),// Shift 8 to the right get the high byte and clear the rest
@@ -1566,18 +1566,21 @@ public class MC8051Library {
      * @param offset
      *      the offset from the <code>codePoint</code> to the code offset source.
      *      Can only be positive.
+     * @param op the involved operand.
      * @return
      *      the calculated target code point from the <code>codePoint</code> and the <code>offset</code>.
      */
-    private static long getFromOffset(long codePoint, long codeOffset, int offset) {
+    private static long getFromOffset(long codePoint, long codeOffset, int offset, OperandToken8051 op) {
         if (offset < 0)
             throw new IllegalArgumentException("Offset 'offset' cannot be negative!");
         long result =  codePoint+offset + codeOffset;
 
         if (result >= 0 && result <= 0xffffL)
             return result;
-        else
-            throw new IllegalArgumentException("Address is out of range! ('" + result + "')");
+        else {
+            problems.add(new TokenProblem("Resulting address out of bounds. (" + result + ")", Type.ERROR, op));
+            return offset;
+        }
     }
 
     /**

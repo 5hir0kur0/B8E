@@ -74,26 +74,26 @@ public class Tokenizer8051 implements Tokenizer {
         Matcher m;
         if ((m = MC8051Library.CONSTANT_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null) {
+            if (val != null && testBoulds(0, 0xFFFF, Integer.parseInt(val), "constant", problems, m.group(0))) {
                 add.add(new OperandToken8051(MC8051Library.OperandType8051.CONSTANT, val));
                 return true;
             }
         } else if ((m = MC8051Library.ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null) {
+            if (val != null && testBoulds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
                 add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, val));
                 return true;
             }
         } else if ((m = MC8051Library.NEGATED_ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null) {
+            if (val != null && testBoulds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
                 add.add(new OperandToken8051(MC8051Library.OperandType8051.NEGATED_ADDRESS, val));
                 return true;
             }
 
         } else if ((m = MC8051Library.ADDRESS_OFFSET_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null) {
+            if (val != null && testBoulds(0, 0xFFFF, Integer.parseInt(val), "relative offset", problems, m.group(0))) {
                 add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET, val));
                 return true;
             }
@@ -175,5 +175,19 @@ public class Tokenizer8051 implements Tokenizer {
                     Problem.Type.ERROR, matcher.group(0)));
         }
         return result;
+    }
+
+    private boolean testBoulds(final int min, final int max, final int value,
+                               final String type, List<Problem> problems, String cause) {
+        if (value < min) {
+            problems.add(new TokenizingProblem("Value of " + type + " to small! (Minimal value: " + min + ")",
+                    Problem.Type.ERROR, cause));
+            return false;
+        } else if (value > max) {
+            problems.add(new TokenizingProblem("Value of " + type + " to big! (Maximal value: " + max + ")",
+                    Problem.Type.ERROR, cause));
+            return false;
+        } else
+            return true;
     }
 }
