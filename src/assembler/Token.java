@@ -54,4 +54,9 @@ public class Token implements Comparable<Token> {
         MNEMONIC_NAME, OPERAND, LABEL, SYMBOL, COMMENT
     }
 
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()+"["+type.toString()+", "+value+"]";
+    }
 }
