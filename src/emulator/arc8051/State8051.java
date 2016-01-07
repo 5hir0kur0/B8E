@@ -26,6 +26,15 @@ public class State8051 {
         private enum PSWFlags {
             P, UD, OV, RS0, RS1, F0, AC, C;
         }
+
+        private enum IEFlags {
+            EX0, ET0, EX1, ET1, ES, UD0, UD1, EA;
+        }
+
+        private enum IPFlags {
+            PX0, PT0, PX1, PT1, PS, UD0, UD1, UD3;
+        }
+
         //TODO add flag names for other flag registers
 
         private HashMap<Byte, ByteRegister> specialFunctionRegisters;
@@ -35,12 +44,22 @@ public class State8051 {
         final ByteFlagRegister PSW = new ByteFlagRegister("PSW") {
             @Override
             public Enum[] getFlags() {
-                return SpecialFunctionRegisters.PSWFlags.values();
+                return PSWFlags.values();
             }
         };
-        final BitAddressableByteRegister IP = new BitAddressableByteRegister("IP");
+        final ByteFlagRegister IP = new ByteFlagRegister("IP") {
+            @Override
+            public Enum[] getFlags() {
+                return IPFlags.values();
+            }
+        };
         final BitAddressableByteRegister P3 = new BitAddressableByteRegister("P3");
-        final BitAddressableByteRegister IE = new BitAddressableByteRegister("IE");
+        final ByteFlagRegister IE = new ByteFlagRegister("IE") {
+            @Override
+            public Enum[] getFlags() {
+                return IEFlags.values();
+            }
+        };
         final BitAddressableByteRegister P2 = new BitAddressableByteRegister("P2");
         final BitAddressableByteRegister SCON = new BitAddressableByteRegister("SCON");
         final ByteRegister SBUF = new ByteRegister("SBUF");
