@@ -613,6 +613,48 @@ public class MC8051 implements Emulator {
     }
 
     /**
+     * This method is called after every instruction and evaluates whether an interrupt should occur.
+     * The order in which interrupts are evaluated is the following:<br>
+     * <ol>
+     *     <li>External 0 Interrupt</li>
+     *     <li>Timer 0 Interrupt</li>
+     *     <li>External 1 Interrupt</li>
+     *     <li>Timer 1 Interrupt</li>
+     *     <li>Serial Interrupt</li>
+     * </ol>
+     * <br>
+     * More info at: <a href="http://8052.com/tutint.phtml">http://8052.com/tutint.phtml</a>
+     * NOTE: This method is unfinished.
+     */
+    private void handleInterrupts() {
+        final boolean EA = this.state.sfrs.IE.getBit(7); //global interrupt enable/disable
+        if (!EA) return; //if interrupts are disables, there is nothing to do
+        final boolean ES  = this.state.sfrs.IE.getBit(4); //enable serial interrupt
+        final boolean ET1 = this.state.sfrs.IE.getBit(3); //enable timer 1 interrupt
+        final boolean EX1 = this.state.sfrs.IE.getBit(2); //enable external 1 interrupt
+        final boolean ET0 = this.state.sfrs.IE.getBit(1); //enable timer 0 interrupt
+        final boolean EX0 = this.state.sfrs.IE.getBit(0); //enable external 0 interrupt
+
+        //TODO: Finish this method and handle interrupts properly
+
+        //if (EX0) ;
+        //if (ET0) ;
+        //if (EX1) ;
+        //if (ET1) ;
+        //if (ES) ;
+    }
+
+    /**
+     * Jump to a specifig interrupt.
+     * NOTE: This method is unfinished.
+     * @param newPC the new value of the program counter
+     */
+    private void interruptJump(char newPC) {
+        //TODO: Set flags indicating that the emulator is executing an interrupt
+        lcall((byte)(newPC >> 8), (byte)newPC);
+    }
+
+    /**
      * Get the value of an address from internal RAM (or the SFR area)
      * @param address the address to be used
      * @return the byte at this address
