@@ -183,7 +183,7 @@ public class MC8051Library {
                     return absoluteCodeJump(0x11, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 2;}
+                public int getMaxLength() {return 2;}
             },
 
             new Mnemonic8051("add", 1) {
@@ -209,7 +209,7 @@ public class MC8051Library {
                     return absoluteCodeJump(0x01, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 2;}
+                public int getMaxLength() {return 2;}
             },
 
             new Mnemonic8051("anl", 1) {
@@ -265,7 +265,7 @@ public class MC8051Library {
                     return result;
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051("clr", 1) {
@@ -310,17 +310,6 @@ public class MC8051Library {
 
             new Mnemonic8051LabelConsumer("djnz", 2, true) {
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {
-                    int ret = 3;
-                    OperandToken op1 = operands[0], op2 = operands[1];
-                    if (op1 instanceof OperandToken8051 || op2 instanceof OperandToken8051)
-                        if (((OperandToken8051) op1).getOperandType() == OperandType8051.NAME
-                                && op1.getValue().startsWith("r")
-                                && ((OperandToken8051)op2).getOperandType() == OperandType8051.ADDRESS)
-                            ret = 2;
-                    return ret;
-                }
-                @Override
                 public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name,
                                                          OperandToken8051 ... operands) {
                     byte[] result = new byte[0];
@@ -353,6 +342,19 @@ public class MC8051Library {
 
                     return result;
                 }
+                @Override
+                public int getMaxLength() {return 3;}
+                @Override
+                public int getSpecificLength(long codePoint, OperandToken... operands) {
+                    int ret = getMaxLength();
+                    OperandToken op1 = operands[0], op2 = operands[1];
+                    if (op1 instanceof OperandToken8051 || op2 instanceof OperandToken8051)
+                        if (((OperandToken8051) op1).getOperandType() == OperandType8051.NAME
+                                && op1.getValue().startsWith("r")
+                                && ((OperandToken8051)op2).getOperandType() == OperandType8051.ADDRESS)
+                            ret = 2;
+                    return ret;
+                }
             },
 
             new Mnemonic8051("inc", 1) {
@@ -374,7 +376,7 @@ public class MC8051Library {
                     return jumpBitRelevant((byte) 0x20, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051LabelConsumer("jbc", 2, true) {
@@ -384,7 +386,7 @@ public class MC8051Library {
                     return jumpBitRelevant((byte) 0x10, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051LabelConsumer("jc", 1, true) {
@@ -394,7 +396,7 @@ public class MC8051Library {
                     return jumpNameRelevant((byte) 0x40, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 2;}
+                public int getMaxLength() {return 2;}
             },
 
             new Mnemonic8051("jmp", 1, false) { // TODO add substitution support
@@ -426,7 +428,7 @@ public class MC8051Library {
                     return jumpBitRelevant((byte) 0x30, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051LabelConsumer("jnc", 1, true) {
@@ -436,7 +438,7 @@ public class MC8051Library {
                     return jumpNameRelevant((byte) 0x50, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 2;}
+                public int getMaxLength() {return 2;}
             },
 
             new Mnemonic8051LabelConsumer("jnz", 1, true) {
@@ -446,7 +448,7 @@ public class MC8051Library {
                     return jumpNameRelevant((byte) 0x70, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 2;}
+                public int getMaxLength() {return 2;}
             },
 
             new Mnemonic8051LabelConsumer("jz", 1, true) {
@@ -456,7 +458,7 @@ public class MC8051Library {
                     return jumpNameRelevant((byte) 0x60, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 1;}
+                public int getMaxLength() {return 1;}
             },
 
             new Mnemonic8051LabelConsumer("lcall", 1, true) {
@@ -466,7 +468,7 @@ public class MC8051Library {
                     return longJump((byte) 0x12, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051LabelConsumer("ljmp", 1, true) {
@@ -476,7 +478,7 @@ public class MC8051Library {
                     return longJump((byte) 0x02, this, codePoint, operands);
                 }
                 @Override
-                public int getLength(long codePoint, OperandToken... operands) {return 3;}
+                public int getMaxLength() {return 3;}
             },
 
             new Mnemonic8051("mov", 2) {
