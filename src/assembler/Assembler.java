@@ -6,11 +6,7 @@ import assembler.util.Problem;
 import assembler.util.TokenProblem;
 import com.sun.corba.se.impl.io.TypeMismatchException;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -69,7 +65,7 @@ public class Assembler {
 
                 List<Token> tokens = tokenizer.tokenize(tokenInput, problems);
                 List<Byte> codes = new ArrayList<>();
-                problems.addAll(_assemble(tokens, codes));
+                problems.addAll(_assemble(path, tokens, codes));
 
                 for (byte b : codes)
                     output.write((char) b);
@@ -82,7 +78,7 @@ public class Assembler {
         return problems;
     }
 
-    private List<Problem> _assemble(List<Token> tokens, List<Byte> output) {
+    private List<Problem> _assemble(Path path, List<Token> tokens, List<Byte> output) {
         List<Problem> problems = new ArrayList<>();
         provider.clearProblems();
         List<Assembled> assembled = new ArrayList<>();
@@ -174,6 +170,14 @@ public class Assembler {
 
         resolveLabelConsuming(assembled, labels);
         output.addAll(link(assembled));
+
+        try (HexWriter hex = new HexWriter(Files.newBufferedWriter(path.resolveSibling(path.getFileName()+".hex")))) {
+            hex.writeAll(assembled);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
 
         return problems;
     }
