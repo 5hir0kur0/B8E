@@ -26,8 +26,6 @@ public class Assembled {
     /** The mnemonic used for this Assembled for quicker access. */
     private Mnemonic mnemonic;
 
-    /** The next Assembled in the List. */
-    private Assembled next;
 
     /**
      * Constructs a new Assembled object that is produced by the assembler.
@@ -40,7 +38,7 @@ public class Assembled {
      *      The mnemonic used for assembling.
      */
     public Assembled(long codePoint, List<Token> tokens, Mnemonic mnemonic) {
-        this(false, mnemonic.isPositionSensitive(), tokens, codePoint, null, 0, mnemonic, null);
+        this(false, mnemonic.isPositionSensitive(), tokens, codePoint, null, 0, mnemonic);
     }
     /**
      * Constructs a new Assembled object that is produced by the assembler.
@@ -63,11 +61,9 @@ public class Assembled {
      *      The reserved length. Can differ from the length of the produced codes.
      * @param mnemonic
      *      The mnemonic used for assembling.
-     * @param next
-     *      The next Assembled in the List.
      */
     public Assembled(boolean unresolved, boolean positionSensitive, List<Token> tokens, long codePoint, byte[] codes,
-                     int length, Mnemonic mnemonic, Assembled next) {
+                     int length, Mnemonic mnemonic) {
         this.unresolved = unresolved;
         this.positionSensitive = positionSensitive;
         this.tokens = Objects.requireNonNull(tokens, "Tokens cannot be null!");
@@ -75,7 +71,6 @@ public class Assembled {
         this.codes = codes;
         this.length = length;
         this.mnemonic = Objects.requireNonNull(mnemonic, "Mnemonic cannot be null!");
-        this.next = next;
     }
 
     public boolean isUnresolved() {
@@ -139,13 +134,5 @@ public class Assembled {
 
     public void setMnemonic(Mnemonic mnemonic) {
         this.mnemonic = mnemonic;
-    }
-
-    public Assembled getNext() {
-        return next;
-    }
-
-    public void setNext(Assembled next) {
-        this.next = next;
     }
 }
