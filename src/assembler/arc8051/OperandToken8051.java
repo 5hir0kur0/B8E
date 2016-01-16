@@ -11,13 +11,11 @@ public class OperandToken8051 extends OperandToken {
      * Constructs a new OperandToken.
      *
      * @param type  the operandType of the OperandToken.<br>
-     *              To remember the operandType better its value should be
-     *              saved in a named final variable or an enum's ordinal
-     *              and it should be used instead.<br>
-     * @param value
+     * @param value the value of the token as a string.
+     * @param line the line of the token.
      */
-    public OperandToken8051(OperandType8051 type, String value) {
-        super(type, value);
+    public OperandToken8051(OperandType8051 type, String value, int line) {
+        super(type, value, line);
     }
 
     @Override

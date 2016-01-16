@@ -23,7 +23,7 @@ public class Problem<T> implements Comparable<Problem> {
         else if (path != null && o.path != null && !path.equals(o.path))
             return path.compareTo(o.path);
         else if (line != o.line)
-            return o.line - line;
+            return line - o.line;
         else
             return message.compareTo(o.message);
     }
@@ -55,8 +55,8 @@ public class Problem<T> implements Comparable<Problem> {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + " ["+(path == null ? "?":path.toString())+":"+(line!=-1?line:"?")+"]:"+
-                " \""+message+"\" (Caused by: "+cause.toString()+")";
+        return this.getClass().getSimpleName() + "("+type+")["+(path == null ? "?":path.toString())+":"+
+                (line!=-1?line:"?")+"]:"+" \""+message+"\" (Caused by: "+cause.toString()+")";
     }
 
     public enum Type {

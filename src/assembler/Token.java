@@ -13,6 +13,8 @@ public class Token implements Comparable<Token> {
     protected TokenType type;
     /** The value of the token. */
     protected String value;
+    /** The line of the token.*/
+    protected int line;
 
 
     /**
@@ -20,12 +22,14 @@ public class Token implements Comparable<Token> {
      *
      * @param value the value of the token.
      * @param type the type of the token.
+     * @param line the line of the token.
      */
-    public Token(String value, TokenType type) {
+    public Token(String value, TokenType type, int line) {
         Objects.requireNonNull(value, "'Value' of token cannot be 'null'!");
-        if (value.trim().isEmpty())
+        if ((this.value = value).trim().isEmpty())
             throw new IllegalArgumentException("'Value' of token cannot be empty or only white space!");
-        this.value = value;
+        if ((this.line = line) < 0)
+            throw new IllegalArgumentException("Line of token cannot be negative!");
 
         this.type  = Objects.requireNonNull(type, "'Type' of token cannot be 'null'!");
     }
@@ -54,9 +58,15 @@ public class Token implements Comparable<Token> {
         MNEMONIC_NAME, OPERAND, LABEL, SYMBOL, COMMENT
     }
 
+    /**
+     * Returns the line of the file in which the token resides.
+     */
+    public int getLine() {
+        return line;
+    }
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName()+"["+type.toString()+", "+value+"]";
+        return this.getClass().getSimpleName()+"("+line+")["+type.toString()+", "+value+"]";
     }
 }

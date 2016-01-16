@@ -6,6 +6,9 @@ package assembler.util;
  */
 public class Settings {
 
+
+    public static String FILE_EXTENSION = ".asm";
+
     public static class Errors {
         /**
          * How additional operands like

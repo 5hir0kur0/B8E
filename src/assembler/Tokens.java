@@ -13,9 +13,10 @@ public class Tokens {
          * Constructs a new Comment Token.
          *
          * @param value the value of the token.
+         * @param line the line of the token.
          */
-        public CommentToken(String value) {
-            super(value, TokenType.COMMENT);
+        public CommentToken(String value, int line) {
+            super(value, TokenType.COMMENT, line);
         }
     }
 
@@ -28,9 +29,10 @@ public class Tokens {
          * Constructs a new Mnemonic Name Token.
          *
          * @param value the value of the token.
+         * @param line the line of the token.
          */
-        public MnemonicNameToken(String value) {
-            super(value, TokenType.MNEMONIC_NAME);
+        public MnemonicNameToken(String value, int line) {
+            super(value, TokenType.MNEMONIC_NAME, line);
         }
     }
 
@@ -44,9 +46,10 @@ public class Tokens {
          * Constructs a new Symbol Token.
          *
          * @param value the value of the token.
+         * @param line the line of the token.
          */
-        public SymbolToken(String value) {
-            super(value, TokenType.SYMBOL);
+        public SymbolToken(String value, int line) {
+            super(value, TokenType.SYMBOL, line);
         }
     }
 }

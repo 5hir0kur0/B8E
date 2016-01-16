@@ -4,6 +4,8 @@ import assembler.Mnemonic;
 import assembler.OperandToken;
 import assembler.Tokens;
 
+import java.util.Arrays;
+
 /**
  * A mnemonic for a microcomputer with a
  * 8051-family architecture.
@@ -46,7 +48,8 @@ public abstract class Mnemonic8051 extends Mnemonic {
 
     @Override
     public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands) {
-        return getInstructionFromOperands(codePoint, name, operands);
+        return getInstructionFromOperands(codePoint, name, Arrays.asList(operands).toArray(
+                new OperandToken8051[operands.length]));
     }
 
     /**
@@ -68,4 +71,9 @@ public abstract class Mnemonic8051 extends Mnemonic {
      */
     public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name,
                                                       OperandToken8051... operands);
+
+    @Override
+    protected String getClassName() {
+        return "Mnemonic8051";
+    }
 }

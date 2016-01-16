@@ -1,15 +1,17 @@
 package assembler;
 
-import assembler.util.ExceptionProblem;
-import assembler.util.MnemonicProvider;
-import assembler.util.Problem;
-import assembler.util.TokenProblem;
+import assembler.arc8051.MC8051Library;
+import assembler.arc8051.OperandToken8051;
+import assembler.util.*;
 import com.sun.corba.se.impl.io.TypeMismatchException;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * Represents a unit that can assemble (compile) written
@@ -43,8 +45,14 @@ public class Assembler {
      *
      * First the input is preprocessed and then assembled.
      *
-     * @param path
-     *      The file that will be assembled.
+     * @param directory
+     *      The directory in which the that will be assembled lies.<br>
+     *      Missing non default includes will be searched in this directory.
+     * @param file
+     *      The raw name of the target file. This file in the directory will be used to
+     *      generate the output.<br>
+     *      The raw file name does not include the file extension.<br>
+     *      The file extension (with extension delimiter will be read from the configuration.
      * @param output
      *      The output the result will be written to.<br>
      *      The resulting bytes can be directly interpreted
@@ -54,9 +62,10 @@ public class Assembler {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    public List<Problem> assemble(Path path, BufferedWriter output) {
+    public List<Problem> assemble(Path directory, String file, BufferedOutputStream output) {
         List<Problem> problems = new ArrayList<>();
-        try (BufferedReader input = Files.newBufferedReader(path);
+        try (BufferedReader input = Files.newBufferedReader(Paths.get(directory.toString(),
+                file + Settings.FILE_EXTENSION));
              StringWriter prepOutput  = new StringWriter()){
 
             problems.addAll(preprocessor.preprocess(input, prepOutput));
@@ -65,10 +74,11 @@ public class Assembler {
 
                 List<Token> tokens = tokenizer.tokenize(tokenInput, problems);
                 List<Byte> codes = new ArrayList<>();
-                problems.addAll(_assemble(path, tokens, codes));
+                problems.addAll(_assemble(directory, file, tokens, codes));
 
                 for (byte b : codes)
-                    output.write((char) b);
+                    output.write(b);
+                output.close();
             }
 
             Collections.sort(problems);
@@ -78,12 +88,12 @@ public class Assembler {
         return problems;
     }
 
-    private List<Problem> _assemble(Path path, List<Token> tokens, List<Byte> output) {
+    private List<Problem> _assemble(Path directory, String file, List<Token> tokens, List<Byte> output) {
         List<Problem> problems = new ArrayList<>();
         provider.clearProblems();
         List<Assembled> assembled = new ArrayList<>();
-
         List<LabelToken> labels = new ArrayList<>();
+
         long codePoint = 0;
 
         for (int index = 0; index < tokens.size(); ++index) {
@@ -115,19 +125,21 @@ public class Assembler {
 
                     if (operands.size() < m.getMinimumOperands()) {
                         problems.add(new TokenProblem("Mnemonic must have at least " + m.getMinimumOperands() +
-                                " operands!", Problem.Type.ERROR, t));
+                                " operand"+(m.getMinimumOperands() != 1?"s":"")+"!", Problem.Type.ERROR, t));
                         continue;
                     }
 
                     int length = 0;
-                    usedTokens.add(0, t);
                     Assembled assem = new Assembled(codePoint, usedTokens, m);
 
                     assem.setPositionSensitive(m.isPositionSensitive());
 
                     if (m instanceof LabelConsumer) {
+
                         int maxLength = ((LabelConsumer) m).getSpecificLength(codePoint,
-                                (OperandToken[]) operands.stream().toArray());
+                                operands.stream().filter(tkn -> tkn instanceof OperandToken)
+                                        .map(tkn -> (OperandToken) tkn).collect(Collectors.toList())
+                                        .toArray(new OperandToken[1]));
                         assem.setLength(maxLength);
                         codePoint+=maxLength;
                         assem.setUnresolved(true);
@@ -136,13 +148,19 @@ public class Assembler {
                         continue;
                     }
 
+                    if (operands.stream().anyMatch(x->x instanceof Tokens.SymbolToken)) {
+                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, operands.stream().
+                                filter(x -> x instanceof Tokens.SymbolToken).findFirst().get()));
+                        continue;
+                    }
 
                     byte[] codes = m.getInstructionFromOperands(codePoint, (Tokens.MnemonicNameToken) t,
-                            (OperandToken[]) operands.stream().toArray());
+                            operands.stream().toArray(OperandToken[]::new));
 
 
                     length = codes.length != 0 ? codes.length : length;
                     assem.setLength(length);
+                    assem.setCodes(codes);
 
 
                     if (m.isPositionSensitive() || codes.length != 0)
@@ -168,10 +186,12 @@ public class Assembler {
             }
         }
 
-        resolveLabelConsuming(assembled, labels);
+        resolveLabelConsuming(assembled, labels, problems);
+        problems.addAll(provider.getProblems());
         output.addAll(link(assembled));
 
-        try (HexWriter hex = new HexWriter(Files.newBufferedWriter(path.resolveSibling(path.getFileName()+".hex")))) {
+        try (HexWriter hex = new HexWriter(Files.newBufferedWriter(Paths.get(directory.toString(),
+                file+".hex")))) {
             hex.writeAll(assembled);
         } catch (Exception e) {
             e.printStackTrace();
@@ -182,37 +202,49 @@ public class Assembler {
         return problems;
     }
 
-    public void resolveLabelConsuming(List<Assembled> assembled, List<LabelToken> labels) {
-            assembled.stream().filter(x->x.getMnemonic() instanceof LabelConsumer).forEach(x -> {
-                List<OperandToken> operands = new ArrayList<>(x.getTokens().size());
-                for (int i = 0; i < x.getTokens().size(); ++i) {
-                    List<Token> tokens = new ArrayList<>(x.getTokens());
-                    if (tokens.get(i) instanceof Tokens.SymbolToken) {
-                        Tokens.SymbolToken st = (Tokens.SymbolToken) tokens.get(i);
-                        for (LabelToken lt : labels)
-                            // Replace Symbol token with actual address and test if the length has shortened.
-                            if (lt.getValue().equalsIgnoreCase(st.getValue()))
-                                tokens.set(i, provider.createNewJumpOperand(lt.getCodePoint()));
-                    }
-                    if (tokens.get(i) instanceof OperandToken)
-                        operands.add((OperandToken) tokens.get(i));
+    public void resolveLabelConsuming(List<Assembled> assembled, List<LabelToken> labels, List<Problem> problems) {
+        assembled.stream().filter(x -> x.getMnemonic() instanceof LabelConsumer).forEach(x -> {
+            List<OperandToken> operands = new ArrayList<>(x.getTokens().size());
+            boolean unresolved = true;
+
+            for (int i = 0; i < x.getTokens().size(); ++i) {
+                List<Token> tokens = x.getTokens();
+                if (tokens.get(i) instanceof Tokens.SymbolToken) {
+                    Tokens.SymbolToken st = (Tokens.SymbolToken) tokens.get(i);
+                    for (LabelToken lt : labels)
+                        // Replace Symbol token with actual address and test if the length has shortened.
+                        if (lt.getValue().equalsIgnoreCase(st.getValue())) {
+                            tokens.set(i, provider.createNewJumpOperand(lt.getCodePoint(), lt.getLine()));
+                            unresolved = false;
+                        }
+                    if (unresolved)
+                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, tokens.get(i)));
                 }
-                // All Labels are resolved.
-                final byte[] codes = x.getMnemonic().getInstructionFromOperands(x.getCodePoint(),
-                        (Tokens.MnemonicNameToken)x.getTokens().get(0), (OperandToken[]) operands.stream().toArray());
-                x.setCodes(codes);
-            });
+                if (tokens.get(i) instanceof OperandToken)
+                    operands.add((OperandToken) tokens.get(i));
+            }
+            if (unresolved) return;
+            x.setUnresolved(false);
+            // All Labels are resolved.
+            final byte[] codes = x.getMnemonic().getInstructionFromOperands(x.getCodePoint(),
+                    (Tokens.MnemonicNameToken) x.getTokens().get(0), operands.toArray(new OperandToken[0]));
+            x.setCodes(codes);
+        });
     }
 
     public List<Byte> link(List<Assembled> assembled) {
-        List<Byte> result = new ArrayList<>();
-        assembled.forEach(x->{
-            final byte[] codes = x.getCodes();
+        ArrayList<Byte> result = new ArrayList<>();
+        for (Assembled a : assembled) {
+            final byte[] codes = a.getCodes();
+
+            while (a.getCodePoint()>result.size())
+                result.add((byte)0);
+
             for (int i = 0; i < codes.length; i++) {
-                long codePoint = x.getCodePoint()+i;
-                result.set((int) codePoint, codes[i]);
+                // long codePoint = a.getCodePoint() + i;
+                result.add(codes[i]);
             }
-        });
+        }
         return result;
     }
 

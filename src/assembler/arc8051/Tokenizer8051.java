@@ -9,6 +9,7 @@ import assembler.util.Problem;
 import assembler.util.TokenizingProblem;
 
 import java.io.StringReader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -26,13 +27,17 @@ public class Tokenizer8051 implements Tokenizer {
     public List<Token> tokenize(StringReader input, List<Problem> problems) {
         List<Token> result = new ArrayList<>(128);
 
+        int lineNumber = 0; Path path = null;
+
         String line, unModLine;
         try (Scanner s = new Scanner(input)) {
-            while ((line = unModLine = s.nextLine()) != null) {
+            while (s.hasNextLine()) {
+                lineNumber++;
+                line = unModLine = s.nextLine();
                 Matcher m = MC8051Library.LABEL_PATTERN.matcher(line);
 
                 if (m.find()) {
-                    result.add(new LabelToken(m.group(1)));
+                    result.add(new LabelToken(m.group(1), lineNumber));
                     line = line.substring(m.end());
                 }
 
@@ -40,13 +45,16 @@ public class Tokenizer8051 implements Tokenizer {
                     continue;
 
                 if ((m = MC8051Library.MNEMONIC_NAME_PATTERN.matcher(line)).find()) {
-                    result.add(new Tokens.MnemonicNameToken(m.group(1)));
+                    result.add(new Tokens.MnemonicNameToken(m.group(1), lineNumber));
                     line = line.substring(m.end());
+                    if (line.trim().isEmpty())
+                        continue;
                 } else if ((m = MC8051Library.COMMENTARY_PATTERN.matcher(line)).find()) {
-                    result.add(new Tokens.CommentToken(m.group(1)));
+                    result.add(new Tokens.CommentToken(m.group(1),lineNumber));
                     continue;
                 } else {
-                    problems.add(new TokenizingProblem("Expected mnemonic or comment!", Problem.Type.ERROR, unModLine));
+                    problems.add(new TokenizingProblem("Expected mnemonic or comment!", Problem.Type.ERROR,
+                            path, lineNumber, unModLine));
                     continue;
                 }
 
@@ -55,12 +63,12 @@ public class Tokenizer8051 implements Tokenizer {
                     if (i == split.length - 1) {
                         if (split[i].contains(";")) {
                             String[] split2 = split[i].split(";", 2);
-                            addToken(split2[0], result, problems);
-                            result.add(new Tokens.CommentToken(split2[1]));
+                            addToken(split2[0], result, problems, path, lineNumber);
+                            result.add(new Tokens.CommentToken(split2[1], lineNumber));
                         } else
-                            addToken(split[i], result, problems);
+                            addToken(split[i], result, problems, path, lineNumber);
                     } else
-                        addToken(split[i], result, problems);
+                        addToken(split[i], result, problems, path, lineNumber);
                 }
             }
         } catch (NoSuchElementException e) {
@@ -69,48 +77,51 @@ public class Tokenizer8051 implements Tokenizer {
         return result;
     }
 
-    private boolean addToken(String string, List<Token> add, List<Problem> problems) {
+    private boolean addToken(String string, List<Token> add, List<Problem> problems, Path path, int line) {
         string = string.trim();
         Matcher m;
         if ((m = MC8051Library.CONSTANT_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null && testBoulds(0, 0xFFFF, Integer.parseInt(val), "constant", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.CONSTANT, val));
+            if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "constant", problems, m.group(0))) {
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.CONSTANT, val, line));
                 return true;
             }
         } else if ((m = MC8051Library.ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null && testBoulds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, val));
+            if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, val, line));
                 return true;
             }
         } else if ((m = MC8051Library.NEGATED_ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null && testBoulds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.NEGATED_ADDRESS, val));
+            if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.NEGATED_ADDRESS, val, line));
                 return true;
             }
 
         } else if ((m = MC8051Library.ADDRESS_OFFSET_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
-            if (val != null && testBoulds(0, 0xFFFF, Integer.parseInt(val), "relative offset", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET, val));
+            if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "relative offset", problems, m.group(0))) {
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET, val, line));
                 return true;
             }
 
         } else if ((m = MC8051Library.SYMBOL_PATTERN.matcher(string)).matches()) {
             String val = m.group(1).replaceAll("\\s", "");
             for (String reserved : MC8051Library.RESERVED_NAMES)
-                if (val.equalsIgnoreCase(reserved))
-                    add.add(new OperandToken8051(MC8051Library.OperandType8051.NAME, val));
-            add.add(new Tokens.SymbolToken(val));
+                if (val.equalsIgnoreCase(reserved)) {
+                    add.add(new OperandToken8051(MC8051Library.OperandType8051.NAME, val, line));
+                    return true;
+                }
+            add.add(new Tokens.SymbolToken(val, line));
             return true;
         } else if ((m = MC8051Library.SYMBOL_INDIRECT_PATTERN.matcher(string)).matches()) {
             add.add(new OperandToken8051(MC8051Library.OperandType8051.INDIRECT_NAME,
-                    m.group(0).replaceAll("\\s", "")));
+                    m.group(1).replaceAll("\\s", ""), line));
             return true;
         } else
-            problems.add(new TokenizingProblem("Could not recognize Token Type!", Problem.Type.ERROR, string));
+            problems.add(new TokenizingProblem("Could not recognize Token Type!", Problem.Type.ERROR,
+                    path, line, string));
         return false;
     }
 
@@ -177,7 +188,7 @@ public class Tokenizer8051 implements Tokenizer {
         return result;
     }
 
-    private boolean testBoulds(final int min, final int max, final int value,
+    private boolean testBounds(final int min, final int max, final int value,
                                final String type, List<Problem> problems, String cause) {
         if (value < min) {
             problems.add(new TokenizingProblem("Value of " + type + " to small! (Minimal value: " + min + ")",

@@ -83,24 +83,27 @@ public class HexWriter implements AutoCloseable {
             throw new IndexOutOfBoundsException("Cannot write instruction codes into the buffer because the " +
                     "buffer is too small");
 
-        if ((address+bufferLength+1) != assembled.getCodePoint()) {
+        if ((address+bufferLength) != assembled.getCodePoint()) {
             flushBuffer();
             address = assembled.getCodePoint();
         }
 
         if (instructionWrap) {
-            if (bufferLength + codes.length < buffer.length)
+            if (bufferLength + codes.length <= buffer.length)
                 for (byte b : codes)
                     buffer[bufferLength++] = b;
             else {
                 flushBuffer();
+                address = assembled.getCodePoint();
                 for (byte b : codes)
                     buffer[bufferLength++] = b;
             }
         } else {
             for (byte c : codes) {
-                if (buffer.length == bufferLength)
+                if (buffer.length == bufferLength) {
                     flushBuffer();
+                    address += buffer.length;
+                }
                 buffer[bufferLength++] = c;
             }
         }
@@ -146,18 +149,19 @@ public class HexWriter implements AutoCloseable {
 
         for (int i = 0; i < bufferLength; ++i) {
             data.append(String.format("%02x", 0xFF & (int) buffer[i]));
-            buffersum+= buffer[i];
+            buffersum+= 0xFF & (int) buffer[i];
         }
 
         out.write(":");
 
         // Calculate the checksum by adding all prior bytes, extracting the least significant byte
         // and calculating two's complement on it.
-        final int checksum = 0xFF & (~(byte)(0xFF & (bufferLength + address + recordType + buffersum))+1);
+        final int checksum = 0xFF & (~(byte)(0xFF & (bufferLength + (address & 0xFF) + (0xFF & address >>> 8) +
+                recordType + buffersum))+1);
 
         data.append(String.format("%02x", checksum));
 
-        out.write(data.toString()+"\n");
+        out.write(data.toString().toUpperCase()+"\n");
 
         buffer = new byte[buffer.length];
         bufferLength = 0;

@@ -1,5 +1,6 @@
 package assembler;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,7 +39,7 @@ public class Assembled {
      *      The mnemonic used for assembling.
      */
     public Assembled(long codePoint, List<Token> tokens, Mnemonic mnemonic) {
-        this(false, mnemonic.isPositionSensitive(), tokens, codePoint, null, 0, mnemonic);
+        this(false, mnemonic.isPositionSensitive(), tokens, codePoint, new byte[0], 0, mnemonic);
     }
     /**
      * Constructs a new Assembled object that is produced by the assembler.
@@ -134,5 +135,17 @@ public class Assembled {
 
     public void setMnemonic(Mnemonic mnemonic) {
         this.mnemonic = mnemonic;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder codesString = new StringBuilder("[");
+        for (byte c : codes)
+            codesString.append(String.format("%02x", c)+", ");
+        codesString.setLength(codesString.length()-2);
+        codesString.append("]");
+        return this.getClass().getSimpleName()+"["+mnemonic.toString()+", Address:"+String.format("%04x", codePoint)+
+                ", Codes:" +codesString+", Length:"+getLength()+", "+Arrays.toString(tokens.toArray())+
+                ", Unresolved:"+unresolved+"]";
     }
 }
