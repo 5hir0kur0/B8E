@@ -1,7 +1,7 @@
-package assembler.util;
+package assembler.util.assembling;
 
-import assembler.Mnemonic;
-import assembler.OperandToken;
+import assembler.tokens.OperandToken;
+import assembler.util.problems.Problem;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
  *
  * @author Noxgrim
  */
-public interface MnemonicProvider {
+public interface ArchitectureProvider {
 
     /**
      * Returns a List of Mnemonics that can be used

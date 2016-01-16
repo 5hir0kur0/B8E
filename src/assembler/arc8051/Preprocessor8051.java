@@ -1,9 +1,9 @@
 package assembler.arc8051;
 
 import assembler.Preprocessor;
-import assembler.util.ExceptionProblem;
-import assembler.util.PreprocessingProblem;
-import assembler.util.Problem;
+import assembler.util.problems.ExceptionProblem;
+import assembler.util.problems.PreprocessingProblem;
+import assembler.util.problems.Problem;
 
 import java.io.*;
 import java.util.ArrayList;

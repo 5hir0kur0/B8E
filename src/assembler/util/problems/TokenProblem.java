@@ -1,6 +1,6 @@
-package assembler.util;
+package assembler.util.problems;
 
-import assembler.Token;
+import assembler.tokens.Token;
 
 /**
  * @author Noxgrim

@@ -1,10 +1,9 @@
 package assembler;
 
-import assembler.util.Problem;
+import assembler.tokens.Token;
+import assembler.util.problems.Problem;
 
-import java.io.BufferedReader;
 import java.io.StringReader;
-import java.nio.file.Path;
 import java.util.List;
 
 /**

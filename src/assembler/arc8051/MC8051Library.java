@@ -1,18 +1,17 @@
 package assembler.arc8051;
 
-import assembler.Mnemonic;
-import assembler.OperandToken;
-import assembler.Token;
-import assembler.Tokens;
-import assembler.util.MnemonicProvider;
-import assembler.util.Problem;
-import assembler.util.Problem.Type;
+import assembler.util.assembling.Mnemonic;
+import assembler.tokens.OperandToken;
+import assembler.tokens.Token;
+import assembler.tokens.Tokens;
+import assembler.util.assembling.ArchitectureProvider;
+import assembler.util.problems.Problem;
+import assembler.util.problems.Problem.Type;
 import assembler.util.Settings;
 import assembler.util.Settings.Errors.ErrorHandling;
-import assembler.util.TokenProblem;
+import assembler.util.problems.TokenProblem;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -149,7 +148,7 @@ public class MC8051Library {
      * Provides the Mnemonic's and the Problem List
      * they are using.
      */
-    public static final MnemonicProvider PROVIDER = new MnemonicProvider() {
+    public static final ArchitectureProvider PROVIDER = new ArchitectureProvider() {
         @Override
         public Mnemonic[] getMnemonics() {
             return MC8051Library.mnemonics;

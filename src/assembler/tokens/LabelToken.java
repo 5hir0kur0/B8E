@@ -1,4 +1,4 @@
-package assembler;
+package assembler.tokens;
 
 /**
  * Represents a token of type 'label'.
