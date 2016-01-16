@@ -29,5 +29,5 @@ public interface MnemonicProvider {
      */
     void clearProblems();
 
-    OperandToken createNewJumpOperand(long address);
+    OperandToken createNewJumpOperand(long address, int line);
 }

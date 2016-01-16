@@ -22,9 +22,11 @@ public abstract class OperandToken extends Token {
      *      and it should be used instead.<br>
      * @param value
      *      the value of the OperandToken as a String.
+     * @param line
+     * the line of the token.
      */
-    public OperandToken(Enum type, String value) {
-        super(value, TokenType.OPERAND);
+    public OperandToken(Enum type, String value, int line) {
+        super(value, TokenType.OPERAND, line);
         this.operandType = Objects.requireNonNull(type, "'Type' of operand cannot be 'null'!");
 
     }
@@ -43,4 +45,9 @@ public abstract class OperandToken extends Token {
         return value;
     }
 
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()+"("+line+")["+type.toString()+", "+getOperandType()+", "+value+"]";
+    }
 }

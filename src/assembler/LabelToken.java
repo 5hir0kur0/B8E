@@ -18,13 +18,14 @@ public class LabelToken extends Token {
      * Constructs a new LabelToken.
      *
      * @param value the value of the token.
+     * @param line the line of the token.
      * @param codePoint
      *      the position in code memory this label
      *      points to.<br>
      *      Can be <code>-1</code> if not set.
      */
-    public LabelToken(String value, long codePoint) {
-        super(value, TokenType.LABEL);
+    public LabelToken(String value, int line, long codePoint) {
+        super(value, TokenType.LABEL, line);
 
         if ((this.codePoint = codePoint) < -1)
             throw new IllegalArgumentException("Code point cannot be smaller that -1!");
@@ -34,9 +35,10 @@ public class LabelToken extends Token {
      * Constructs a new LabelToken and no code point (-1).
      *
      * @param value the value of the token.
+     * @param line the line of the token.
      */
-    public LabelToken(String value) {
-        this(value, -1);
+    public LabelToken(String value, int line) {
+        this(value, line, -1);
     }
 
     /**
@@ -56,5 +58,12 @@ public class LabelToken extends Token {
         if (codePoint < 0)
             throw new IllegalArgumentException("Code point cannot be negative!");
         this.codePoint = codePoint;
+    }
+
+
+    @Override
+    public String toString() {
+        return String.format("%s(%d)[%s, %s"+(codePoint != -1?", %02x":"")+"]",
+                getClass().getSimpleName(), line, type, value, codePoint);
     }
 }

@@ -120,4 +120,15 @@ public abstract class Mnemonic {
      *      operands.
      */
     public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands);
+
+
+    @Override
+    public String toString() {
+        return getClassName()+"["+name+", "+minOp+", PositionSensitive:"+positionSensitive+"]";
+    }
+
+    /**
+     * Returns the name of the current class for output purposes.
+     */
+    protected abstract String getClassName();
 }

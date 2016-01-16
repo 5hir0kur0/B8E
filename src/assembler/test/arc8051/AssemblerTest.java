@@ -6,12 +6,17 @@ import assembler.Tokenizer;
 import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
+import assembler.util.ExceptionProblem;
 import assembler.util.Problem;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,10 +59,10 @@ public class AssemblerTest {
             map.put("Test test TE'ST'!", "test test te'ST'!");
             map.put("The \\\"test Tester\\\" tested \"Tony's Test\". ", "the \"test tester\" tested \"Tony's Test\". ");
             map.put("\"T'E\"S'T\"?'", "\"T'E\"s'T\"?'");
-            map.put("\\Tests For Testing \\Tests.", "Tests for testing Tests.");
+            map.put("\\Tests For Testing \\Tests.", "ests for testing ests.");
 
             for (String test : map.keySet()) {
-                System.out.print("Testing: \"" + test + ", Expecting: " + map.get(test) + "...");
+                System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
                 assertEquals(map.get(test), m.invoke(prepr, test, new ArrayList<Problem>()));
                 System.out.println("Passed.");
             }
@@ -92,7 +97,7 @@ public class AssemblerTest {
             map.put("0x"+Integer.toHexString(rand = random.nextInt(0x10000)),    Integer.toString(rand));
 
             for (String test : map.keySet()) {
-                System.out.print("Testing: \"" + test + ", Expecting: " + map.get(test) + "...");
+                System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
                 Matcher matcher = pattern.matcher(test);
                 List<Problem> list = new ArrayList<>();
                 if (matcher.matches()) {
@@ -114,8 +119,58 @@ public class AssemblerTest {
     }
 
     @Test
-    public void testTokenizer_tokenize() {
-        HashMap<String, String> map = new HashMap<>();
+    public void test_assemble() {
+        System.out.println("____________Testing Assembler.assemble()");
+
+        List<Problem> problems = new ArrayList<>();
+        boolean ex = false, outProblems = false;
+        try {
+            System.out.println("Running assembler:");
+            Path test = Paths.get("src/assembler/test/arc8051/");
+            System.out.println("__Test directory: "+test.toAbsolutePath());
+
+            problems = testAssem.assemble(test, "test", new BufferedOutputStream(Files.newOutputStream(
+                    Paths.get(test.toString(), "test.bin"))));
+            for (Problem p : problems)
+                if (p instanceof ExceptionProblem) {
+                    System.out.println(p);
+                    ((ExceptionProblem) p).getCause().printStackTrace();
+                } else
+                    System.out.println(p);
+            System.out.println("Total Problems: " + problems.size());
+            outProblems = true;
+
+
+            System.out.println("__Comparing test.hex with text.comp.hex");
+
+            try (BufferedReader asm = Files.newBufferedReader(Paths.get(test.toString(), "test.hex"));
+                 BufferedReader com = Files.newBufferedReader(Paths.get(test.toString(), "test.comp.hex"))){
+                String asmLine, comLine;
+                int line = 0;
+                while ((asmLine = asm.readLine()) != null | (comLine = com.readLine()) != null) {
+                    System.out.print("Line: "+ ++line + "...");
+                    assertEquals(asmLine, comLine);
+                    System.out.println("Passed.");
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.flush();
+            ex = true;
+        }
+        if (ex && !outProblems) {
+            problems.addAll(MC8051Library.getProblems());
+            for (Problem p : problems)
+                if (p instanceof ExceptionProblem) {
+                    System.out.println(p);
+                    ((ExceptionProblem) p).getCause().printStackTrace();
+                } else
+                    System.out.println(p);
+            System.out.println("Total Problems: " + problems.size());
+        }
+        if (ex || problems.stream().anyMatch(Problem::isError))
+            fail("Some problems occurred.");
 
     }
 }
