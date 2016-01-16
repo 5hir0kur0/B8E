@@ -1,4 +1,6 @@
-package assembler;
+package assembler.util.assembling;
+
+import assembler.tokens.Token;
 
 import java.util.Arrays;
 import java.util.List;

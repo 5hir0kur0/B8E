@@ -1,4 +1,4 @@
-package assembler;
+package assembler.tokens;
 
 /**
  * Contains token types that do not expand the normal token type.

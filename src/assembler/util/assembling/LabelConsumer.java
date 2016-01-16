@@ -1,4 +1,6 @@
-package assembler;
+package assembler.util.assembling;
+
+import assembler.tokens.OperandToken;
 
 /**
  * An interface to define Mnemonics that work with

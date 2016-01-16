@@ -1,8 +1,17 @@
 package assembler;
 
-import assembler.arc8051.MC8051Library;
-import assembler.arc8051.OperandToken8051;
+import assembler.tokens.LabelToken;
+import assembler.tokens.OperandToken;
+import assembler.tokens.Token;
+import assembler.tokens.Tokens;
 import assembler.util.*;
+import assembler.util.assembling.ArchitectureProvider;
+import assembler.util.assembling.Assembled;
+import assembler.util.assembling.LabelConsumer;
+import assembler.util.assembling.Mnemonic;
+import assembler.util.problems.ExceptionProblem;
+import assembler.util.problems.Problem;
+import assembler.util.problems.TokenProblem;
 import com.sun.corba.se.impl.io.TypeMismatchException;
 
 import java.io.*;
@@ -10,7 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -26,19 +34,19 @@ public class Assembler {
      */
     private Tokenizer tokenizer;
     /**
-     * Provides the needed Mnemonics
+     * Provides architecture specific operations.
      */
-    private MnemonicProvider provider;
+    private ArchitectureProvider provider;
     /**
      * The preprocessor used by the assembler.
      */
     private Preprocessor preprocessor;
 
 
-    public Assembler(MnemonicProvider provider, Preprocessor preprocessor, Tokenizer tokenizer) {
+    public Assembler(ArchitectureProvider provider, Preprocessor preprocessor, Tokenizer tokenizer) {
         this.tokenizer = Objects.requireNonNull(tokenizer, "Tokenizer cannot be 'null'!");
         this.preprocessor = Objects.requireNonNull(preprocessor, "Preprocessor cannot be 'null'!");
-        this.provider = Objects.requireNonNull(provider, "Mnemonic Provider cannot be 'null'!");
+        this.provider = Objects.requireNonNull(provider, "Architecture Provider cannot be 'null'!");
     }
     /**
      * Assembles a given input and writes the result in an output.<br>

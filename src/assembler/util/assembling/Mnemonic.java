@@ -1,4 +1,7 @@
-package assembler;
+package assembler.util.assembling;
+
+import assembler.tokens.OperandToken;
+import assembler.tokens.Tokens;
 
 /**
  * Represents a mnemonic in an assembler language.

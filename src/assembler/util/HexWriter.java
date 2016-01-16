@@ -1,4 +1,6 @@
-package assembler;
+package assembler.util;
+
+import assembler.util.assembling.Assembled;
 
 import java.io.IOException;
 import java.io.Writer;
