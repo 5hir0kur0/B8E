@@ -1,4 +1,4 @@
-package assembler.util;
+package assembler.util.problems;
 
 /**
  * @author Jannik

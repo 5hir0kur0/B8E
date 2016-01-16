@@ -6,8 +6,8 @@ import assembler.Tokenizer;
 import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
-import assembler.util.ExceptionProblem;
-import assembler.util.Problem;
+import assembler.util.problems.ExceptionProblem;
+import assembler.util.problems.Problem;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -148,7 +148,7 @@ public class AssemblerTest {
                 String asmLine, comLine;
                 int line = 0;
                 while ((asmLine = asm.readLine()) != null | (comLine = com.readLine()) != null) {
-                    System.out.print("Line: "+ ++line + "...");
+                    System.out.print("Line: " + ++line + "...");
                     assertEquals(asmLine, comLine);
                     System.out.println("Passed.");
                 }

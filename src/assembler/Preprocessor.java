@@ -1,9 +1,8 @@
 package assembler;
 
-import assembler.util.Problem;
+import assembler.util.problems.Problem;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.StringWriter;
 import java.util.List;
 

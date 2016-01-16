@@ -1,12 +1,12 @@
 package assembler.arc8051;
 
-import assembler.LabelToken;
-import assembler.Token;
+import assembler.tokens.LabelToken;
+import assembler.tokens.Token;
 import assembler.Tokenizer;
-import assembler.Tokens;
-import assembler.util.ExceptionProblem;
-import assembler.util.Problem;
-import assembler.util.TokenizingProblem;
+import assembler.tokens.Tokens;
+import assembler.util.problems.ExceptionProblem;
+import assembler.util.problems.Problem;
+import assembler.util.problems.TokenizingProblem;
 
 import java.io.StringReader;
 import java.nio.file.Path;

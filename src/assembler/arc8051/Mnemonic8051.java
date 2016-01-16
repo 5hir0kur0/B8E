@@ -1,8 +1,8 @@
 package assembler.arc8051;
 
-import assembler.Mnemonic;
-import assembler.OperandToken;
-import assembler.Tokens;
+import assembler.util.assembling.Mnemonic;
+import assembler.tokens.OperandToken;
+import assembler.tokens.Tokens;
 
 import java.util.Arrays;
 

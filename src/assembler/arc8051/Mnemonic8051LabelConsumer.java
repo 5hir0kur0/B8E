@@ -1,6 +1,6 @@
 package assembler.arc8051;
 
-import assembler.LabelConsumer;
+import assembler.util.assembling.LabelConsumer;
 
 /**
  * @author Jannik

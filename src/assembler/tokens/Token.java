@@ -1,4 +1,4 @@
-package assembler;
+package assembler.tokens;
 
 import java.util.Objects;
 
