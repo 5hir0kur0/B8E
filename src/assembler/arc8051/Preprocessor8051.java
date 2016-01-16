@@ -35,7 +35,12 @@ public class Preprocessor8051 implements Preprocessor {
 
         int last = 0;
         for (int cp : line.codePoints().toArray()) {
-            if (last == '\\')
+            if (cp == ';') // Comment: No need to lowercase.
+                break;
+            else if (last == '\\' && !(cp == '\'' || cp == '"'))
+                problems.add(new PreprocessingProblem("Illegal escape!", Problem.Type.ERROR,
+                        new StringBuilder().appendCodePoint(last).appendCodePoint(cp).toString()));
+            else if (last == '\\')
                 result.appendCodePoint(cp);
             else if (cp != '\\') {
                 if (cp == '"' && !simpQuoted)
@@ -47,9 +52,9 @@ public class Preprocessor8051 implements Preprocessor {
                         Character.toLowerCase(cp) : cp);
             }
             last = cp;
-            if (doubQuoted || simpQuoted)
-                problems.add(new PreprocessingProblem("Unclosed quote!", Problem.Type.ERROR, line));
         }
+        if (doubQuoted || simpQuoted)
+            problems.add(new PreprocessingProblem("Unclosed quote!", Problem.Type.ERROR, line));
         return result.toString();
     }
 }

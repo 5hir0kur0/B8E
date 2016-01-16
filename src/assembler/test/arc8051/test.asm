@@ -5,6 +5,9 @@
 ; the resulting hex file will be compared with the out-
 ; put of a 'legit' assembler.
 ;
+; The comparison file 'test.comp.asm' was assembled with
+; the MCU 8051 IDE.
+;
 ; Author: Jannik
 
 start:
@@ -285,3 +288,4 @@ test_arithmetic:
    j00:jnz  j01
    j03:
  ljmp back
+
