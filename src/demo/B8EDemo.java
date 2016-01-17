@@ -1,30 +1,84 @@
-package emulator;
+package demo;
 
+import assembler.Assembler;
+import assembler.arc8051.MC8051Library;
+import assembler.arc8051.Preprocessor8051;
+import assembler.arc8051.Tokenizer8051;
+import assembler.util.problems.Problem;
+import emulator.Emulator;
+import emulator.RAM;
+import emulator.ROM;
+import emulator.Register;
 import emulator.arc8051.MC8051;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Scanner;
 
 /**
  * Execute a specified (binary) file using the MC8051 class.
  * This class provides a (very) basic text-based interface for demonstrating the 8051 emulator's basic functionality.
- * @author 5hir0kur0
+ * @author 5hir0kur0, (Noxgrim)
  */
-public class EmulatorMC8051Demo {
+public class B8EDemo {
     public static void main(String[] args) {
         if (args.length != 1) {
-            System.err.println("Usage: java EmulatorMC8051Demo file");
+            System.err.println("Usage: java B8EDemo file");
             System.exit(42);
         }
         Path p = Paths.get(args[0]);
+
+        Assembler assembler;
         RAM ram = new RAM(0xffff+1);
         Emulator emulator;
         if (!Files.exists(p)) {
             System.err.println("ERROR: The specified file does not exist.");
             System.exit(21);
+        } else if (Files.isDirectory(p)) {
+            System.err.println("ERROR: The specified path must be a file!");
+            System.exit(21);
+        }
+
+        // Assembling
+        try {
+            Path directory = p.toAbsolutePath().getParent();
+            assembler = new Assembler(MC8051Library.PROVIDER, new Preprocessor8051(), new Tokenizer8051());
+
+            String rawFileName = p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf('.'));
+            Path output = Paths.get(directory.toString(), rawFileName + ".bin");
+
+            System.out.print("Assembling \"" + p + "\"...");
+            try (BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(
+                    Paths.get(rawFileName + ".bin")))){
+                List<Problem> problems = assembler.assemble(directory, rawFileName, out);
+                System.out.println("Done.");
+                if (problems.size() == 0)
+                    System.out.println("No problems occurred.");
+                else {
+                    problems.forEach(System.out::println);
+                    System.out.println("Total Problems: " + problems.size());
+                    if (problems.stream().anyMatch(Problem::isError)) {
+                        System.out.flush();
+                        System.err.println("Assembling FAILED!");
+                        System.exit(210);
+                    }
+                }
+                p = output;
+            } catch (IOException e) {
+                System.out.println();
+                System.err.println("Error: Couldn't write or read to specified file.");
+                System.exit(126);
+            }
+
+        } catch (Exception e) {
+            System.out.println();
+            System.err.println("ERROR: Unspecified error!");
+            e.printStackTrace();
+            System.exit(168);
         }
         try {
             byte[] codeMemory = Files.readAllBytes(p);
