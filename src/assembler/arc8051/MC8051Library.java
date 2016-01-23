@@ -23,10 +23,11 @@ public class MC8051Library {
 
 
     public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\w&&[\\D]][\\w]*?):");
-    public static final Pattern ADDRESS_PATTERN         = Pattern.compile("(?:(((0b)|(0\\d)|(0d)|(0x))([0-9a-f]*))|" +
+    public static final Pattern ADDRESS_PATTERN         = Pattern.compile("(?:(((0b)|(0(?=\\d))|(0d)|(0x))([0-9a-f]+))|" +
                                                                           "((\\d[0-9a-f]*?)([boqdh])?))");
     public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*([\\w&&[\\D]]+\\w*?)\\s*");
-    public static final Pattern COMMENTARY_PATTERN      = Pattern.compile("\\s;(.*)");
+    public static final Pattern BIT_ADDRESS_PATTERN     = Pattern.compile("(" + ADDRESS_PATTERN.toString() + ")\\." +
+                                                                          "(" + ADDRESS_PATTERN.toString() + ")");
     public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#"+ADDRESS_PATTERN.toString());
     public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/"+ADDRESS_PATTERN.toString());
     public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]"+ADDRESS_PATTERN.toString());
@@ -154,14 +155,12 @@ public class MC8051Library {
             return MC8051Library.mnemonics;
         }
         @Override
-        public List<Problem> getProblems() {
-            List<Problem> problems = new ArrayList<>(MC8051Library.problems.size());
-            MC8051Library.problems.stream().forEach(x->problems.add(x));
+        public List<? extends Problem> getProblems() {
             return problems;
         }
         @Override
         public void clearProblems() {
-            getProblems().clear();
+            problems.clear();
         }
         @Override
         public OperandToken createNewJumpOperand(long address, int line) {

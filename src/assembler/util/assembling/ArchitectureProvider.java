@@ -22,7 +22,7 @@ public interface ArchitectureProvider {
      * Returns the Problems that the mnemonics stored
      * in a List if they occurred.
      */
-    List<Problem> getProblems();
+    List<? extends Problem> getProblems();
 
     /**
      * Clears the Problem List.

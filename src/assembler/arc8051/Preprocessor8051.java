@@ -10,11 +10,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Preprocesses input for assembly language written for the
+ * 8051 family.
+ *
  * @author Jannik
  */
 public class Preprocessor8051 implements Preprocessor {
     @Override
-    public List<Problem> preprocess(BufferedReader input, StringWriter output) {
+    public List<? extends Problem> preprocess(BufferedReader input, StringWriter output) {
         String line;
         List<Problem> problems = new ArrayList<>();
         try {
@@ -35,7 +38,7 @@ public class Preprocessor8051 implements Preprocessor {
 
         int last = 0;
         for (int cp : line.codePoints().toArray()) {
-            if (cp == ';') // Comment: No need to lowercase.
+            if (cp == ';') // Cut comments
                 break;
             else if (last == '\\' && !(cp == '\'' || cp == '"'))
                 problems.add(new PreprocessingProblem("Illegal escape!", Problem.Type.ERROR,
@@ -54,7 +57,7 @@ public class Preprocessor8051 implements Preprocessor {
             last = cp;
         }
         if (doubQuoted || simpQuoted)
-            problems.add(new PreprocessingProblem("Unclosed quote!", Problem.Type.ERROR, line));
+            problems.add(new PreprocessingProblem("Unclosed quote!", Problem.Type.WARNING, line));
         return result.toString();
     }
 }
