@@ -6,6 +6,7 @@ import assembler.Tokenizer;
 import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
+import assembler.tokens.Token;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
 import org.junit.Before;
@@ -172,5 +173,46 @@ public class AssemblerTest {
         if (ex || problems.stream().anyMatch(Problem::isError))
             fail("Some problems occurred.");
 
+    }
+
+    @Test
+    public void testTokenizer_AddToken() {
+        Method m = null;
+        try {
+            m = tokenizer.getClass().getDeclaredMethod("addToken",
+                    String.class, List.class, List.class, Path.class, int.class);
+            m.setAccessible(true);
+
+            HashMap<String, String> map = new HashMap<>();
+
+            map.put("#42",       "OperandToken8051(42)[OPERAND, CONSTANT, 42]");
+            map.put("/42",       "OperandToken8051(42)[OPERAND, NEGATED_ADDRESS, 42]");
+            map.put("42",        "OperandToken8051(42)[OPERAND, ADDRESS, 42]");
+            map.put("25h.02o",   "OperandToken8051(42)[OPERAND, ADDRESS, 42]");
+            map.put("0a8h.02o",  "OperandToken8051(42)[OPERAND, ADDRESS, 170]");
+            map.put("+42",       "OperandToken8051(42)[OPERAND, ADDRESS_OFFSET, 42]");
+            map.put("-42",       "OperandToken8051(42)[OPERAND, ADDRESS_OFFSET, -42]");
+            map.put("forty_two", "SymbolToken(42)[SYMBOL, forty_two]");
+            map.put("a",         "OperandToken8051(42)[OPERAND, NAME, a]");
+            map.put("@r0",       "OperandToken8051(42)[OPERAND, INDIRECT_NAME, r0]");
+
+            for (String test : map.keySet()) {
+                System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
+                List<Problem> list = new ArrayList<>();
+                List<Token> token = new ArrayList<>(1);
+                list.clear();
+                m.invoke(tokenizer,test, token, list, null, 42);
+                String tested = token.size() > 0 ? token.get(0).toString(): "???";
+                for (Problem p : list)
+                    System.out.println("\n" + p);
+                assertEquals(map.get(test), tested);
+                System.out.println("Passed.");
+            }
+        } catch (Exception e) {
+            System.out.flush();
+            e.printStackTrace();
+            fail("Unexpected Exception!");
+        }
+        m.setAccessible(false);
     }
 }

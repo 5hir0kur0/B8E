@@ -6,19 +6,6 @@ package assembler.tokens;
  * @author Noxgrim
  */
 public class Tokens {
-    /** Represents a Comment. */
-    public static class CommentToken extends Token {
-
-        /**
-         * Constructs a new Comment Token.
-         *
-         * @param value the value of the token.
-         * @param line the line of the token.
-         */
-        public CommentToken(String value, int line) {
-            super(value, TokenType.COMMENT, line);
-        }
-    }
 
     /**
      * Represents the mnemonic (as a String) itself.
