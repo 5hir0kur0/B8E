@@ -187,8 +187,6 @@ public class Assembler {
                     labels.add(lt);
                     break;
                 }
-                case COMMENT:
-                    break;
                 default:
                     problems.add(new TokenProblem("Token does not belong here!", Problem.Type.ERROR, t));
             }
@@ -210,7 +208,7 @@ public class Assembler {
         return problems;
     }
 
-    public void resolveLabelConsuming(List<Assembled> assembled, List<LabelToken> labels, List<Problem> problems) {
+    private void resolveLabelConsuming(List<Assembled> assembled, List<LabelToken> labels, List<Problem> problems) {
         assembled.stream().filter(x -> x.getMnemonic() instanceof LabelConsumer).forEach(x -> {
             List<OperandToken> operands = new ArrayList<>(x.getTokens().size());
             boolean unresolved = true;
@@ -240,7 +238,7 @@ public class Assembler {
         });
     }
 
-    public List<Byte> link(List<Assembled> assembled) {
+    private List<Byte> link(List<Assembled> assembled) {
         ArrayList<Byte> result = new ArrayList<>();
         for (Assembled a : assembled) {
             final byte[] codes = a.getCodes();
@@ -256,7 +254,7 @@ public class Assembler {
         return result;
     }
 
-    public void shiftLabels(long offset, long fromCodePoint, List<LabelToken> labels) {
+    private void shiftLabels(long offset, long fromCodePoint, List<LabelToken> labels) {
         labels.stream().filter(x->x.getCodePoint()>=fromCodePoint).forEach(x->x.setCodePoint(x.getCodePoint()+offset));
     }
 

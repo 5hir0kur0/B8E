@@ -49,9 +49,6 @@ public class Tokenizer8051 implements Tokenizer {
                     line = line.substring(m.end());
                     if (line.trim().isEmpty())
                         continue;
-                } else if ((m = MC8051Library.COMMENTARY_PATTERN.matcher(line)).find()) {
-                    result.add(new Tokens.CommentToken(m.group(1),lineNumber));
-                    continue;
                 } else {
                     problems.add(new TokenizingProblem("Expected mnemonic or comment!", Problem.Type.ERROR,
                             path, lineNumber, unModLine));
@@ -60,15 +57,7 @@ public class Tokenizer8051 implements Tokenizer {
 
                 final String[] split = line.split(",");
                 for (int i = 0; i < split.length; ++i) {
-                    if (i == split.length - 1) {
-                        if (split[i].contains(";")) {
-                            String[] split2 = split[i].split(";", 2);
-                            addToken(split2[0], result, problems, path, lineNumber);
-                            result.add(new Tokens.CommentToken(split2[1], lineNumber));
-                        } else
-                            addToken(split[i], result, problems, path, lineNumber);
-                    } else
-                        addToken(split[i], result, problems, path, lineNumber);
+                    addToken(split[i], result, problems, path, lineNumber);
                 }
             }
         } catch (NoSuchElementException e) {
@@ -84,6 +73,30 @@ public class Tokenizer8051 implements Tokenizer {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "constant", problems, m.group(0))) {
                 add.add(new OperandToken8051(MC8051Library.OperandType8051.CONSTANT, val, line));
+                return true;
+            }
+        } else if ((m = MC8051Library.BIT_ADDRESS_PATTERN.matcher(string)).matches()) {
+            Matcher byteMatcher = MC8051Library.ADDRESS_PATTERN.matcher(m.group(1));
+            final int bitGroup = 2+MC8051Library.ADDRESS_PATTERN.matcher("").groupCount();
+            Matcher bitMatcher  = MC8051Library.ADDRESS_PATTERN.matcher(m.group(bitGroup));
+            if (!(byteMatcher.matches() && bitMatcher.matches()))
+                return false;
+            String byteAddr = getNumber(byteMatcher, problems);
+            String bitAddr  = getNumber(bitMatcher, problems);
+            int result;
+            if (byteAddr != null && testBounds(0, 0xFF, Integer.parseInt(byteAddr), "bit address", problems, m.group(1))
+                & bitAddr != null && testBounds(0, 7, Integer.parseInt(bitAddr), "bit number", problems,
+                    m.group(bitGroup))) {
+                int intVal = Integer.parseInt(byteAddr);
+                result = intVal + Integer.parseInt(bitAddr);
+                if (intVal >= 0x20 && intVal < 0x30)
+                    result = (intVal - 0x20) * 8 + Integer.parseInt(bitAddr);
+                else if (intVal < 0x80 && (0xF8 & intVal) != 0) {
+                    problems.add(new TokenizingProblem("Byte is not bit addressable!", Problem.Type.ERROR,
+                            m.group(1)));
+                    return false;
+                }
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, Integer.toString(result), line));
                 return true;
             }
         } else if ((m = MC8051Library.ADDRESS_PATTERN.matcher(string)).matches()) {
@@ -102,7 +115,8 @@ public class Tokenizer8051 implements Tokenizer {
         } else if ((m = MC8051Library.ADDRESS_OFFSET_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "relative offset", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET, val, line));
+                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET,
+                        (m.group(0).charAt(0) == '-' ? '-' : "") + val, line));
                 return true;
             }
 
