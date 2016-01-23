@@ -1,7 +1,6 @@
 package simplemath;
 
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 /**
@@ -42,7 +41,8 @@ class Tokenizer {
 
         StringBuilder tmp = new StringBuilder(16);
         for (int i = 0; i < chars.length; ++i) {
-            if (!Character.isBmpCodePoint(chars[i])) throw new IllegalArgumentException("Only BMP supported.");
+            if (!Character.isBmpCodePoint(chars[i]))
+                throw new IllegalArgumentException("Only BMP characters are supported.");
             switch (getType(chars[i])) {
                 case NUMBER:
                     while (i < chars.length && getType(chars[i]) == TokenType.NUMBER) {
@@ -59,7 +59,22 @@ class Tokenizer {
                     tokens.add(new Token(getType(chars[i])));
                     break;
                 case OPERATOR:
-                    tokens.add(new OperatorToken(chars[i]));
+                    for (;i < chars.length && getType(chars[i]) == TokenType.OPERATOR; ++i) {
+                        if (Operators.isUnaryOperator(chars[i])) {
+                            String tmpString = tmp.toString();
+                            if (!tmpString.isEmpty()) tokens.add(new OperatorToken(tmpString));
+                            tmp.setLength(0);
+                            tokens.add(new OperatorToken(Character.toString(chars[i])));
+                            ++i;
+                            break;
+                        } else {
+                            tmp.append(chars[i]);
+                        }
+                    }
+                    --i;
+                    String tmpString = tmp.toString();
+                    if (!tmpString.isEmpty()) tokens.add(new OperatorToken(tmpString));
+                    tmp.setLength(0);
                     break;
             }
         }
@@ -150,7 +165,7 @@ class Tokenizer {
         if (Character.isDigit(c) || c == '.') return TokenType.NUMBER;
         if (c == '(') return TokenType.OPENING_BRACKET;
         if (c == ')') return TokenType.CLOSING_BRACKET;
-        if (Misc.isValidOperator(c)) return TokenType.OPERATOR;
+        if (Operators.isValidOperatorChar(c)) return TokenType.OPERATOR;
         throw new IllegalArgumentException("'"+c+"' is not a valid character for a mathematical expression.");
     }
 
@@ -164,7 +179,8 @@ class Tokenizer {
             throw new IllegalArgumentException("Empty expression.");
         Token current = null;
         Token previous;
-        Predicate<Token> isPlusOrMinus = t -> (t.isOperator() && t.getOperator() == '+' || t.getOperator() == '-');
+        Predicate<Token> isUnaryOperator = t -> (t.isOperator() && (t.getOperator().equals("+") ||
+                t.getOperator().equals("-") || t.getOperator().equals("~")));
         int brackets = 0;
         int numbers = 0;
         while (tokenIterator.hasNext()) {
@@ -173,7 +189,7 @@ class Tokenizer {
             if (previous == null) {
                 switch (current.getType()) {
                     case OPERATOR:
-                        if (!isPlusOrMinus.test(current))
+                        if (!isUnaryOperator.test(current))
                             throw new IllegalArgumentException("Illegal start of expression (non-unary operator):"
                                                                +current.getOperator());
                         break;
@@ -186,15 +202,15 @@ class Tokenizer {
             }
             switch (current.getType()) {
                 case OPERATOR:
-                    if (!isPlusOrMinus.test(current)) {
+                    if (!isUnaryOperator.test(current)) {
                         if (!previous.isNumber() && !previous.isClosingBracket())
                             throw new IllegalArgumentException("Illegal expression before binary operator "
                                                                +current.getOperator()+": "+previous);
-                    } else {
-                        if (previous.isOperator())
+                    }
+                    if (previous.isOperator() && (!isUnaryOperator.test(current) || current.getOperator().equals("+")
+                                                                                 || current.getOperator().equals("-")))
                             throw new IllegalArgumentException("Illegal expression: sequence of two operators: "
                                                                +previous.getOperator()+current.getOperator());
-                    }
                     break;
                 case OPENING_BRACKET:
                     if (!previous.isOperator() && !previous.isOpeningBracket())
@@ -206,6 +222,8 @@ class Tokenizer {
                         throw new IllegalArgumentException("Illegal sequence of brackets: ()");
                     else if (previous.isOperator())
                         throw new IllegalArgumentException("Illegal expression: "+previous.getOperator()+")");
+                    else if (brackets <= 0)
+                        throw new IllegalArgumentException("Closing bracket without preceding opening bracket");
                     --brackets;
                     break;
                 case NUMBER: ++numbers; break;

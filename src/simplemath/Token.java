@@ -20,13 +20,9 @@ class Token {
         this.type = type;
     }
 
-    @Override
-    public String toString() {
-        return "Token["+type+"]";
-    }
 
     /** @return the {@code char} representing the operator (if the {@code Token} is an {@code OperatorToken})*/
-    public char getOperator() throws UnsupportedOperationException {
+    public String getOperator() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("getOperator() was called on Token.");
     }
 
@@ -44,6 +40,11 @@ class Token {
     public boolean isNumber() { return this.type == TokenType.NUMBER; }
 
     public boolean isOperator() { return this.type == TokenType.OPERATOR; }
+
+    @Override
+    public String toString() {
+        return "Token["+type+"]";
+    }
 }
 
 /**
@@ -64,12 +65,6 @@ class NumberToken extends Token {
     @Override
     public double getNumber() { return this.number; }
 
-    /** If the {@code Token} is an {@code OperatorToken}, return the {@code char} representing the operator.*/
-    @Override
-    public char getOperator() {
-        throw new UnsupportedOperationException("getOperator() was called on NumberToken.");
-    }
-
     @Override
     public String toString() {
         return "NumberToken["+this.number+"]";
@@ -83,29 +78,23 @@ class NumberToken extends Token {
  */
 class OperatorToken extends Token {
 
-    private final char operator;
+    private final String operator;
 
     /**
      * @param operator
-     *     Only the operators described in Misc.VALID_OPERATORS can be stored using this class.
+     *     Only the operators described in Operators.VALID_OPERATORS can be stored using this class.
      */
-    OperatorToken(char operator) {
+    OperatorToken(String operator) {
         super(TokenType.OPERATOR);
         this.operator = operator;
-        if (!Misc.isValidOperator(operator))
+        if (!Operators.isValidOperator(operator))
             throw new IllegalArgumentException("Invalid operator: "+operator);
     }
 
     /** If the {@code Token} is an {@code OperatorToken}, return the {@code char} representing the operator.*/
     @Override
-    public char getOperator() throws UnsupportedOperationException {
+    public String getOperator() throws UnsupportedOperationException {
         return this.operator;
-    }
-
-    /** If the {@code Token} is a {@code NumberToken} return the number ({@code double}) it holds.*/
-    @Override
-    public double getNumber() throws UnsupportedOperationException {
-        throw new UnsupportedOperationException("getNumber() was called on OperatorToken.");
     }
 
     @Override
