@@ -6,8 +6,9 @@ import java.util.Stack;
 import java.util.function.BiPredicate;
 
 /**
- * Simple Parser for arithmetic expressions
+ * Simple parser for arithmetic expressions
  * Only simple expressions are supported (i.e. you can't create or access variables, functions, ...)
+ * NOTE: Unary pluses and minuses must be at the start of the expression or after an opening bracket.
  * @author Gordian
  */
 public class SimpleMath {
@@ -18,16 +19,10 @@ public class SimpleMath {
      * This method supports:
      * <ul>
      *     <li>Simple arithmetic expressions such as 1+1 <br>
-     *         Supported operators: '+', '-', '*', '/', '^', '%'
+     *         Supported operators: '+', '-', '*', '/', '^', '%', '~'<br>
+     *         Additional operators defined in class {@code Operators}: '&lt;&lt;', '&gt;&gt;', '&lt;', '&gt;', '|', '&'
      *     </li>
-     *     <li>Brackets (can be nested infinitely)</li>
-     * </ul>
-     * <br>
-     * It does not currently support:
-     * <ul>
-     *     <li>Mathematical constants, such as e or PI</li>
-     *     <li>Mathematical functions such as sin() or cos()</li>
-     *     <li>User-defined constants or functions</li>
+     *     <li>(Nested) Brackets</li>
      * </ul>
      * @param expression
      *     The expression to be evaluated in infix notation.
@@ -68,7 +63,7 @@ public class SimpleMath {
         Stack<Token> stack = new Stack<>();
         List<Token> postfix = new LinkedList<>();
         BiPredicate<Token, Token> hasHigherOrEqualWeight = (t1, t2) ->
-            Misc.getOpWeight(t1.getOperator()) - Misc.getOpWeight(t2.getOperator()) >= 0;
+            Operators.getOpWeight(t1.getOperator()) - Operators.getOpWeight(t2.getOperator()) >= 0;
 
         while (tokenizer.hasNext()) {
             Token t = tokenizer.next();
@@ -126,30 +121,35 @@ public class SimpleMath {
                     t2 = stack.pop();
                     Double result = 0.0;
                     switch (t.getOperator()) {
-                        case '+':
+                        case "+":
                             if (stack.isEmpty()) result = +t2;
                             else {
                                 t1 = stack.pop();
                                 result = t1 + t2;
                             } break;
-                        case '-':
+                        case "-":
                             if (stack.isEmpty()) result = -t2;
                             else {
                                 t1 = stack.pop();
                                 result = t1 - t2;
                             } break;
-                        case '*':
+                        case "*":
                             t1 = stack.pop();
                             result = t1 * t2; break;
-                        case '/':
+                        case "/":
                             t1 = stack.pop();
                             result = t1 / t2; break;
-                        case '%':
+                        case "%":
                             t1 = stack.pop();
                             result = t1 % t2; break;
-                        case '^':
+                        case "^":
                             t1 = stack.pop();
                             result = Math.pow(t1, t2); break;
+                        case "~":
+                            result = (double)~(long)(double)t2; break;
+                        default:
+                            t1 = stack.pop();
+                            result = Operators.getOperatorFunction((OperatorToken)t).apply(t1, t2);
                     }
                     stack.push(result);
                     break;
