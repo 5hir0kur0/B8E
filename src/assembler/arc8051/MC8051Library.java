@@ -7,8 +7,8 @@ import assembler.tokens.Tokens;
 import assembler.util.assembling.ArchitectureProvider;
 import assembler.util.problems.Problem;
 import assembler.util.problems.Problem.Type;
-import assembler.util.Settings;
-import assembler.util.Settings.Errors.ErrorHandling;
+import assembler.util.AssemblerSettings;
+import assembler.util.AssemblerSettings.Errors.ErrorHandling;
 import assembler.util.problems.TokenProblem;
 
 import java.util.ArrayList;
@@ -23,14 +23,14 @@ public class MC8051Library {
 
 
     public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\w&&[\\D]][\\w]*?):");
-    public static final Pattern ADDRESS_PATTERN         = Pattern.compile("(?:(((0b)|(0(?=\\d))|(0d)|(0x))([0-9a-f]+))|" +
-                                                                          "((\\d[0-9a-f]*?)([boqdh])?))");
+    public static final Pattern NUMBER_PATTERN          = Pattern.compile("(\\d\\w*)");
+    public static final Pattern ADDRESS_PATTERN         = Pattern.compile(NUMBER_PATTERN.toString());
     public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*([\\w&&[\\D]]+\\w*?)\\s*");
-    public static final Pattern BIT_ADDRESS_PATTERN     = Pattern.compile("(" + ADDRESS_PATTERN.toString() + ")\\." +
-                                                                          "(" + ADDRESS_PATTERN.toString() + ")");
-    public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#"+ADDRESS_PATTERN.toString());
-    public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/"+ADDRESS_PATTERN.toString());
-    public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]"+ADDRESS_PATTERN.toString());
+    public static final Pattern BIT_ADDRESS_PATTERN     = Pattern.compile("(" + NUMBER_PATTERN.toString() + ")\\." +
+                                                                          "(" + NUMBER_PATTERN.toString() + ")");
+    public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#" + NUMBER_PATTERN.toString());
+    public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/" + NUMBER_PATTERN.toString());
+    public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]" + NUMBER_PATTERN.toString());
     public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]+?\\w*?)");
     public static final Pattern SYMBOL_INDIRECT_PATTERN = Pattern.compile("@([\\w&&[\\D]]+?\\w*(?:\\s*\\+\\s*)?\\w*?)");
 
@@ -413,7 +413,7 @@ public class MC8051Library {
                             problems.add(new TokenProblem("Incompatible operand! " +
                                     "(Expected \"@a+dptr\")", Type.WARNING, operands[0]));
                     } else
-                        problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing '@a+dptr' as first operand!", "Operand '@a+dptr' should be written as first " +
                                         "operand."));
 
@@ -661,7 +661,7 @@ public class MC8051Library {
                     if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("a"))
                         firstA = true;
                      else
-                        problems.add(getErrorFromErrorHandlingSetting(operands[0], Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(operands[0], AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
 
                     if (operands.length > (firstA ? 1 : 0)) {
@@ -915,7 +915,7 @@ public class MC8051Library {
                                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
                         }
                         if (firstIgnored)
-                            problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                            problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.")); 
                     }
 
@@ -993,7 +993,7 @@ public class MC8051Library {
         if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                 operands[0].getValue().equals("a"))) {
             firstIsA = false;
-            problems.add(getErrorFromErrorHandlingSetting(operands[0], Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(operands[0], AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
         } else if (operands.length < 2) {
             problems.add(new TokenProblem("Expected 2 operands!", Type.ERROR, operands[0]));
@@ -1142,7 +1142,7 @@ public class MC8051Library {
                         result = new byte[]{opc5, (byte) val};
                     if (i == 0) {
                         firstIgnored = true;
-                        problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                 "Missing 'c' as first operand!", "Operand 'c' should be written as first operand."));
                     } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                                operands[0].getValue().equals("c")))
@@ -1156,7 +1156,7 @@ public class MC8051Library {
                         OperandType8051 type = op.getOperandType();
                         if (i == 0) {
                             firstIgnored = true;
-                            problems.add(getErrorFromErrorHandlingSetting(op, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                            problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
                         } else if (operands[0].getOperandType() == OperandType8051.NAME &&
                                      operands[0].getValue().equals("c"))
@@ -1310,7 +1310,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand! (Expected \"a\")", Type.WARNING, operands[0]));
             opIsA = true;
         } else
-            problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
 
 
@@ -1415,7 +1415,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand! (Expected \"ab\")", Type.WARNING, operands[0]));
 
         } else
-            problems.add(getErrorFromErrorHandlingSetting(name, Settings.Errors.IGNORE_OBVIOUS_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
                     "Missing 'ab' as first operand!", "Operand 'ab' should be written as first operand."));
 
 
@@ -1663,13 +1663,13 @@ public class MC8051Library {
                                            int firstOperand, OperandToken8051 ... operands) {
         if (!hasObviousOperands)
             ignored = 0;
-        final String err = Settings.Errors.IGNORE_OBVIOUS_OPERANDS != ErrorHandling.ERROR && hasObviousOperands?
+        final String err = AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS != ErrorHandling.ERROR && hasObviousOperands?
                 "Too many operands! " + mnemonicName.toUpperCase() + " must have "+(firstOperand-1)+" or "+firstOperand+
                         " operands." :
                 "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly "+firstOperand+" operand"+
                         (firstOperand == 0 ? "":"s")+".";
         for (int i = firstOperand - ignored; i < operands.length; ++i)
-            problems.add(getErrorFromErrorHandlingSetting(operands[i], Settings.Errors.ADDITIONAL_OPERANDS,
+            problems.add(getErrorFromErrorHandlingSetting(operands[i], AssemblerSettings.Errors.ADDITIONAL_OPERANDS,
                     err, "Unnecessary operand."));
 
     }
