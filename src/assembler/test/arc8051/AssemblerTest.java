@@ -92,9 +92,9 @@ public class AssemblerTest {
             map.put(Integer.toOctalString(rand = random.nextInt(0x10000))+"q",   Integer.toString(rand));
             map.put(Integer.toString(rand = random.nextInt(0x10000))+"d",        Integer.toString(rand));
             map.put("0"+Integer.toHexString(rand = random.nextInt(0x10000))+"h", Integer.toString(rand));
-            map.put("0b"+Integer.toBinaryString(rand = random.nextInt(0x10000)), Integer.toString(rand));
-            map.put("0" +Integer.toOctalString(rand = random.nextInt(0x10000)),  Integer.toString(rand));
-            map.put("0d"+Integer.toString(rand = random.nextInt(0x10000)),       Integer.toString(rand));
+//            map.put("0b"+Integer.toBinaryString(rand = random.nextInt(0x10000)), Integer.toString(rand));
+//            map.put("0" +Integer.toOctalString(rand = random.nextInt(0x10000)),  Integer.toString(rand));
+//            map.put("0d"+Integer.toString(rand = random.nextInt(0x10000)),       Integer.toString(rand));
             map.put("0x"+Integer.toHexString(rand = random.nextInt(0x10000)),    Integer.toString(rand));
 
             for (String test : map.keySet()) {

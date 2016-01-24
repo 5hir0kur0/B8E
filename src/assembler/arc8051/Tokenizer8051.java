@@ -7,6 +7,7 @@ import assembler.tokens.Tokens;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenizingProblem;
+import misc.Settings;
 
 import java.io.StringReader;
 import java.nio.file.Path;
@@ -22,6 +23,7 @@ import java.util.regex.Matcher;
  * @author Noxgrim
  */
 public class Tokenizer8051 implements Tokenizer {
+
 
     @Override
     public List<Token> tokenize(StringReader input, List<Problem> problems) {
@@ -76,9 +78,9 @@ public class Tokenizer8051 implements Tokenizer {
                 return true;
             }
         } else if ((m = MC8051Library.BIT_ADDRESS_PATTERN.matcher(string)).matches()) {
-            Matcher byteMatcher = MC8051Library.ADDRESS_PATTERN.matcher(m.group(1));
-            final int bitGroup = 2+MC8051Library.ADDRESS_PATTERN.matcher("").groupCount();
-            Matcher bitMatcher  = MC8051Library.ADDRESS_PATTERN.matcher(m.group(bitGroup));
+            Matcher byteMatcher = MC8051Library.NUMBER_PATTERN.matcher(m.group(1));
+            final int bitGroup = 2+byteMatcher.groupCount();
+            Matcher bitMatcher  = MC8051Library.NUMBER_PATTERN.matcher(m.group(bitGroup));
             if (!(byteMatcher.matches() && bitMatcher.matches()))
                 return false;
             String byteAddr = getNumber(byteMatcher, problems);
@@ -91,7 +93,7 @@ public class Tokenizer8051 implements Tokenizer {
                 result = intVal + Integer.parseInt(bitAddr);
                 if (intVal >= 0x20 && intVal < 0x30)
                     result = (intVal - 0x20) * 8 + Integer.parseInt(bitAddr);
-                else if (intVal < 0x80 && (0xF8 & intVal) != 0) {
+                else if (intVal < 0x80 || (0x07 & intVal) != 0) {
                     problems.add(new TokenizingProblem("Byte is not bit addressable!", Problem.Type.ERROR,
                             m.group(1)));
                     return false;
@@ -142,56 +144,48 @@ public class Tokenizer8051 implements Tokenizer {
     private String getNumber(Matcher matcher, List<Problem> problems) {
         String result = null;
         String numberSystem = "MISSINGNO-SYSTEM";      // Should be overwritten. (Did you get the joke?)
+
+        final String number = matcher.group(1);
+
         try {
-            if (matcher.group(2) != null) {
-                if (matcher.group(3) != null) {        // Binary
-                    numberSystem = "BINARY";
-                    final int val = Integer.parseInt(matcher.group(7), 2);
-                    result = Integer.toString(val);
-                } else if (matcher.group(4) != null) { // Octal
-                    numberSystem = "OCTAL";
-                    final int val = Integer.parseInt(matcher.group(4)+matcher.group(7), 8);
-                    result = Integer.toString(val);
-                } else if (matcher.group(5) != null) { // Decimal
-                    numberSystem = "DECIMAL";
-                    final int val = Integer.parseInt(matcher.group(7), 10);
-                    result = Integer.toString(val);
-                } else {                               // Hex
-                    numberSystem = "HEXADECIMAL";
-                    final int val = Integer.parseInt(matcher.group(7), 16);
-                    result = Integer.toString(val);
-                }
+            if (number.startsWith("0x")) {
+                numberSystem = "HEXADECIMAL";
+
+                result = Integer.toString(Integer.parseInt(number.substring(2), 16));
             } else {
-                char ns = 'd'; // TODO: Add reading of default from settings.
-                if (matcher.group(10) != null)
-                    ns = matcher.group(10).charAt(0);
+                final char postfix = number.charAt(number.length()-1);
                 // All postfixes are taken from Asem-51
                 // Reference: http://plit.de/asem-51/constant.htm
-                switch (ns) {
+                switch (postfix) {
                     case 'b': {   // In Asem-51 'b' is used to indicate binary numbers
                         numberSystem = "BINARY";
-                        final int val = Integer.parseInt(matcher.group(9), 2);
+                        final int val = Integer.parseInt(number.substring(0, number.length()-1), 2);
                         result = Integer.toString(val);
                         break;
                     }
                     case 'q':
                     case 'o': {   // In Asem-51 'o' or 'q' are used to indicate octal numbers
                         numberSystem = "OCTAL";
-                        final int val = Integer.parseInt(matcher.group(9), 8);
-                        result = Integer.toString(val);
-                        break;
-                    }
-                    case 'd': {   // In Asem-51 'd' is used to indicate decimal numbers
-                        numberSystem = "DECIMAL";
-                        final int val = Integer.parseInt(matcher.group(9), 10);
+                        final int val = Integer.parseInt(number.substring(0, number.length()-1), 8);
                         result = Integer.toString(val);
                         break;
                     }
                     case 'h': {   // In Asem-51 'h' is used to indicate hexadecimal numbers
                         numberSystem = "HEXADECIMAL";
-                        final int val = Integer.parseInt(matcher.group(9), 16);
+                        final int val = Integer.parseInt(number.substring(0, number.length()-1), 16);
                         result = Integer.toString(val);
                         break;
+                    }
+                    case 'd': {   // In Asem-51 'd' or missing prefixes is used to indicate decimal numbers
+                        numberSystem = "DECIMAL";
+                        final int val = Integer.parseInt(number.substring(0, number.length()-1), 10);
+                        result = Integer.toString(val);
+                        break;
+                    }
+                    default: {   // No known postfix recognised, assuming decimal
+                        numberSystem = "DECIMAL";
+                        final int val = Integer.parseInt(number, 10);
+                        result = Integer.toString(val);
                     }
                 }
             }

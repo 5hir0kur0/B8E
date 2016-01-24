@@ -73,7 +73,7 @@ public class Assembler {
     public List<Problem> assemble(Path directory, String file, BufferedOutputStream output) {
         List<Problem> problems = new ArrayList<>();
         try (BufferedReader input = Files.newBufferedReader(Paths.get(directory.toString(),
-                file + Settings.FILE_EXTENSION));
+                file + AssemblerSettings.FILE_EXTENSION));
              StringWriter prepOutput  = new StringWriter()){
 
             problems.addAll(preprocessor.preprocess(input, prepOutput));
