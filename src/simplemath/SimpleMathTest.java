@@ -9,7 +9,7 @@ import static org.junit.Assert.*;
 /**
  * Simple test for {@code SimpleMath}
  * NOTE: This class only tests for simple and valid expressions and does not check operator precedence very well and it
- *       only uses {@code long}s for tests. Also, it does not test "&lt;" and "&gt;".
+ *       only uses {@code long}s for tests.
  * @author Gordian
  */
 public class SimpleMathTest {
@@ -194,6 +194,18 @@ public class SimpleMathTest {
                 6,
                 1337,
         };
+        assertExprs(exprs, results);
+    }
+
+    @Test
+    public void testLargerAndSmallerThan() {
+        String[] exprs = {
+                "1 < 2",
+                "42 > 21",
+                "2 > 333",
+                "1337 < 1337"
+        };
+        long[] results = { 1,1,0,0 };
         assertExprs(exprs, results);
     }
 
