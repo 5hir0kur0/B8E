@@ -69,6 +69,9 @@ class Operators {
                 return 5;
             case "&":
                 return 10;
+            case "<":
+            case ">":
+                return 12;
             case "<<":
             case ">>":
                 return 15;
