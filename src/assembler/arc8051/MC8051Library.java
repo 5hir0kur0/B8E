@@ -10,6 +10,7 @@ import assembler.util.problems.Problem.Type;
 import assembler.util.AssemblerSettings;
 import assembler.util.AssemblerSettings.Errors.ErrorHandling;
 import assembler.util.problems.TokenProblem;
+import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,97 +18,102 @@ import java.util.regex.Pattern;
 
 
 /**
+ * A simple class that contains all resources that are needed by classes that are
+ * a specification of the 8051 architecture.<br>
+ *
+ * This class contains:<br>
+ * - The Architecture Provider<br>
+ * &nbsp; - A List of Problems<br>
+ * &nbsp; - All Mnemonics<br>
+ * - Patterns for the Tokenizer and Preprocessor<br>
+ * - Some other utility methods<br>
+ *
  * @author Noxgrim
  */
 public class MC8051Library {
+    /** Class cannot be initialized. */
+    private MC8051Library() {}
 
+    /**
+     * Pattern for a valid symbol.<br>
+     * A symbol is any word character that is not a digit followed
+     * by any amount of valid word characters.<br>
+     * Regex: <code>"([\w&&[\D]]\w*?)"</code>
+     */
+    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]\\w*?)");
+    /**
+     * Pattern for a valid number.<br>
+     * Any digit followed by any amount of valid word characters.<br>
+     * Regex: <code>"(\d\w*)"</code>
+     */
+    public static final Pattern NUMBER_PATTERN          = Pattern.compile("(\\d\\w*?)");
 
-    public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*([\\w&&[\\D]][\\w]*?):");
-    public static final Pattern NUMBER_PATTERN          = Pattern.compile("(\\d\\w*)");
-    public static final Pattern ADDRESS_PATTERN         = Pattern.compile(NUMBER_PATTERN.toString());
-    public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*([\\w&&[\\D]]+\\w*?)\\s*");
-    public static final Pattern BIT_ADDRESS_PATTERN     = Pattern.compile("(" + NUMBER_PATTERN.toString() + ")\\." +
-                                                                          "(" + NUMBER_PATTERN.toString() + ")");
-    public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#" + NUMBER_PATTERN.toString());
-    public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/" + NUMBER_PATTERN.toString());
-    public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]" + NUMBER_PATTERN.toString());
-    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]+?\\w*?)");
+    /**
+     * Pattern for a valid label.<br>
+     * White space followed by a valid SYMBOL followed by a <code>':'</code>.<br>
+     * Regex: <code>"^\s*([\w&&[\D]][\w]*?):"</code>
+     * @see #SYMBOL_PATTERN
+     */
+    public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*"+SYMBOL_PATTERN.toString()+":");
+    /**
+     * Pattern for a valid mnemonic name.<br>
+     * Basically a SYMBOL surrounded by possible white space.<br>
+     * Regex: <code>"\s*([\w&&[\D]]\w*?)\s*"</code>
+     * @see #SYMBOL_PATTERN
+     */
+    public static final Pattern MNEMONIC_NAME_PATTERN   = Pattern.compile("\\s*"+SYMBOL_PATTERN.toString()+"\\s*");
+    /**
+     * Pattern for a valid indirect symbol, a symbol that indicates indirect addressing.<br>
+     * An <code>'@'</code> followed by a SYMBOL that optional can be split into two by a
+     * <code>'+'</code> that is surrounded by any white space.<br>
+     * Regex: <code>"@([\\w&&[\\D]]+?\\w*(?:\\s*\\+\\s*)?\\w*?)"</code>
+     * @see #SYMBOL_PATTERN
+     */
     public static final Pattern SYMBOL_INDIRECT_PATTERN = Pattern.compile("@([\\w&&[\\D]]+?\\w*(?:\\s*\\+\\s*)?\\w*?)");
+
+    /**
+     * Pattern for a valid address.<br>
+     * The same as a NUMBER.<br>
+     * Regex: <code>"(\d\w*?)"</code>
+     * @see #NUMBER_PATTERN
+     */
+    public static final Pattern ADDRESS_PATTERN         = Pattern.compile(NUMBER_PATTERN.toString());
+    /**
+     * Pattern for valid bit addressing with a <code>'.'</code>.<br>
+     * A <code>'.'</code> enclosed by two NUMBERS.<br>
+     * Regex: <code>"(\d\w*?).(\d\w*?)"</code>
+     * @see #NUMBER_PATTERN
+     */
+    public static final Pattern BIT_ADDRESSING_PATTERN = Pattern.compile( NUMBER_PATTERN.toString() + "\\." +
+                                                                          NUMBER_PATTERN.toString());
+    /**
+     * Pattern for a valid constant.<br>
+     * A <code>'#'</code> followed by a NUMBER.<br>
+     * Regex: <code>"#(\d\w*?)"</code>
+     * @see #NUMBER_PATTERN
+     */
+    public static final Pattern CONSTANT_PATTERN        = Pattern.compile("#" + NUMBER_PATTERN.toString());
+    /**
+     * Pattern for a valid negated address, a address that implies that the
+     * address has to be complemented first.<br>
+     * A <code>'/'</code> followed by a NUMBER.<br>
+     * Regex: <code>"/(\d\w*?)"</code>
+     * @see #NUMBER_PATTERN
+     */
+    public static final Pattern NEGATED_ADDRESS_PATTERN = Pattern.compile("/" + NUMBER_PATTERN.toString());
+    /**
+     * Pattern for a valid address offset that is not absolute like a normal
+     * address but instead relative to the address of the mnemonic.<br>
+     * A <code>'+'</code> or <code>'-'</code> followed by a NUMBER.<br>
+     * Regex: <code>"[+-](d\w*?)"</code>
+     * @see #NUMBER_PATTERN
+     */
+    public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]" + NUMBER_PATTERN.toString());
 
     /** Reserved symbols. Contains "A", "C" and all R-Registers. */
     public static final String[] RESERVED_NAMES = {"A", "C", "DPTR", "AB", "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"};
     /** Reserved indirect symbols.*/
     public static final String[] RESERVED_INDIRECT_NAMES = {"DPTR", "A+DPTR", "A+PC", "R0", "R1"};
-    /**
-     * Contains all the possible types of a 8051 operand
-     * as an enum.
-     */
-    public enum OperandType8051 {
-        /**
-         * A constant value.<br> In 8051 assembly
-         * language all constant values have
-         * a number sign '#' as prefix.<br>
-         * All numbers must be present in decimal
-         * system (10) form and have to be <code>8</code>
-         * or <code>16</code> bit long.
-         * The value has to be the raw value
-         * without the '#'.
-         */
-        CONSTANT,
-        /**
-         * An address.<br> In 8051 assembly
-         * language addresses have no prefix.<br>
-         * All addresses must be present in decimal
-         * system (10) form and have to be <code>8</code>
-         * or <code>16</code> bit long.
-         */
-        ADDRESS,
-        /**
-         * A 'negated' address.<br> In 8051 assembly
-         * language all negated addresses have a
-         * solidus '/' as prefix.<br>
-         * All addresses must be present in decimal
-         * system (10) form and have to be <code>8</code>
-         * bit long.<br>
-         * Negated addresses are used in bit operations
-         * to indicate that the  microcomputer first
-         * has to negate the value at the value at the
-         * address before perform the operation itself.
-         *
-         */
-        NEGATED_ADDRESS,
-
-        /**
-         * An offset for an address.<br>
-         * All address offsets are labeled by either a '+' or
-         * a '-' prefix.<br>
-         * An address offset is used for relative addressing.
-         * Instead of the absolute address a address generated
-         * form the code point and the address offset is used as
-         * the jump target.
-         */
-        ADDRESS_OFFSET,
-        /**
-         * A name that the 8051 mnemonic knows.<br>
-         * Named addresses like "P0.7" don't count because
-         * these names don't have specific mnemonics attached
-         * to them.<br>
-         * E.g.:
-         * <pre>
-         *     MOV A, B
-         *     ; is in reality
-         *     MOV A, F0h
-         * </pre>
-         */
-        NAME,
-        /**
-         * A name, that suggests an indirect addressing process
-         * with the name.<br>
-         * An indirect addressed name has '@' prefix.<br>
-         * Only R0 and R1 can be used to address indirect.
-         */
-        INDIRECT_NAME;
-    }
 
     /** The address of the accumulator. */
     public static final byte A = (byte) 0xE0;
@@ -177,6 +183,9 @@ public class MC8051Library {
         return bank;
     }
 
+    /**
+     * An array of all supported Mnemonics of the 8051 architecture.
+     */
     public static final Mnemonic8051[] mnemonics = {
 
             new Mnemonic8051LabelConsumer("acall", 1, true) {
