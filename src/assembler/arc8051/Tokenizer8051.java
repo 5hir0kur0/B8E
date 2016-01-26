@@ -7,7 +7,6 @@ import assembler.tokens.Tokens;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenizingProblem;
-import misc.Settings;
 
 import java.io.StringReader;
 import java.nio.file.Path;
@@ -68,16 +67,44 @@ public class Tokenizer8051 implements Tokenizer {
         return result;
     }
 
+    /**
+     * Tries to generate a valid Token from a given String.<br>
+     * Patters from {@link MC8051Library} will be used to determine the token type
+     * and then the values will be validated and a the resulting Token will be added
+     * to a given List.
+     *
+     * @param string
+     *      the String that should be analysed.
+     * @param add
+     *      the List the resulting Token will be added to.
+     * @param problems
+     *      a List to witch occurring Problems will be added.<br>
+     *      Possible sources of Problems:
+     *      <ul>
+     *          <li>ERROR: the TokenType of the String could not be recognized.</li>
+     *          <li>ERROR: the format of a number is wrong (illegal digits were used).</li>
+     *          <li>ERROR: the value of a number is out of bounds (negative or bigger than
+     *          <code>0xFF/0xFFFF</code>).</li>
+     *          <li>ERROR: a bit addressed is not bit addressable.</li>
+     *      </ul>
+     * @param path
+     *      the Path of the used file.
+     * @param line
+     *      the line of the String.
+     *
+     * @return
+     *      <code>true</code> if this method was successful, <code>false</code> otherwise.
+     */
     private boolean addToken(String string, List<Token> add, List<Problem> problems, Path path, int line) {
         string = string.trim();
         Matcher m;
         if ((m = MC8051Library.CONSTANT_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "constant", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.CONSTANT, val, line));
+                add.add(new OperandToken8051(OperandToken8051.OperandType8051.CONSTANT, val, line));
                 return true;
             }
-        } else if ((m = MC8051Library.BIT_ADDRESS_PATTERN.matcher(string)).matches()) {
+        } else if ((m = MC8051Library.BIT_ADDRESSING_PATTERN.matcher(string)).matches()) {
             Matcher byteMatcher = MC8051Library.NUMBER_PATTERN.matcher(m.group(1));
             final int bitGroup = 2+byteMatcher.groupCount();
             Matcher bitMatcher  = MC8051Library.NUMBER_PATTERN.matcher(m.group(bitGroup));
@@ -98,26 +125,26 @@ public class Tokenizer8051 implements Tokenizer {
                             m.group(1)));
                     return false;
                 }
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, Integer.toString(result), line));
+                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS, Integer.toString(result), line));
                 return true;
             }
         } else if ((m = MC8051Library.ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS, val, line));
+                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS, val, line));
                 return true;
             }
         } else if ((m = MC8051Library.NEGATED_ADDRESS_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.NEGATED_ADDRESS, val, line));
+                add.add(new OperandToken8051(OperandToken8051.OperandType8051.NEGATED_ADDRESS, val, line));
                 return true;
             }
 
         } else if ((m = MC8051Library.ADDRESS_OFFSET_PATTERN.matcher(string)).matches()) {
             String val = getNumber(m, problems);
             if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "relative offset", problems, m.group(0))) {
-                add.add(new OperandToken8051(MC8051Library.OperandType8051.ADDRESS_OFFSET,
+                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS_OFFSET,
                         (m.group(0).charAt(0) == '-' ? '-' : "") + val, line));
                 return true;
             }
@@ -126,13 +153,13 @@ public class Tokenizer8051 implements Tokenizer {
             String val = m.group(1).replaceAll("\\s", "");
             for (String reserved : MC8051Library.RESERVED_NAMES)
                 if (val.equalsIgnoreCase(reserved)) {
-                    add.add(new OperandToken8051(MC8051Library.OperandType8051.NAME, val, line));
+                    add.add(new OperandToken8051(OperandToken8051.OperandType8051.NAME, val, line));
                     return true;
                 }
             add.add(new Tokens.SymbolToken(val, line));
             return true;
         } else if ((m = MC8051Library.SYMBOL_INDIRECT_PATTERN.matcher(string)).matches()) {
-            add.add(new OperandToken8051(MC8051Library.OperandType8051.INDIRECT_NAME,
+            add.add(new OperandToken8051(OperandToken8051.OperandType8051.INDIRECT_NAME,
                     m.group(1).replaceAll("\\s", ""), line));
             return true;
         } else
@@ -141,6 +168,28 @@ public class Tokenizer8051 implements Tokenizer {
         return false;
     }
 
+    /**
+     * Coverts a number from a given match to a decimal number and
+     * returns it as a String (so it can be of the value <code>null</code>).
+     *
+     * @param matcher
+     *      the used matcher. It has to have one group with the value captured
+     *      in it. ({@link MC8051Library#NUMBER_PATTERN} and all extending
+     *      Patters provide this functionality.)
+     * @param problems
+     *      a List to witch occurring Problems will be added.<br>
+     *      Possible sources of Problems:
+     *      <ul>
+     *          <li>ERROR: the number uses digits that are not used in the number
+     *          system specified.</li>
+     *      </ul>
+     *
+     * @return
+     *      the value of the String as a decimal String or <code>null</code>
+     *      if the String is invalid.
+     *
+     * @see MC8051Library#NUMBER_PATTERN
+     */
     private String getNumber(Matcher matcher, List<Problem> problems) {
         String result = null;
         String numberSystem = "MISSINGNO-SYSTEM";      // Should be overwritten. (Did you get the joke?)
@@ -196,6 +245,31 @@ public class Tokenizer8051 implements Tokenizer {
         return result;
     }
 
+    /**
+     * Tests if a number lies in specified range and adds a problem to a given
+     * List if it is out of bounds.
+     *
+     * @param min
+     *      the minimal value the number can have (inclusive).
+     * @param max
+     *      the maximal value the number can have (inclusive).
+     * @param value
+     *      the actual value of the number.
+     * @param type
+     *      the type of the number (e.g. "address").
+     * @param problems
+     *      a List to witch occurring Problems will be added.<br>
+     *      Possible sources of Problems:
+     *      <ul>
+     *          <li>ERROR: the number is smaller than the specified minimum.</li>
+     *          <li>ERROR: the number is bigger than the specified maximum.</li>
+     *      </ul>
+     * @param cause
+     *      the cause of the number used for the creation of the Problem.
+     *
+     * @return
+     *      <code>true</code> if the value lies within the bounds.
+     */
     private boolean testBounds(final int min, final int max, final int value,
                                final String type, List<Problem> problems, String cause) {
         if (value < min) {

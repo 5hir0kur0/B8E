@@ -26,11 +26,33 @@ public class Preprocessor8051 implements Preprocessor {
             }
 
         } catch (IOException e) {
-            problems.add(new ExceptionProblem("Could not read input", Problem.Type.ERROR, e));
+            problems.add(new ExceptionProblem("Could not read input.", Problem.Type.ERROR, e));
         }
         return problems;
     }
 
+    /**
+     * Turns every character into its lowercase representation if possible.<br>
+     * The character wont be lowercased ignored if it's quoted in <code>'"'</code> or
+     * <code>'\''</code>.A quoted character can be escaped with a <code>'\'</code>.<br>
+     * Also comments (everything after and including  a<code>';'</code>) will be cut
+     * from the resulting String.<br>
+     *
+     * @param line the line that should be lowercased.
+     * @param problems
+     *      a List to witch occurring Problems will be added.<br>
+     *      Possible sources of Problems:
+     *      <ul>
+     *          <li>ERROR: the user tries to escape a character that is not a
+     *          <code>'"'</code> or <code>'\''</code></li>
+     *          <li>WARNING: a quote is not closed if the end of the line or
+     *          a comment is reached.</li>
+     *      </ul>
+     *
+     * @return
+     *      a String that is a lowercased representation of the given one
+     *      with possible comments removed.
+     */
     private String lowerCase(String line, List<Problem> problems) {
 
         StringBuffer result = new StringBuffer(line.length());
