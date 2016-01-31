@@ -80,8 +80,8 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void setFontSize(int newSize) {
         if (newSize <= 0) throw new IllegalArgumentException("Illegal font size: "+newSize);
-        Font oldFont = this.lineNumbers.getFont();
-        Font newFont = new Font(oldFont.getName(), oldFont.getStyle(), newSize);
+        final Font oldFont = this.lineNumbers.getFont();
+        final Font newFont = oldFont.deriveFont((float)newSize);
         this.lineNumbers.setFont(newFont);
         this.code.setFont(newFont);
     }
