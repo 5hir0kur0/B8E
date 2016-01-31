@@ -34,11 +34,17 @@ public class Token implements Comparable<Token> {
         this.type  = Objects.requireNonNull(type, "'Type' of token cannot be 'null'!");
     }
 
-
+    /**
+     * Returns the type of the Token.
+     * @see Token.TokenType
+     */
     public TokenType getType() {
         return type;
     }
 
+    /**
+     * Returns the value of the Token as a String.
+     */
     public String getValue() {
         return value;
     }

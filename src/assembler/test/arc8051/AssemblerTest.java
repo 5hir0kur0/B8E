@@ -4,8 +4,11 @@ import assembler.Assembler;
 import assembler.Preprocessor;
 import assembler.Tokenizer;
 import assembler.arc8051.MC8051Library;
+import assembler.arc8051.OperandToken8051;
+import static assembler.arc8051.OperandToken8051.OperandType8051;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
+import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
@@ -18,10 +21,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -150,7 +150,7 @@ public class AssemblerTest {
                 int line = 0;
                 while ((asmLine = asm.readLine()) != null | (comLine = com.readLine()) != null) {
                     System.out.print("Line: " + ++line + "...");
-                    assertEquals(asmLine, comLine);
+                    assertEquals(comLine, asmLine);
                     System.out.println("Passed.");
                 }
             }
@@ -215,4 +215,87 @@ public class AssemblerTest {
         }
         m.setAccessible(false);
     }
+
+    @Test
+    public void test_ajmp() {
+        final OperandToken8051[][] operands = generateAllOperands(1, 1);
+
+    }
+
+
+    private OperandToken8051[][] generateAllOperands(final int minLength, final int maxLength) {
+        List<OperandToken8051[]> result   = new ArrayList<>();
+
+        if (minLength == 0)
+            result.add(new OperandToken8051[0]);
+        OperandToken8051[][] last = new OperandToken8051[0][];
+        for (int i = 0; i < maxLength; ++i) {
+            last = generateOperandArray(last);
+            if (i > minLength-2)
+                for (OperandToken8051[] a : last)
+                    result.add(a);
+        }
+
+        return result.toArray(new OperandToken8051[result.size()][]);
+    }
+
+    private OperandToken8051[][] generateOperandArray(OperandToken8051[][] source) {
+        final OperandToken8051[] operands = generateAllOperandTokens();
+              OperandToken8051[][] result;
+        if (source.length == 0) {
+            result = new OperandToken8051[operands.length][];
+            for (int i = 0; i < result.length; ++i)
+                result[i] = new OperandToken8051[]{operands[i]};
+        } else {
+            result = new OperandToken8051[source.length*operands.length][];
+            for (int i = 0; i < source.length; ++i)
+                for (int j = 0; j < operands.length; ++j) {
+                    OperandToken8051[] preResult = new OperandToken8051[source[i].length+1];
+                    for (int k = 0; k < source[i].length; ++k)
+                        preResult[k] = source[i][k];
+                    preResult[source[i].length] = operands[j];
+                    result[operands.length*i+j] = preResult;
+                }
+        }
+        return result;
+    }
+
+    private OperandToken8051[] generateAllOperandTokens() {
+        List<OperandToken8051> result = new ArrayList<>();
+        final String[] names = {
+                "a", "c", "aptr", "ab",
+                "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+                "e", "r8"
+        };
+
+        final String[] indirect_names = {
+                "a+dptr", "a+pc", "dptr",
+                "r0", "r1",
+                "xptr", "r2"
+        };
+
+        int number = 0;
+
+        for (OperandType8051 t : OperandType8051.values())
+            if (t.isName())
+                for (String name : names)
+                    result.add(new OperandToken8051(t, name, number++));
+            else if (t.isIndirectName())
+                for (String indName : indirect_names)
+                    result.add(new OperandToken8051(t, indName, number++));
+            else {
+                final int[] rand   = {
+                        random.nextInt(0xFF+1),            // Range 0x00 <= x <= 0x00FF
+                        random.nextInt(0xFFFF+1-0xFF)+0xFF // Range 0xFF <  x <= 0xFFFF
+                };
+                for (int i : rand) {
+                    result.add(new OperandToken8051(t, Integer.toString(i), number++));
+                    if (t.isAddressOffset())
+                        result.add(new OperandToken8051(t, Integer.toString(i * -1), number++));
+                }
+            }
+
+        return result.toArray(new OperandToken8051[31]);
+    }
+
 }
