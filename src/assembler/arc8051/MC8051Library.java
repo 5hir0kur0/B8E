@@ -40,13 +40,13 @@ public class MC8051Library {
      * by any amount of valid word characters.<br>
      * Regex: <code>"([\w&&[\D]]\w*?)"</code>
      */
-    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]\\w*?)");
+    public static final Pattern SYMBOL_PATTERN          = Pattern.compile("([\\w&&[\\D]]\\w*)");
     /**
      * Pattern for a valid number.<br>
      * Any digit followed by any amount of valid word characters.<br>
      * Regex: <code>"(\d\w*)"</code>
      */
-    public static final Pattern NUMBER_PATTERN          = Pattern.compile("(\\d\\w*?)");
+    public static final Pattern NUMBER_PATTERN          = Pattern.compile("(\\d\\w*)");
 
     /**
      * Pattern for a valid label.<br>

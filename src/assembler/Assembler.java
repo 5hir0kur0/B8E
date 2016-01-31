@@ -121,9 +121,9 @@ public class Assembler {
                         continue;
                     }
 
-                    List<Token> usedTokens = new ArrayList<>();
+                    List<Token> usedTokens = new ArrayList<>(4);
                     usedTokens.add(t);
-                    ArrayList<Token> operands = new ArrayList<>();
+                    ArrayList<Token> operands = new ArrayList<>(3);
 
                     while (index+1 < tokens.size() &&
                             (tokens.get(index+1).getType() == Token.TokenType.OPERAND ||
@@ -239,7 +239,12 @@ public class Assembler {
     }
 
     private List<Byte> link(List<Assembled> assembled) {
-        ArrayList<Byte> result = new ArrayList<>();
+        final int lines;
+        {
+            Assembled ass = assembled.get(assembled.size()-1);
+            lines = ass.getTokens().get(ass.getTokens().size()-1).getLine();
+        }
+        ArrayList<Byte> result = new ArrayList<>(lines*2);
         for (Assembled a : assembled) {
             final byte[] codes = a.getCodes();
 

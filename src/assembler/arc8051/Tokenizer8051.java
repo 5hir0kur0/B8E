@@ -106,7 +106,7 @@ public class Tokenizer8051 implements Tokenizer {
             }
         } else if ((m = MC8051Library.BIT_ADDRESSING_PATTERN.matcher(string)).matches()) {
             Matcher byteMatcher = MC8051Library.NUMBER_PATTERN.matcher(m.group(1));
-            final int bitGroup = 2+byteMatcher.groupCount();
+            final int bitGroup = 1+byteMatcher.groupCount();
             Matcher bitMatcher  = MC8051Library.NUMBER_PATTERN.matcher(m.group(bitGroup));
             if (!(byteMatcher.matches() && bitMatcher.matches()))
                 return false;

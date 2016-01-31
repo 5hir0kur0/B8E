@@ -29,5 +29,21 @@ public interface ArchitectureProvider {
      */
     void clearProblems();
 
+    /**
+     * Creates a new Token that is used from Mnemonics that
+     * use Labels to replace the label with a proper jump
+     * address.
+     *
+     * @param address
+     *      the address the newly created operand should
+     *      refer to.
+     * @param line
+     *      the line label.
+     *
+     * @return
+     *      a architecture specific operand that holds the
+     *      desired address and is used as a replacement for
+     *      the label.
+     */
     OperandToken createNewJumpOperand(long address, int line);
 }
