@@ -8,6 +8,7 @@ import assembler.util.problems.Problem;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 
 /**
  * Preprocesses input for assembly language written for the
@@ -18,17 +19,30 @@ import java.util.List;
 public class Preprocessor8051 implements Preprocessor {
     @Override
     public List<? extends Problem> preprocess(BufferedReader input, StringWriter output) {
-        String line;
+        String line, original;
         List<Problem> problems = new ArrayList<>();
         try {
-            while ((line = input.readLine()) != null) {
-                output.write(lowerCase(line, problems)+'\n');
+            while ((line = original =input.readLine()) != null) {
+                line = lowerCase(line, problems);
+
+                line = handleDirective(line, problems);
+
+                output.write(line+"\n");
             }
 
         } catch (IOException e) {
             problems.add(new ExceptionProblem("Could not read input.", Problem.Type.ERROR, e));
         }
         return problems;
+    }
+
+    private String handleDirective(final String line, List<Problem> problems) {
+        Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(line);
+        if (m.matches()) {
+
+            return "";
+        } else
+            return line;
     }
 
     /**
@@ -44,7 +58,7 @@ public class Preprocessor8051 implements Preprocessor {
      *      Possible sources of Problems:
      *      <ul>
      *          <li>ERROR: the user tries to escape a character that is not a
-     *          <code>'"'</code> or <code>'\''</code></li>
+     *          <code>'"'</code> or <code>'\''</code> (or <code>'\\'</code>)</li>
      *          <li>WARNING: a quote is not closed if the end of the line or
      *          a comment is reached.</li>
      *      </ul>
@@ -62,7 +76,7 @@ public class Preprocessor8051 implements Preprocessor {
         for (int cp : line.codePoints().toArray()) {
             if (cp == ';') // Cut comments
                 break;
-            else if (last == '\\' && !(cp == '\'' || cp == '"'))
+            else if (last == '\\' && !(cp == '\'' || cp == '"' || cp != '\\'))
                 problems.add(new PreprocessingProblem("Illegal escape!", Problem.Type.ERROR,
                         new StringBuilder().appendCodePoint(last).appendCodePoint(cp).toString()));
             else if (last == '\\')

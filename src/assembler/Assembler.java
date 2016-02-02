@@ -13,6 +13,7 @@ import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenProblem;
 import com.sun.corba.se.impl.io.TypeMismatchException;
+import misc.Settings;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -73,7 +74,8 @@ public class Assembler {
     public List<Problem> assemble(Path directory, String file, BufferedOutputStream output) {
         List<Problem> problems = new ArrayList<>();
         try (BufferedReader input = Files.newBufferedReader(Paths.get(directory.toString(),
-                file + AssemblerSettings.FILE_EXTENSION));
+                file + Settings.INSTANCE.getProperty(AssemblerSettings.SOURCE_FILE_EXTENSION,
+                        AssemblerSettings.DEFAULT_SOURCE_FILE_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION)));
              StringWriter prepOutput  = new StringWriter()){
 
             problems.addAll(preprocessor.preprocess(input, prepOutput));
@@ -197,7 +199,7 @@ public class Assembler {
         output.addAll(link(assembled));
 
         try (HexWriter hex = new HexWriter(Files.newBufferedWriter(Paths.get(directory.toString(),
-                file+".hex")))) {
+                file+Settings.INSTANCE.getProperty(AssemblerSettings.HEX_FILE_EXTENSION))))) {
             hex.writeAll(assembled);
         } catch (Exception e) {
             e.printStackTrace();
