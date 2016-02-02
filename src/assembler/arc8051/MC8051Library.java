@@ -110,14 +110,29 @@ public class MC8051Library {
      */
     public static final Pattern ADDRESS_OFFSET_PATTERN  = Pattern.compile("[+-]" + NUMBER_PATTERN.toString());
 
+
+    /**
+     * Pattern for a valid assembler directive.<br>
+     * An assembler directive always starts with a <code>'$'</code> character.
+     * If a line starts with an <code>'$'</code>, the full line will be taken as
+     * the directive and no further mnemonics etc. can be written.<br>
+     * Regex: <code>"^\\s*\\$(\\w*)\\s?(.*)$"</code>
+     */
+    public static final Pattern DIRECTIVE_PATTERN       = Pattern.compile("^\\s*\\$(\\w*)\\s?(.*)$");
+
+    /**
+     * Pattern for a valid file extension
+     */
+    public static final Pattern FILE_EXTENSION_PATTER   = Pattern.compile("\\.\\w+");
+
     /** Reserved symbols. Contains "A", "C" and all R-Registers. */
     public static final String[] RESERVED_NAMES = {"A", "C", "DPTR", "AB", "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"};
     /** Reserved indirect symbols.*/
     public static final String[] RESERVED_INDIRECT_NAMES = {"DPTR", "A+DPTR", "A+PC", "R0", "R1"};
 
-    /** The address of the accumulator. */
+    /** The address of the accumulator. (<code>0xE0</code>) */
     public static final byte A = (byte) 0xE0;
-    /** The bit address of the carry flag. */
+    /** The bit address of the carry flag. (<code>0xD7</code>) */
     public static final byte C = (byte) 0xD7;
     /**
      * The register bank that is assumed if the
