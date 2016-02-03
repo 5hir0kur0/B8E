@@ -47,6 +47,16 @@ public enum Settings {
     }
 
     /**
+     * @param key the desired property's key
+     * @param valueIsValid if the {@code test()} method yields false, the default value will be returned.
+     * @return either the value found at {@code key} or {@code defaultValue} of the property.
+     *         Note: If no default value is specified {@code null} will be returned.
+     */
+    public String getProperty(String key, Predicate<String> valueIsValid) {
+        return this.getProperty(key, this.defaults.getProperty(key), valueIsValid);
+    }
+
+    /**
      * Get an integral property.
      * @param key the property's key
      * @param defaultValue the default value to be returned if the key does not have a value associated with it or if

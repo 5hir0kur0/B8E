@@ -8,8 +8,9 @@ import assembler.util.assembling.ArchitectureProvider;
 import assembler.util.problems.Problem;
 import assembler.util.problems.Problem.Type;
 import assembler.util.AssemblerSettings;
-import assembler.util.AssemblerSettings.Errors.ErrorHandling;
 import assembler.util.problems.TokenProblem;
+import misc.Settings;
+
 import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 import java.util.ArrayList;
@@ -437,9 +438,9 @@ public class MC8051Library {
                             problems.add(new TokenProblem("Incompatible operand! " +
                                     "(Expected \"@a+dptr\")", Type.WARNING, operands[0]));
                     } else
-                        problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
+                        getErrorSetting(name, AssemblerSettings.OBVIOUS_OPERANDS,
                                 "Missing '@a+dptr' as first operand!", "Operand '@a+dptr' should be written as first " +
-                                        "operand."));
+                                        "operand.");
 
                     handleUnnecessaryOperands(this.getName(), true, firstIgnored?1:0, 1, operands);
 
@@ -685,8 +686,8 @@ public class MC8051Library {
                     if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("a"))
                         firstA = true;
                      else
-                        problems.add(getErrorFromErrorHandlingSetting(operands[0], AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                                "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+                        getErrorSetting(operands[0], AssemblerSettings.OBVIOUS_OPERANDS,
+                                "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.");
 
                     if (operands.length > (firstA ? 1 : 0)) {
                         OperandToken8051 op = operands[firstA ? 1 : 0];
@@ -939,8 +940,8 @@ public class MC8051Library {
                                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, op));
                         }
                         if (firstIgnored)
-                            problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.")); 
+                            getErrorSetting(op, AssemblerSettings.OBVIOUS_OPERANDS,
+                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.");
                     }
 
                     handleUnnecessaryOperands(this.getName(), true, firstIgnored?1:0, 2, operands);
@@ -1017,8 +1018,8 @@ public class MC8051Library {
         if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                 operands[0].getValue().equals("a"))) {
             firstIsA = false;
-            problems.add(getErrorFromErrorHandlingSetting(operands[0], AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+            getErrorSetting(operands[0], AssemblerSettings.OBVIOUS_OPERANDS,
+                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.");
         } else if (operands.length < 2) {
             problems.add(new TokenProblem("Expected 2 operands!", Type.ERROR, operands[0]));
             return new byte[0];
@@ -1166,8 +1167,8 @@ public class MC8051Library {
                         result = new byte[]{opc5, (byte) val};
                     if (i == 0) {
                         firstIgnored = true;
-                        problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                                "Missing 'c' as first operand!", "Operand 'c' should be written as first operand."));
+                        getErrorSetting(op, AssemblerSettings.OBVIOUS_OPERANDS,
+                                "Missing 'c' as first operand!", "Operand 'c' should be written as first operand.");
                     } else if (!(operands[0].getOperandType() == OperandType8051.NAME &&
                                operands[0].getValue().equals("c")))
                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, operands[0]));
@@ -1180,8 +1181,8 @@ public class MC8051Library {
                         OperandType8051 type = op.getOperandType();
                         if (i == 0) {
                             firstIgnored = true;
-                            problems.add(getErrorFromErrorHandlingSetting(op, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+                            getErrorSetting(op, AssemblerSettings.OBVIOUS_OPERANDS,
+                                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.");
                         } else if (operands[0].getOperandType() == OperandType8051.NAME &&
                                      operands[0].getValue().equals("c"))
                             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, operands[0]));
@@ -1334,8 +1335,8 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand! (Expected \"a\")", Type.WARNING, operands[0]));
             opIsA = true;
         } else
-            problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand."));
+            getErrorSetting(name, AssemblerSettings.OBVIOUS_OPERANDS,
+                    "Missing 'a' as first operand!", "Operand 'a' should be written as first operand.");
 
 
         handleUnnecessaryOperands(mnemonic.getName(), true, opIsA?0:1, 1, operands);
@@ -1439,8 +1440,8 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand! (Expected \"ab\")", Type.WARNING, operands[0]));
 
         } else
-            problems.add(getErrorFromErrorHandlingSetting(name, AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS,
-                    "Missing 'ab' as first operand!", "Operand 'ab' should be written as first operand."));
+            getErrorSetting(name, AssemblerSettings.OBVIOUS_OPERANDS,
+                    "Missing 'ab' as first operand!", "Operand 'ab' should be written as first operand.");
 
 
 
@@ -1534,8 +1535,11 @@ public class MC8051Library {
             type == OperandType8051.ADDRESS_OFFSET) {
             long jump = Integer.parseInt(operands[0].getValue());
 
-            if (type == OperandType8051.ADDRESS_OFFSET)
+            if (type == OperandType8051.ADDRESS_OFFSET) {
                 jump = getFromOffset(codePoint, jump, 3, operands[0]);
+                getErrorSetting(operands[0], AssemblerSettings.ADDRESS_OFFSET, "Using of address offsets" +
+                        "is deactivated!", "Address offset has been used! This can result in non-opcode jump targets.");
+            }
 
             result = new byte[] { opc1,
                                  (byte)(jump >>> 8 & 0xffL),// Shift 8 to the right get the high byte and clear the rest
@@ -1616,8 +1620,11 @@ public class MC8051Library {
             long i;
             if (type == OperandType8051.ADDRESS)
                 i = getOffset(codePoint, Integer.parseInt(op.getValue()), offset);
-            else
+            else {
                 i = Long.parseLong(op.getValue());
+                getErrorSetting(op, AssemblerSettings.ADDRESS_OFFSET, "Using of address offsets is " +
+                        "deactivated!", "Address offset has been used! This can result in non-opcode jump targets.");
+            }
 
             if (i >= -128 && i <= 127)
                 return (byte) i;
@@ -1685,16 +1692,18 @@ public class MC8051Library {
      */
     private static void handleUnnecessaryOperands(String mnemonicName, boolean hasObviousOperands, int ignored,
                                            int firstOperand, OperandToken8051 ... operands) {
+        String setting = Settings.INSTANCE.getProperty(AssemblerSettings.UNNECESSARY_OPERANDS,
+                AssemblerSettings.VALID_ERROR);
         if (!hasObviousOperands)
             ignored = 0;
-        final String err = AssemblerSettings.Errors.IGNORE_OBVIOUS_OPERANDS != ErrorHandling.ERROR && hasObviousOperands?
+        final String err = !setting.equals("error") && hasObviousOperands ?
                 "Too many operands! " + mnemonicName.toUpperCase() + " must have "+(firstOperand-1)+" or "+firstOperand+
                         " operands." :
                 "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly "+firstOperand+" operand"+
                         (firstOperand == 0 ? "":"s")+".";
         for (int i = firstOperand - ignored; i < operands.length; ++i)
-            problems.add(getErrorFromErrorHandlingSetting(operands[i], AssemblerSettings.Errors.ADDITIONAL_OPERANDS,
-                    err, "Unnecessary operand."));
+            getErrorSetting(operands[i], AssemblerSettings.UNNECESSARY_OPERANDS,
+                    err, "Unnecessary operand.");
 
     }
 
@@ -1786,10 +1795,11 @@ public class MC8051Library {
 
     /**
      * Generates an error for a given ErrorHandling.<br>
-     * The messages will be taken from 2 given Strings.
+     * The messages will be taken from 2 given Strings and
+     * added to the problems List.
      *
      * @param cause the cause of the problem.
-     * @param setting the ErrorHandling that should be used for generating.
+     * @param settingName the setting (by name) that should be used for generating the Problem.
      * @param errorMessage the message String for the case of a generated error
      * @param warningMessage the message String for the case of an generated warning
      *
@@ -1797,15 +1807,20 @@ public class MC8051Library {
      *      an error with the given messages and error type.<br>
      *      If the error is set to be ignored, <code>null</code> will be returned.
      */
-    private static TokenProblem getErrorFromErrorHandlingSetting(Token cause, ErrorHandling setting,
-                                                                 String errorMessage, String warningMessage) {
+    private static void getErrorSetting(Token cause, String settingName,
+                                                String errorMessage, String warningMessage) {
+        String setting = Settings.INSTANCE.getProperty(settingName, AssemblerSettings.VALID_ERROR);
         switch (setting) {
-            case ERROR:
-                return new TokenProblem(errorMessage, Type.ERROR, cause);
-            case WARN:
-                return new TokenProblem(warningMessage, Type.WARNING, cause);
+            case "error":
+                problems.add(new TokenProblem(errorMessage, Type.ERROR, cause));
+                break;
+            case "warn":
+                problems.add(new TokenProblem(warningMessage, Type.WARNING, cause));
+                break;
+            case "ignore":
+                break;
             default:
-                return null;
+                throw new IllegalArgumentException("Illegal value for error setting! (\""+setting+"\")");
         }
     }
 }
