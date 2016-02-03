@@ -60,8 +60,6 @@ public class AssemblerSettings {
      * Defaults to: ".asm"
      */
     public static final String SOURCE_FILE_EXTENSION = "assembler.output.file-extensions.asm";
-    /** The default value of the assembler source file. */
-    public static final String DEFAULT_SOURCE_FILE_EXTENSION = ".asm";
 
     /**
      * The extension of Intel-HEX files.<br>
@@ -70,8 +68,6 @@ public class AssemblerSettings {
      * Defaults to: ".hex"
      */
     public static final String HEX_FILE_EXTENSION = "assembler.output.file-extensions.hex";
-    /** The default value of the Intel-HEX files. */
-    public static final String DEFAULT_HEX_FILE_EXTENSION = ".hex";
 
     /**
      * Enforce the intended behaviour of the end directive:<br>
@@ -105,14 +101,20 @@ public class AssemblerSettings {
      * Initialize all settings that are used by the assembler.
      */
     static {
-        Settings.INSTANCE.setDefault(RADIX, "10");
-        Settings.INSTANCE.setDefault(NOTATION, "postfix");
-        Settings.INSTANCE.setDefault(OBVIOUS_OPERANDS, "error");
-        Settings.INSTANCE.setDefault(UNNECESSARY_OPERANDS, "error");
-        Settings.INSTANCE.setDefault(SOURCE_FILE_EXTENSION, DEFAULT_SOURCE_FILE_EXTENSION);
-        Settings.INSTANCE.setDefault(HEX_FILE_EXTENSION, DEFAULT_HEX_FILE_EXTENSION);
-        Settings.INSTANCE.setDefault(END_ENFORCEMENT, "true");
-        Settings.INSTANCE.setDefault(END_MISSING, "warn");
+        Settings s = Settings.INSTANCE;
+
+        s.setDefault(RADIX, "10");
+        s.setDefault(NOTATION, "postfix");
+
+        s.setDefault(OBVIOUS_OPERANDS, "error");
+        s.setDefault(UNNECESSARY_OPERANDS, "error");
+        s.setDefault(END_MISSING, "warn");
+        s.setDefault(ADDRESS_OFFSET, "warn");
+
+        s.setDefault(SOURCE_FILE_EXTENSION, ".asm");
+        s.setDefault(HEX_FILE_EXTENSION, ".hex");
+
+        s.setDefault(END_ENFORCEMENT, "true");
     }
 
     /**
@@ -144,42 +146,4 @@ public class AssemblerSettings {
             default: return 'd';
         }
     }
-
-
-    public static class Errors {
-        /**
-         * How additional operands like
-         * <pre>
-         *     NOP <i><b>#42 #21</b></i>
-         * </pre>
-         * should be handled.
-         */
-        public static ErrorHandling ADDITIONAL_OPERANDS = ErrorHandling.ERROR;
-        /**
-         * How the ignoring of obvious operands like
-         * <pre>
-         *     ADD <i><b>a</b></i>, #42
-         *     ==
-         *     ADD #42
-         * </pre>
-         * should be handled.<br>
-         * The <code>a</code> operand is obvious in this case because
-         * all variants of <code>ADD</code> use it at this position.
-         */
-        public static ErrorHandling IGNORE_OBVIOUS_OPERANDS = ErrorHandling.ERROR;
-
-        /**
-         * How using of address offsets like
-         * <pre>
-         *     SJMP -02h
-         * </pre>
-         * instead of labels is handled.
-         */
-        public static ErrorHandling ADDRESS_OFFSET_USED = ErrorHandling.WARN;
-
-        public enum  ErrorHandling {
-            IGNORE, WARN, ERROR;
-        }
-    }
-
 }

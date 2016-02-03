@@ -75,7 +75,7 @@ public class Assembler {
         List<Problem> problems = new ArrayList<>();
         try (BufferedReader input = Files.newBufferedReader(Paths.get(directory.toString(),
                 file + Settings.INSTANCE.getProperty(AssemblerSettings.SOURCE_FILE_EXTENSION,
-                        AssemblerSettings.DEFAULT_SOURCE_FILE_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION)));
+                        AssemblerSettings.VALID_FILE_EXTENSION)));
              StringWriter prepOutput  = new StringWriter()){
 
             problems.addAll(preprocessor.preprocess(input, prepOutput));
@@ -199,7 +199,8 @@ public class Assembler {
         output.addAll(link(assembled));
 
         try (HexWriter hex = new HexWriter(Files.newBufferedWriter(Paths.get(directory.toString(),
-                file+Settings.INSTANCE.getProperty(AssemblerSettings.HEX_FILE_EXTENSION))))) {
+                file+Settings.INSTANCE.getProperty(AssemblerSettings.HEX_FILE_EXTENSION,
+                        AssemblerSettings.VALID_FILE_EXTENSION))))) {
             hex.writeAll(assembled);
         } catch (Exception e) {
             e.printStackTrace();
