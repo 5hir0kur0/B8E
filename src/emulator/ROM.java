@@ -5,30 +5,44 @@ package emulator;
  *
  * @author 5hir0kur0
  */
-public interface ROM {
+public interface ROM extends Iterable<Byte> {
 
+    /**
+     * @param index
+     *     the index from which a {@code byte} will be retrieved
+     * @return
+     *     the byte at {@code index}
+     * @throws IndexOutOfBoundsException
+     *     if {@code index} &lt; 0 or {@code index} &gt;= {@code getSize()}
+     */
     byte get(int index) throws IndexOutOfBoundsException;
 
     /**
-     * Get a number of {@code Byte}s from memory.
-     * Whenever a value does not exist in memory, {@code  null} is written to
-     * the respective index in the returned array.
-     * @param index The start index.
-     * @param length The number of {@code Byte}s to be returned.
-     * @return an array of {@code Byte}s (if a value in the array is {@code null} this means that it does not exist in
-     *         memory.
+     * Get a number of {@code byte}s from memory.<br>
+     * NOTE: This method usually creates a copy of the desired part of the internal array.
+     * Use {@code iterator} instead if you can.
+     * @param index
+     *     the start index; must be &gt;= 0 and &lt; {@code getSize()}
+     * @param length
+     *     the number of {@code byte}s to be returned; {@code index} + {@code length} must be &lt;= {@code getSize()}
+     * @return
+     *     an array of {@code byte}s
+     * @throws IndexOutOfBoundsException
+     *     if {@code index} &lt; 0 or {@code index} + {@code length} &gt; {@code getSize()}
      */
-    Byte[] get(int index, int length) throws IndexOutOfBoundsException;
+    @Deprecated byte[] get(int index, int length) throws IndexOutOfBoundsException;
 
+    /**
+     * @return the number of bytes held by the {@code ROM} object
+     */
     int getSize();
 
     /**
-     * Return {@code true} if the other object is equal to this one.
      * @see java.lang.Object#equals(java.lang.Object)
      * @param other
-     *     The other object.
+     *     the other object
      * @return
-     *     {@code true} if the objects are equal.
+     *     {@code true} if the objects are equal
      */
     boolean equals(Object other);
 }

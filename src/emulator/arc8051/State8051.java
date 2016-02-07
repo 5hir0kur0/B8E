@@ -2,19 +2,16 @@ package emulator.arc8051;
 
 import emulator.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
- * This class represents the internal state of the 8051 microcontroller.
+ * This class represents the internal state of the 8051 micro controller.
  * This includes all the registers and the internal memory.
  */
 public class State8051 {
 
     /**
-     * This class represents the SFR area of the 8051 microcontroller.
+     * This class represents the SFR area of the 8051 micro controller.
      * There are two references to each register as every register is an attribute of the class, but is also
      * contained in an internal hash map (the hash map is needed to quickly get the register corresponding to a
      * given memory address). This improved performance and readability as you can type {@code instance.A} instead
@@ -110,26 +107,18 @@ public class State8051 {
         }
 
         @Override
-        public Byte[] get(int index, int length) {
+        public byte[] get(int index, int length) {
             if (index < 0 || index > 255) throw new IndexOutOfBoundsException("SFR index too big or too small.");
             if (length < 1) throw new IllegalArgumentException("length must be bigger than or equal to 1");
-            Byte[] ret = new Byte[length];
+            byte[] ret = new byte[length];
             for (int i = 0; i < ret.length; ++i) {
                 int tmpIndex = i + index;
-                if (tmpIndex > 255) ret[i] = null;
+                if (tmpIndex > 255) ret[i] = 0;
                 else if (specialFunctionRegisters.containsKey((byte)i))
                     ret[i] = specialFunctionRegisters.get((byte)i).getValue();
-                else ret[i] = null;
+                else ret[i] = 0;
             }
             return ret;
-        }
-
-        public int getMinAddress() {
-            return 0x80; //the SFR area in the 8051 controller starts at 80h
-        }
-
-        public int getMaxAddress() {
-            return 0xFF; //the SFR area in the 8051 controller goes up to FFh
         }
 
         @Override
@@ -143,6 +132,24 @@ public class State8051 {
 
         public boolean hasAddress(byte address) {
             return this.specialFunctionRegisters.containsKey(address);
+        }
+
+        @Override
+        public Iterator<Byte> iterator() {
+            return new Iterator<Byte>() {
+                int index = 0;
+                @Override
+                public boolean hasNext() {
+                    return index <= 0xFF;
+                }
+
+                @Override
+                public Byte next() {
+                    return SpecialFunctionRegisters.this.specialFunctionRegisters.containsKey((byte)index)
+                            ? SpecialFunctionRegisters.this.specialFunctionRegisters.get((byte)index).getValue()
+                            : null;
+                }
+            };
         }
 
         @Override
@@ -164,9 +171,11 @@ public class State8051 {
         /**
          * Get the direct address of the specified register.
          * @param r
-         *     The register whose address will be returned; must be one of the registers contained in this object
-         * @return the direct address
-         * @throws IllegalArgumentException when a register that is not contained in this object is given as a parameter
+         *     the register whose address will be returned; must be one of the registers contained in this object
+         * @return
+         *     the direct address
+         * @throws IllegalArgumentException
+         *     when a register that is not contained in this object is given as a parameter
          */
         public byte getAddress(ByteRegister r) throws IllegalArgumentException {
             for (Byte b : this.specialFunctionRegisters.keySet()) {
@@ -177,8 +186,10 @@ public class State8051 {
 
         /**
          * Get register by address.
-         * @param address the address; must be >= 0x80
-         * @return the specified register or {@code null} it it is not present
+         * @param address
+         *     the {@code ByteRegister}'s address; must be >= 0x80
+         * @return
+         *     the specified register or {@code null} it it is not present
          */
         ByteRegister getRegister(byte address) {
             if ((address & 0xFF) < 0x80) throw new IllegalArgumentException("Invalid address for SFR: "+address);
@@ -187,8 +198,10 @@ public class State8051 {
 
         /**
          * Add a new SFR at the specified address.
-         * @param address the address; must be >= 0x80
-         * @param register the register to be added; must not be {@code null}
+         * @param address
+         *     the address; must be >= 0x80
+         * @param register
+         *     the register to be added; must not be {@code null}
          */
         void addRegister(byte address, ByteRegister register) {
             if ((address & 0xFF) < 0x80) throw new IllegalArgumentException("Invalid address for SFR: "+address);
@@ -210,11 +223,11 @@ public class State8051 {
 
     /**
      * @param codeMemory
-     *        The instructions will be read from this object. Must not be {@code null}.
-     *        The size must be 65536 bytes.
+     *     The instructions will be read from this object. (must not be {@code null})
+     *     The size must be 65536 bytes.
      * @param externalRAM
-     *        external RAM that can be accessed with the {@code MOVX} command; {@code null} is a valid value and implies,
-     *        that there is no external RAM
+     *     external {@code RAM} that can be accessed with the {@code MOVX} command;
+     *     {@code null} is a valid value and implies that there is no external RAM
      */
     public State8051(ROM codeMemory, RAM externalRAM) {
         this.codeMemory = Objects.requireNonNull(codeMemory, "trying to create MC8051 object without code memory");
@@ -247,8 +260,10 @@ public class State8051 {
      * Get a R register by its ordinal.
      * @param ordinal
      *     specifies the register (-> R&lt;ordinal&gt;); 0 <= ordinal <= 7
-     * @return the specified register
-     * @throws IllegalArgumentException when given an illegal ordinal
+     * @return
+     *     the specified register
+     * @throws IllegalArgumentException
+     *     when given an illegal ordinal
      */
     ByteRegister getR(int ordinal) throws IllegalArgumentException {
         switch (ordinal) {

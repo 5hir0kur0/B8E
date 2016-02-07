@@ -13,8 +13,10 @@ public interface FlagRegister extends Register, BitAddressable {
     Enum[] getFlags();
 
     /**
-     * @param index index of the flag. Must be within the range of the register and bigger than 0.
-     * @return the flag's name as a {@code String}
+     * @param index
+     *     the flag's index; must be within the range of the register and bigger than 0
+     * @return
+     *     the flag's name as a {@code String}
      */
     default String getName(int index) {
         return getFlags()[index].name();
