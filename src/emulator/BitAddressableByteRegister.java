@@ -8,15 +8,17 @@ package emulator;
 public class BitAddressableByteRegister extends ByteRegister implements BitAddressable {
 
     /**
-     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
-     * @param initialValue the {@code ByteRegister}'s initial value. All values are allowed.
+     * @param name
+     *     the {@code ByteRegister}'s name; must not be {@code null} or empty
+     * @param initialValue
+     *     the {@code ByteRegister}'s initial value
      */
     public BitAddressableByteRegister(String name, byte initialValue) {
         super(name, initialValue);
     }
 
     /**
-     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
+     * @param name the {@code ByteRegister}'s name; must not be {@code null} or empty
      */
     public BitAddressableByteRegister(String name) {
         this(name, (byte)0);
@@ -25,7 +27,7 @@ public class BitAddressableByteRegister extends ByteRegister implements BitAddre
     @Override
     public boolean getBit(int index) throws IndexOutOfBoundsException {
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("Index of out of range (getBit()).");
-        return (this.getValue() & 1 << index) >>> index == 1;
+        return (this.getValue() & 1 << index) != 0;
     }
 
     @Override

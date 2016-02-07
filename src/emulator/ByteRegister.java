@@ -6,7 +6,7 @@ import java.beans.PropertyChangeSupport;
 /**
  * This class represents a CPU register containing an 8-bit-value (byte).
  *
- * NOTE: The reason {@code this.value} is almost never used directly in the code is that there are
+ * NOTE: The reason {@code this.value} is almost never used directly in the internal code is that there are
  *       (anonymous) subclasses which overwrite {@code getValue()} and {@code setValue(byte)} in order to synchronize
  *       registers like e.g. R0-R7 with other data structures.
  *
@@ -20,8 +20,10 @@ public class ByteRegister implements Register {
     private PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
 
     /**
-     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
-     * @param initialValue the {@code ByteRegister}'s initial value. All values are allowed.
+     * @param name
+     *     the {@code ByteRegister}'s name; must not be {@code null} or empty
+     * @param initialValue
+     *     the {@code ByteRegister}'s initial value
      */
     public ByteRegister(String name, byte initialValue) {
        if (null == name || name.isEmpty())
@@ -31,7 +33,7 @@ public class ByteRegister implements Register {
     }
 
     /**
-     * @param name the {@code ByteRegister}'s name. Must not be {@code null} or empty.
+     * @param name the {@code ByteRegister}'s name; must not be {@code null} or empty
      */
     public ByteRegister(String name) {
         this(name, (byte)0);

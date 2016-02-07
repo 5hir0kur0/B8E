@@ -21,26 +21,23 @@ public interface Emulator {
     /**
      * Execute the next instruction. After the last instruction it finds, the {@code Emulator} will start at the first
      * instruction again.
-     * @return the number of machine cycles the instruction takes to execute on real hardware
+     * @return
+     *     the number of machine cycles the instruction takes to execute on real hardware
      */
     int next();
 
     /**
-     * Checks if there is another instruction (i.e. if the program counter is smaller than the maximal address)
-     * @return {@code true} if there are instructions left; {@code false} if not
-     */
-    boolean hasNext();
-
-    /**
-     * @return the CPU's primary (e.g. internal) {@code RAM}. This can potentially be the only {@code RAM} module the
-     * CPU has access to.
+     * @return the CPU's primary (usu. internal) {@code RAM} (This can potentially be the only {@code RAM} module the
+     * CPU has access to.)
      */
     RAM getMainMemory();
 
     /**
      * If there is a secondary {@code RAM} module this method should be overwritten to return it.
-     * @return the CPU's secondary {@code RAM} module, if it has one
-     * @throws UnsupportedOperationException if there is no secondary {@code RAM} module
+     * @return
+     *     the CPU's secondary {@code RAM} module, if it has one
+     * @throws UnsupportedOperationException
+     *     if there is no secondary {@code RAM} module
      */
     default RAM getSecondaryMemory() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("Emulator::getSecondaryMemory");
@@ -48,7 +45,8 @@ public interface Emulator {
 
     /**
      * If the CPU has a secondary {@code RAM} module, this method should be overwritten to return {@code true}
-     * @return {@code true} if there is a secondary {@code RAM} module; {@code false} if there isn't one
+     * @return
+     *     {@code true} if there is a secondary {@code RAM} module; {@code false} if there isn't one
      */
     default boolean hasSecondaryMemory() {
         return false;
@@ -57,8 +55,10 @@ public interface Emulator {
     /**
      * Get the code memory.
      * Not all CPUs may support this.
-     * @return ROM representing the code memory.
+     * @return
+     *     {@code ROM} representing the code memory
      * @throws UnsupportedOperationException
+     *     if the CPU does not have a code memory module
      */
     default ROM getCodeMemory() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("Emulator::getCodeMemory");
@@ -66,7 +66,8 @@ public interface Emulator {
 
     /**
      * Return whether the CPU has a code memory module.
-     * @return {@code true} if the CPU has code memory; {@code false} otherwise
+     * @return
+     *     {@code true} if the CPU has code memory; {@code false} otherwise
      */
     default boolean hasCodeMemory() {
         return false;
