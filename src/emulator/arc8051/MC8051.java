@@ -37,37 +37,37 @@ public class MC8051 implements Emulator {
     /**
      * Create a new 8051 micro controller object.<br>
      * @param externalRAM
-     *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
-     *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
+     *     the external RAM accessible through the {@code MOVX} command; {@code null} is a valid value and implies
+     *     that there is no external RAM (and thus, all {@code MOVX}-instructions should fail)
      * @param codeMemory
-     *        The 8051's "code memory". The instructions will be read from this object. Must not be {@code null}.
-     *        The size must be 65536 bytes.
+     *     the 8051's "code memory"; The instructions will be read from this object (must not be {@code null})
+     *     The size must be 65536 bytes.
      */
     public MC8051(ROM codeMemory, RAM externalRAM) {
         this(new State8051(codeMemory, externalRAM), false);
     }
 
     /**
-     * Create a new 8051 microcontroller object.<br>
+     * Create a new 8051 micro controller object.<br>
      * @param externalRAM
-     *        The external RAM accessible through the {@code MOVX} command. {@code null} is a valid value and implies,
-     *        that there is no external RAM (and thus, all {@code MOVX}-instructions should fail).
+     *     the external RAM accessible through the {@code MOVX} command; {@code null} is a valid value and implies
+     *     that there is no external RAM (and thus, all {@code MOVX}-instructions should fail)
      * @param codeMemory
-     *        The 8051's "code memory". The instructions will be read from this object. Must not be {@code null}.
-     *        The size must be 65536 bytes.
+     *     the 8051's "code memory"; The instructions will be read from this object (must not be {@code null})
+     *     The size must be 65536 bytes.
      * @param ignoreSOSU
      *        Do not throw an exception on stack underflow or overflow
      */
-    public MC8051(ROM codeMemory, RAM externalRAM, boolean ignoreSOSU) {
+    public MC8051(ROM codeMemory, RAM externalRAM, boolean ignoreSOSU) { //TODO: replace ignoreSOSU with setting
         this(new State8051(codeMemory, externalRAM), ignoreSOSU);
     }
 
     /**
      * Start with a specific state.
      * @param state
-     *        The state. Must not be {@code null}.
+     *     the state of the new {@code Emulator}; must not be {@code null}
      * @param ignoreSOSU
-     *        Do not throw an exception on stack underflow or overflow
+     *     if {@code true}, do not throw an exception on stack underflow or overflow
      */
     public MC8051(State8051 state, boolean ignoreSOSU) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
@@ -80,7 +80,8 @@ public class MC8051 implements Emulator {
      *
      * This method is not intended to be used frequently. To observe the {@code Register} you should register a change
      * listener.
-     * @return a list of all the {@code Register}s
+     * @return
+     *     a {@code List} of all the {@code Register}s
      */
     @Override
     public List<Register> getRegisters() {
@@ -102,7 +103,8 @@ public class MC8051 implements Emulator {
 
     /**
      * Execute the next instruction.<br>
-     * @return the number of cycles this instruction takes.
+     * @return
+     *     the number of cycles this instruction takes
      */
     @Override
     public int next() {
@@ -377,11 +379,6 @@ public class MC8051 implements Emulator {
     }
 
     @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
     public RAM getMainMemory() {
         return this.state.internalRAM;
     }
@@ -400,7 +397,8 @@ public class MC8051 implements Emulator {
 
     /**
      * Get a byte from code memory and increment the PC.<br>
-     * @return the retrieved byte
+     * @return
+     *     the retrieved byte
      */
     private byte getCodeByte() {
         char tmp = (char)((this.state.PCH.getValue() << 8) & 0xFF00 | this.state.PCL.getValue() & 0xFF);
@@ -415,8 +413,10 @@ public class MC8051 implements Emulator {
      * Get the current address of a R register.
      * @param ordinal
      *     the returned register will be R&lt;ordinal&gt;; 0 <= ordinal <= 7
-     * @return the register's address
-     * @throws IllegalArgumentException when given an invalid ordinal
+     * @return
+     *     the register's address
+     * @throws IllegalArgumentException
+     *     when given an invalid ordinal
      */
     private int getRAddress(int ordinal) throws IllegalArgumentException {
         if (ordinal < 0 || ordinal > 7)
@@ -429,9 +429,11 @@ public class MC8051 implements Emulator {
     /**
      * Get the value of an R register.<br>
      * @param ordinal
-     *     The R register to be used. E.g. '5' implies R5.
-     * @return R<sup>ordinal</sup>'s value
-     * @throws IllegalArgumentException when given an illegal ordinal
+     *     the R register to be used (E.g. '5' implies R5)
+     * @return
+     *     R<sup>ordinal</sup>'s value
+     * @throws IllegalArgumentException
+     *     when given an illegal ordinal
      */
     private byte getR(int ordinal) {
         return this.state.internalRAM.get(getRAddress(ordinal));
@@ -440,10 +442,11 @@ public class MC8051 implements Emulator {
     /**
      * Set the value of an R register.<br>
      * @param ordinal
-     *     The R register to be used. E.g. '5' implies R5.
+     *     The R register to be used (E.g. '5' implies R5)
      * @param newValue
-     *     R<sub>ordinal</sub>'s new value.
-     * @throws IllegalArgumentException when given an illegal ordinal
+     *     R<sub>ordinal</sub>'s new value
+     * @throws IllegalArgumentException
+     *     when given an illegal ordinal
      */
     private void setR(int ordinal, byte newValue) {
         this.state.internalRAM.set(getRAddress(ordinal), newValue);
@@ -453,7 +456,9 @@ public class MC8051 implements Emulator {
      * Update the parity flag in the PSW.
      * It is set so that the number of bits set to one plus the parity flag is even.
      * NOTE: This algorithm was inspired by
-     * http://www.geeksforgeeks.org/write-a-c-program-to-find-the-parity-of-an-unsigned-integer/
+     * <a href="http://www.geeksforgeeks.org/write-a-c-program-to-find-the-parity-of-an-unsigned-integer/">
+     *     http://www.geeksforgeeks.org/write-a-c-program-to-find-the-parity-of-an-unsigned-integer/
+     * </a>
      */
     private void updateParityFlag() {
         boolean parity = false;
@@ -487,7 +492,8 @@ public class MC8051 implements Emulator {
      * NOTE: The implementation of split mode is a bit ugly and untested, so I'm not sure if it works...
      * 13-bit mode is also untested.
      * Those modes are basically deprecated and not used most of the time.
-     * @param cycles the number of cycles (used when the timers are used as "timers" [as opposed to "counters"])
+     * @param cycles
+     *     the number of cycles (used when the timers are used as "timers" [as opposed to "counters"])
      */
     private void updateTimers(int cycles) {
         if (cycles < 0) cycles = 1;
@@ -559,12 +565,17 @@ public class MC8051 implements Emulator {
 
     /**
      * Increment a timer register.
-     * @param high the register's high byte (should be {@code null} for mode 3 when low is not {@code null})
-     * @param low the registers's low byte (should be {@code null} for mode 3 when high is not {@code null})
-     * @param ovflag the timer's overflow flag; must either be < 0 (when the timer has no overflow flag [this cannot
-     *               happen in mode 3]) or >= 0 and <= 7
-     * @param mode the timer mode; must be >= 0 and <= 3
-     * @param howMuch specifies by how much the timer should be incremented; must be > 0
+     * @param high
+     *     the register's high byte (should be {@code null} for mode 3 when low is not {@code null})
+     * @param low
+     *     the registers's low byte (should be {@code null} for mode 3 when high is not {@code null})
+     * @param ovflag
+     *     the timer's overflow flag; must either be < 0 (when the timer has no overflow flag [this cannot
+     *     happen in mode 3]) or >= 0 and <= 7
+     * @param mode
+     *     the timer mode; must be >= 0 and <= 3
+     * @param howMuch
+     *     specifies by how much the timer should be incremented; must be > 0
      */
     private void incrementTimer(ByteRegister high, ByteRegister low, int ovflag, int mode, int howMuch) {
         if (howMuch < 1) throw new IllegalArgumentException("Invalid timer increment value: "+howMuch);
@@ -623,7 +634,7 @@ public class MC8051 implements Emulator {
      *     <li>Serial Interrupt</li>
      * </ol>
      * <br>
-     * More info at: <a href="http://8052.com/tutint.phtml">http://8052.com/tutint.phtml</a>
+     * More info at: <a href="http://8052.com/tutint.phtml">http://8052.com/tutint.phtml</a><br>
      * NOTE: This method is unfinished.
      */
     private void handleInterrupts() {
@@ -647,7 +658,8 @@ public class MC8051 implements Emulator {
     /**
      * Jump to a specifig interrupt.
      * NOTE: This method is unfinished.
-     * @param newPC the new value of the program counter
+     * @param newPC
+     *     the new value of the program counter
      */
     private void interruptJump(char newPC) {
         //TODO: Set flags indicating that the emulator is executing an interrupt
@@ -656,9 +668,12 @@ public class MC8051 implements Emulator {
 
     /**
      * Get the value of an address from internal RAM (or the SFR area)
-     * @param address the address to be used
-     * @return the byte at this address
-     * @throws IndexOutOfBoundsException when the address is in the SFR area but is not a valid SFR
+     * @param address
+     *     the address to be used
+     * @return
+     *     the byte at this address
+     * @throws IndexOutOfBoundsException
+     *     when the address is in the SFR area but is not a valid SFR
      */
     private byte getDirectAddress(byte address) throws IndexOutOfBoundsException {
         if ((address & 0xFF) < 0x80) //if the address in in the directly addressable part of the internal RAM
@@ -675,10 +690,13 @@ public class MC8051 implements Emulator {
 
     /**
      * Set the value at a direct address from internal RAM (or the SFR area)
-     * @param address the address to be used
-     * @param value the value the byte at this address will be set to
-     * @throws IndexOutOfBoundsException when the address is in the SFR area, but is not a valid SFR (the operation is
-     *         still performed, though; a new temporary SFR is created in this case)
+     * @param address
+     *     the address to be used
+     * @param value
+     *     the value the byte at this address will be set to
+     * @throws IndexOutOfBoundsException
+     *     when the address is in the SFR area, but is not a valid SFR (the operation is
+     *     still performed, though; a new temporary SFR is created in this case)
      */
     private void setDirectAddress(byte address, byte value) throws IndexOutOfBoundsException {
         if ((address & 0xFF) < 0x80) //if the address in in the directly addressable part of the internal RAM
@@ -701,9 +719,11 @@ public class MC8051 implements Emulator {
      * Decode a bit address into a direct address and a bit mask.
      * @param bitAddress
      *     the bit address to be decoded; must be valid
-     * @return a {@code BitAddress} object containing the direct address of the byte containing the specified bit and a
-     *         bit mask for the bit
-     * @throws IllegalArgumentException given an invalid bit address
+     * @return
+     *     a {@code BitAddress} object containing the direct address of the byte containing the specified bit and a
+     *     bit mask for the bit
+     * @throws IllegalArgumentException
+     *     when given an invalid bit address
      */
     private BitAddress decodeBitAddress(byte bitAddress) throws IllegalArgumentException {
         int address = bitAddress & 0xFF; //trying to prevent strange behaviour with negative bytes...
@@ -749,8 +769,10 @@ public class MC8051 implements Emulator {
 
     /**
      * Get the value of a single bit.
-     * @param bitAddress the bit's bit address
-     * @return {@code true} if the bit is 1; {@code false} if it is 0
+     * @param bitAddress
+     *     the bit's bit address
+     * @return
+     *     {@code true} if the bit is 1; {@code false} if it is 0
      * @see #decodeBitAddress(byte)
      */
     boolean getBit(byte bitAddress) {
@@ -760,8 +782,10 @@ public class MC8051 implements Emulator {
 
     /**
      * Set the value of a single bit.
-     * @param bitAddress the bit's bit address
-     * @param bit the bit's new value; {@code true} -> 1; {@code false} -> 0
+     * @param bitAddress
+     *     the bit's bit address
+     * @param bit
+     *     the bit's new value; {@code true} -> 1; {@code false} -> 0
      * @see #decodeBitAddress(byte)
      */
     void setBit(boolean bit, byte bitAddress) {
@@ -782,8 +806,10 @@ public class MC8051 implements Emulator {
     /**
      * Get a byte from stack. This is not the method called upon the opcode for {@code POP}, but an internal helper
      * method.
-     * @param exceptionOnUnderflow if this is {@code true}, an exception is thrown, when the stack pointer is 0
-     * @return the byte from the stack
+     * @param exceptionOnUnderflow
+     *     if this is {@code true}, an exception is thrown, when the stack pointer is 0
+     * @return
+     *     the byte from the stack
      * @see #pop(byte)
      */
     private byte _pop(boolean exceptionOnUnderflow) {
@@ -798,8 +824,9 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>No Operation</b><br>
-     * @return the number of cycles (1)
-     * */
+     * @return
+     *     the number of cycles (1)
+     */
     private int nop() {
         return 1;
     }
@@ -812,36 +839,27 @@ public class MC8051 implements Emulator {
      * Operand: </code>A<sub>7</sub> - A<sub>0</sub>
      * <br>
      * Example:
-     * <code><br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * instruction&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100001<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * argument&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
+     * <pre><br>
+     *
+     * instruction =         11100001<br>
+     * pc          = 1011011100000010<br>
+     * argument    =         00100010<br>
+     * <br>
      * A<sub>10</sub> - A<sub>8</sub> (from instruction) = 111<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * A<sub>7</sub> - A<sub>0</sub> (from argument)
-     * &nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;00100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * ==>&nbsp;resulting&nbsp;address&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;11100100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * replace&nbsp;last&nbsp;11&nbsp;bits&nbsp;in&nbsp;pc:<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;1011011100000010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * result&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11100100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * replaced&nbsp;=&nbsp;1011011100100010<br>
-     * &nbsp;&nbsp;&nbsp;&nbsp;
-     * [in&nbsp;hex]&nbsp;=&nbsp;0xB722&nbsp;<br>
-     * </code>
-     * @param currentOp The current opcode.
-     * @param last8bits The argument (next byte in code memory)
-     * @return the number of cycles (2)
+     * A<sub>7</sub> - A<sub>0</sub> (from argument      =    00100010<br>
+     * ==> resulting address = 11100100010<br>
+     * <br>
+     * replace last 11 bits in pc:<br>
+     * pc       = 1011011100000010<br>
+     * result   =      11100100010<br>
+     * replaced = 1011011100100010<br>
+     * </pre>
+     * @param currentOp
+     *     the current opcode
+     * @param last8bits
+     *     the argument (next byte in code memory)
+     * @return
+     *     the number of cycles (2)
      */
     private int ajmp(byte currentOp, byte last8bits) {
 
@@ -859,9 +877,12 @@ public class MC8051 implements Emulator {
      * <b>Long Jump</b><br>
      * The address is encoded in the following way:<br>
      * opcode | A<sub>15<sub>-A<sub>8</sub> | A<sub>7</sub>-A<sub>0</sub>
-     * @param highByte A<sub>15<sub>-A<sub>8</sub>
-     * @param lowByte A<sub>7</sub>-A<sub>0</sub>
-     * @return the number of cycles (2)
+     * @param highByte
+     *     A<sub>15<sub>-A<sub>8</sub>
+     * @param lowByte
+     *     A<sub>7</sub>-A<sub>0</sub>
+     * @return
+     *     the number of cycles (2)
      */
     private int ljmp(byte highByte, byte lowByte) {
         this.state.PCH.setValue(highByte);
@@ -872,8 +893,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>SJMP (by offset)</b>
      * Jump by a certain offset. The base address is the address of the byte after the instruction and the argument.
-     * @param offset the offset to jump by
-     * @return the number of cycles (2)
+     * @param offset
+     *     the offset to jump by
+     * @return
+     *     the number of cycles (2)
      */
     private int sjmp(byte offset) {
         jumpToOffset(offset);
@@ -884,7 +907,8 @@ public class MC8051 implements Emulator {
      * <b>Rotate Right</b><br>
      * This instruction rotates the accumulator one bit to the right.
      * Bit 0 of the accumulator is rotated to bit 7.<br>
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int rr_a() {
         final int a = this.state.sfrs.A.getValue() & 0xFF;
@@ -900,7 +924,8 @@ public class MC8051 implements Emulator {
      * <b>Rotate Left</b><br>
      * This instruction rotates the accumulator one bit to the left.
      * Bit 7 of the accumulator is rotated to bit 0.<br>
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int rl_a() {
         final int a = this.state.sfrs.A.getValue() & 0xFF;
@@ -915,7 +940,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>Rotate Right (with) Carry</b><br>
      * This instruction rotates the accumulator one bit to the right. Bit 0 is rotated into C and C into bit 7.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int rrc_a() {
         int a = this.state.sfrs.A.getValue() & 0xFF;
@@ -931,7 +957,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>Rotate Left (with) Carry</b><br>
      * This instruction rotates the accumulator one bit to the left. Bit 7 is rotated into C and C into bit 0.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int rlc_a() {
         int a = this.state.sfrs.A.getValue() & 0xFF;
@@ -949,7 +976,8 @@ public class MC8051 implements Emulator {
      * Increment a register by one.
      * @param r
      *     the register
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int inc(ByteRegister r) {
         r.setValue((byte)(r.getValue() + 1));
@@ -961,8 +989,10 @@ public class MC8051 implements Emulator {
      * Increment the byte at the direct address by one.
      * @param directAddress
      *     the direct address; must be < 0x80 or the address of a SFR
-     * @return the number of cycles (1)
-     * @throws IndexOutOfBoundsException when an address in the SFR memory is used that does not contain an SFR
+     * @return
+     *     the number of cycles (1)
+     * @throws IndexOutOfBoundsException
+     *     when an address in the SFR memory is used that does not contain an SFR
      */
     private int inc(byte directAddress) throws IndexOutOfBoundsException {
         setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) + 1));
@@ -976,7 +1006,8 @@ public class MC8051 implements Emulator {
      * "normal" RAM whereas a direct address refers to the SFR area when it is >= 0x80.
      * @param indirectAddress
      *     the direct address; must be < 0x80 or the address of a SFR
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int inc_indirect(byte indirectAddress) {
         this.state.internalRAM.set(indirectAddress & 0xFF,
@@ -987,7 +1018,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>Increment (DPTR)</b><br>
      * Increment the data pointer.
-     * @return the number of cycles (2)
+     * @return
+     *     the number of cycles (2)
      */
     private int inc_dptr() {
         char dptr = (char)(this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF);
@@ -1002,7 +1034,8 @@ public class MC8051 implements Emulator {
      * Decrement a register by one.
      * @param r
      *     the register
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int dec(ByteRegister r) {
         r.setValue((byte)(r.getValue() - 1));
@@ -1014,8 +1047,10 @@ public class MC8051 implements Emulator {
      * Decrement the byte at the direct address by one.
      * @param directAddress
      *     the direct address; must be < 0x80 or the address of a SFR
-     * @return the number of cycles (1)
-     * @throws IndexOutOfBoundsException when an address in the SFR memory is used that does not contain an SFR
+     * @return
+     *     the number of cycles (1)
+     * @throws IndexOutOfBoundsException
+     *     when an address in the SFR memory is used that does not contain an SFR
      */
     private int dec(byte directAddress) throws IndexOutOfBoundsException {
         setDirectAddress(directAddress, (byte)(getDirectAddress(directAddress) - 1));
@@ -1030,7 +1065,8 @@ public class MC8051 implements Emulator {
      * "normal" RAM whereas a direct address refers to the SFR area when it is >= 0x80.
      * @param indirectAddress
      *     the direct address; must be < 0x80 or the address of a SFR
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int dec_indirect(byte indirectAddress) {
         this.state.internalRAM.set(indirectAddress & 0xFF,
@@ -1041,9 +1077,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if) Bit (is set)</b>
      * Jump by a certain offset if the specified bit is set.
-     * @param bitAddress the bit's address
-     * @param offset the offset to jump by if the bit is set
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit's address
+     * @param offset
+     *     the offset to jump by if the bit is set
+     * @return
+     *     the number of cycles (2)
      * @see #decodeBitAddress(byte)
      */
     private int jb(byte bitAddress, byte offset) {
@@ -1054,9 +1093,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if) Bit (is set and) Clear (it)</b>
      * Jump by a certain offset if the specified bit is set and clear the bit afterwards.
-     * @param bitAddress the bit's address
-     * @param offset the offset to jump by if the bit is set
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit's address
+     * @param offset
+     *     the offset to jump by if the bit is set
+     * @return
+     *     the number of cycles (2)
      * @see #decodeBitAddress(byte)
      * @see #jb(byte, byte)
      */
@@ -1069,9 +1111,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if) Bit (is not set)</b>
      * Jump by a certain offset if the specified bit is not set.
-     * @param bitAddress the bit's address
-     * @param offset the offset to jump by if the bit is set
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit's address
+     * @param offset
+     *     the offset to jump by if the bit is set
+     * @return
+     *     the number of cycles (2)
      * @see #decodeBitAddress(byte)
      */
     private int jnb(byte bitAddress, byte offset) {
@@ -1082,8 +1127,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if) C (is set)</b>
      * Jump by a certain offset if the C flag is set.
-     * @param offset the offset to jump by if the C flag is set
-     * @return the number of cycles (2)
+     * @param offset
+     *     the offset to jump by if the C flag is set
+     * @return
+     *     the number of cycles (2)
      */
     private int jc(byte offset) {
         if (this.state.sfrs.PSW.getBit(7)) jumpToOffset(offset);
@@ -1093,8 +1140,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if) C (is not set)</b>
      * Jump by a certain offset if the C flag is not set.
-     * @param offset the offset to jump by if the C flag is not set
-     * @return the number of cycles (2)
+     * @param offset
+     *     the offset to jump by if the C flag is not set
+     * @return
+     *     the number of cycles (2)
      */
     private int jnc(byte offset) {
         if (!this.state.sfrs.PSW.getBit(7)) jumpToOffset(offset);
@@ -1104,8 +1153,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if A == 0)</b><br>
      * Jump by a certain offset if the accumulator equals zero.
-     * @param offset the offset to jump by if the accumulator is 0
-     * @return the number of cycles (2)
+     * @param offset
+     *     the offset to jump by if the accumulator is 0
+     * @return
+     *     the number of cycles (2)
      */
     private int jz(byte offset) {
         if (this.state.sfrs.A.getValue() == (byte)0) jumpToOffset(offset);
@@ -1115,8 +1166,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Jump (if A != 0)</b><br>
      * Jump by a certain offset if the accumulator does not equal zero.
-     * @param offset the offset to jump by if the accumulator is not 0
-     * @return the number of cycles (2)
+     * @param offset
+     *     the offset to jump by if the accumulator is not 0
+     * @return
+     *     the number of cycles (2)
      */
     private int jnz(byte offset) {
         if (this.state.sfrs.A.getValue() != (byte)0) jumpToOffset(offset);
@@ -1126,7 +1179,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>JMP (@A+DPTR)</b><br>
      * Add the content of the accumulator to the content of the DPTR (data pointer) and jump to the resulting address.
-     * @return the number of cycles (2)
+     * @return
+     *     the number of cycles (2)
      */
     private int jmp_a_dptr() {
         final int dptr = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
@@ -1143,10 +1197,14 @@ public class MC8051 implements Emulator {
      *
      * NOTE: This instruction internally uses push() and ajmp().
      *
-     * @param currentOpcode the current opcode
-     * @param last8bits the argument (which contains the destination address' low-byte)
-     * @return the number of cycles (2)
-     * @throws IllegalStateException on stack overflow
+     * @param currentOpcode
+     *     the current opcode
+     * @param last8bits
+     *     the argument (which contains the destination address' low-byte)
+     * @return
+     *     the number of cycles (2)
+     * @throws IllegalStateException
+     *     on stack overflow
      *
      * @see #ajmp(byte, byte)
      * @see #push(byte)
@@ -1165,9 +1223,12 @@ public class MC8051 implements Emulator {
      *
      * NOTE: This instruction internally uses push() and ljmp().
      *
-     * @param highByte the destination address' high byte
-     * @param lowByte the destination address' low byte
-     * @return the number of cycles (2)
+     * @param highByte
+     *     the destination address' high byte
+     * @param lowByte
+     *     the destination address' low byte
+     * @return
+     *     the number of cycles (2)
      * @see #push(byte)
      * @see #lcall(byte, byte)
      */
@@ -1181,7 +1242,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>Return (from a LCALL/ACALL)</b><br>
      * Get a code memory address (2 bytes) from the stack and jump to that address.
-     * @return the number of cycles (2)
+     * @return
+     *     the number of cycles (2)
      */
     private int ret() {
         ljmp(_pop(!this.ignoreSOSU), _pop(!this.ignoreSOSU));
@@ -1191,9 +1253,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>Push</b><br>
      * Increment the stack pointer and push a byte onto the stack.
-     * @param value the value to be stored on the stack
-     * @return the number of cycles (2)
-     * @throws IllegalStateException on stack overflow
+     * @param value
+     *     the value to be stored on the stack
+     * @return
+     *     the number of cycles (2)
+     * @throws IllegalStateException
+     *     on stack overflow
      */
     private int push(byte value) throws IllegalStateException {
         int resultingAddress = (this.state.sfrs.SP.getValue() & 0xFF) + 1;
@@ -1206,9 +1271,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>Pop</b> a byte from the stack and decrement the stack pointer
-     * @return the number of cycles (2)
-     * @param direct address at which the result is stored
-     * @throws IllegalStateException on stack underflow
+     * @param direct
+     *     address at which the result is stored
+     * @return
+     *     the number of cycles (2)
+     * @throws IllegalStateException
+     *     on stack underflow
      * @see #setDirectAddress(byte, byte)
      */
     private int pop(byte direct) throws IllegalStateException {
@@ -1219,8 +1287,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ADD (#immediateValue)</b><br>
      * Add an immediate value to the accumulator and store the result in the accumulator.
-     * @param immediate the value to be added to the accumulator
-     * @return the number of cycles (1)
+     * @param immediate
+     *     the value to be added to the accumulator
+     * @return
+     *     the number of cycles (1)
      */
     private int add_immediate(byte immediate) {
         final byte bA = this.state.sfrs.A.getValue();
@@ -1241,8 +1311,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ADD (@Ri)</b><br>
      * Add an indirectly addressed value to the accumulator and store the result in the accumulator.
-     * @param indirectAddress the address (usually the content of either R0 or R1)
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the address (usually the content of either R0 or R1)
+     * @return
+     *     the number of cycles (1)
      * @see #add_immediate(byte)
      */
     private int add_indirect(byte indirectAddress) {
@@ -1252,8 +1324,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ADD (direct address)</b><br>
      * Add a directly addressed value to the accumulator and store the result in the accumulator.
-     * @param directAddress the address
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the address
+     * @return
+     *     the number of cycles (1)
      * @see #getDirectAddress(byte)
      * @see #add_immediate(byte)
      */
@@ -1264,8 +1338,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Add (RX)</b><br>
      * Add the value of a R register to the accumulator and store the result in the accumulator.
-     * @param ordinal the R register's number; must be >= 0 and <= 7
-     * @return the number of cycles (1)
+     * @param ordinal
+     *     the R register's number; must be >= 0 and <= 7
+     * @return
+     *     the number of cycles (1)
      * @see #add_immediate(byte)
      */
     private int add_r(int ordinal) {
@@ -1275,8 +1351,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Add (#immediateValue and C flag)</b><br>
      * Add an immediate value and the carry flag to the accumulator and store the result in the accumulator.
-     * @param immediateValue the value to be added to the accumulator
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the value to be added to the accumulator
+     * @return
+     *     the number of cycles (1)
      * @see #add_immediate(byte)
      */
     private int addc_immediate(byte immediateValue) {
@@ -1286,8 +1364,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ADDC (@Ri)</b><br>
      * Add an indirectly addressed value and the carry flag to the accumulator and store the result in the accumulator.
-     * @param indirectAddress the address (usually the content of either R0 or R1)
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the address (usually the content of either R0 or R1)
+     * @return
+     *     the number of cycles (1)
      * @see #addc_immediate(byte)
      */
     private int addc_indirect(byte indirectAddress) {
@@ -1297,8 +1377,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ADDC (direct address)</b><br>
      * Add a directly addressed value and the carry flag to the accumulator and store the result in the accumulator.
-     * @param directAddress the address
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the address
+     * @return
+     *     the number of cycles (1)
      * @see #getDirectAddress(byte)
      * @see #addc_immediate(byte)
      */
@@ -1309,8 +1391,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>Add (RX)</b><br>
      * Add the value of a R register and the carry flag to the accumulator and store the result in the accumulator.
-     * @param ordinal the R register's number; must be >= 0 and <= 7
-     * @return the number of cycles (1)
+     * @param ordinal
+     *     the R register's number; must be >= 0 and <= 7
+     * @return
+     *     the number of cycles (1)
      * @see #addc_immediate(byte)
      */
     private int addc_r(int ordinal) {
@@ -1320,8 +1404,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>SUBB (A, #immediate)</b><br>
      * Subtract a value and the carry flag from the accumulator.
-     * @param immediateValue the value to be subtracted from A
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the value to be subtracted from A
+     * @return
+     *     the number of cycles (1)
      * @see #add_immediate(byte)
      */
     private int subb_immediate(byte immediateValue) {
@@ -1344,9 +1430,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>Subb (A, @Ri)</b>
-     * @param indirectAddress the indirect address that determines the byte to be subtracted from A (normally the
-     *                        content of R0 or R1)
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address that determines the byte to be subtracted from A (normally the content of R0 or R1)
+     * @return
+     *     the number of cycles (1)
      * @see #subb_immediate(byte)
      */
     private int subb_indirect(byte indirectAddress) {
@@ -1355,8 +1442,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>SUBB (A, directAddress)</b>
-     * @param directAddress the direct address that determines the byte to be subtracted from A
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address that determines the byte to be subtracted from A
+     * @return
+     *     the number of cycles (1)
      * @see #subb_immediate(byte)
      */
     private int subb_direct(byte directAddress) {
@@ -1365,8 +1454,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>SUBB (A, Rn)</b>
-     * @param ordinal determines the R register whose value is subtracted from A; must be >= 0 and <= 7
-     * @return the number of cycles (1)
+     * @param ordinal
+     *     determines the R register whose value is subtracted from A; must be >= 0 and <= 7
+     * @return
+     *     the number of cycles (1)
      * @see #subb_immediate(byte)
      */
     private int subb_r(int ordinal) {
@@ -1378,9 +1469,12 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical OR on the byte at the direct address and the immediate byte; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @param immediateValue the immediate value
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (2)
      * @see #setDirectAddress(byte, byte)
      * @see #getDirectAddress(byte)
      */
@@ -1394,8 +1488,10 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical OR on the byte at the direct address and the accumulator; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address
+     * @return
+     *     the number of cycles (1)
      * @see #orl(byte, byte)
      */
     private int orl_direct_a(byte directAddress) {
@@ -1406,8 +1502,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ORL (A, #immediate)</b><br>
      * Perform a logical OR on the accumulator and the immediate value; store the result in the accumulator.
-     * @param immediateValue the immediate value
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (1)
      * @see #orl(byte, byte)
      */
     private int orl_a_immediate(byte immediateValue) {
@@ -1418,8 +1516,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ORL (A, direct)</b><br>
      * Perform a logical OR on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param directAddress the direct address to be used
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #orl_a_immediate(byte)
      */
     private int orl_a(byte directAddress) {
@@ -1429,8 +1529,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ORL (A, @Ri)</b><br>
      * Perform a logical OR on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param indirectAddress the indirect address to be used
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #orl_a_immediate(byte)
      */
     private int orl_a_indirect(byte indirectAddress) {
@@ -1440,9 +1542,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>ORL (C, (/)bit)</b><br>
      * Perform a logical OR on C and the specified bit (or the negated bit); store the result in C.
-     * @param bitAddress the bit to be used
-     * @param negateBit if this is {@code true}, the bit will be negated, before the OR is performed
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit to be used
+     * @param negateBit
+     *     if this is {@code true}, the bit will be negated, before the OR is performed
+     * @return
+     *     the number of cycles (2)
      */
     private int orl_c(byte bitAddress, boolean negateBit) {
         boolean bit = getBit(bitAddress);
@@ -1457,9 +1562,12 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical XOR on the byte at the direct address and the immediate byte; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @param immediateValue the immediate value
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (2)
      * @see #setDirectAddress(byte, byte)
      * @see #getDirectAddress(byte)
      */
@@ -1473,8 +1581,10 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical XOR on the byte at the direct address and the accumulator; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address
+     * @return
+     *     the number of cycles (1)
      * @see #xrl(byte, byte)
      */
     private int xrl_direct_a(byte directAddress) {
@@ -1485,8 +1595,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>XRL (A, #immediate)</b><br>
      * Perform a logical XOR on the accumulator and the immediate value; store the result in the accumulator.
-     * @param immediateValue the immediate value
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (1)
      * @see #xrl(byte, byte)
      */
     private int xrl_a_immediate(byte immediateValue) {
@@ -1497,8 +1609,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>XRL (A, direct)</b><br>
      * Perform a logical XOR on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param directAddress the direct address to be used
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #xrl_a_immediate(byte)
      */
     private int xrl_a(byte directAddress) {
@@ -1508,8 +1622,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>XRL (A, @Ri)</b><br>
      * Perform a logical XOR on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param indirectAddress the indirect address to be used
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #xrl_a_immediate(byte)
      */
     private int xrl_a_indirect(byte indirectAddress) {
@@ -1521,9 +1637,12 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical AND on the byte at the direct address and the immediate byte; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @param immediateValue the immediate value
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (2)
      * @see #setDirectAddress(byte, byte)
      * @see #getDirectAddress(byte)
      */
@@ -1537,8 +1656,10 @@ public class MC8051 implements Emulator {
      * <br>
      * Perform a logical AND on the byte at the direct address and the accumulator; store the result at the direct
      * address.
-     * @param directAddress the direct address
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address
+     * @return
+     *     the number of cycles (1)
      * @see #anl(byte, byte)
      */
     private int anl_direct_a(byte directAddress) {
@@ -1549,8 +1670,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ANL (A, #immediate)</b><br>
      * Perform a logical AND on the accumulator and the immediate value; store the result in the accumulator.
-     * @param immediateValue the immediate value
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the immediate value
+     * @return
+     *     the number of cycles (1)
      * @see #anl(byte, byte)
      */
     private int anl_a_immediate(byte immediateValue) {
@@ -1561,8 +1684,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ANL (A, direct)</b><br>
      * Perform a logical AND on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param directAddress the direct address to be used
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #anl_a_immediate(byte)
      */
     private int anl_a(byte directAddress) {
@@ -1572,8 +1697,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>ANL (A, @Ri)</b><br>
      * Perform a logical AND on the accumulator and the byte at the direct address; store the result in the accumulator.
-     * @param indirectAddress the indirect address to be used
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be used
+     * @return
+     *     the number of cycles (1)
      * @see #anl_a_immediate(byte)
      */
     private int anl_a_indirect(byte indirectAddress) {
@@ -1583,9 +1710,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>ANL (C, (/)bit)</b><br>
      * Perform a logical AND on C and the specified bit (or the negated bit); store the result in C.
-     * @param bitAddress the bit to be used
-     * @param negateBit if this is {@code true}, the bit will be negated, before the OR is performed
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit to be used
+     * @param negateBit
+     *     if this is {@code true}, the bit will be negated, before the OR is performed
+     * @return
+     *     the number of cycles (2)
      */
     private int anl_c(byte bitAddress, boolean negateBit) {
         boolean bit = getBit(bitAddress);
@@ -1597,9 +1727,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (@Ri, #immediate)</b>
-     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
-     * @param immediateValue the value to be stored at this address
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be used (typically the content of R0/R1)
+     * @param immediateValue
+     *     the value to be stored at this address
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_indirect_immediate(byte indirectAddress, byte immediateValue) {
         this.state.internalRAM.set(indirectAddress & 0xFF, immediateValue);
@@ -1608,9 +1741,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (@Ri, direct)</b><br>
-     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
-     * @param directAddress the direct address from which the value that is stored at the indirect address is read
-     * @return the number of cycles (2)
+     * @param indirectAddress
+     *     the indirect address to be used (typically the content of R0/R1)
+     * @param directAddress
+     *     the direct address from which the value that is stored at the indirect address is read
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_indirect_direct(byte indirectAddress, byte directAddress) {
         mov_indirect_immediate(indirectAddress, getDirectAddress(directAddress));
@@ -1619,9 +1755,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (direct, #immediate)</b>
-     * @param directAddress the direct address at which the immediate value is stored
-     * @param immediateValue the immediate value to be stored at said address
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address at which the immediate value is stored
+     * @param immediateValue
+     *     the immediate value to be stored at said address
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_direct_immediate(byte directAddress, byte immediateValue) {
         setDirectAddress(directAddress, immediateValue);
@@ -1630,8 +1769,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (A, #immediate)</b>
-     * @param immediateValue the immediate value to be moved to the accumulator
-     * @return the number of cycles (1)
+     * @param immediateValue
+     *     the immediate value to be moved to the accumulator
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_a_immediate(byte immediateValue) {
         mov_direct_immediate(this.state.sfrs.getAddress(this.state.sfrs.A), immediateValue);
@@ -1640,8 +1781,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (A, @Ri)</b>
-     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be used (typically the content of R0/R1)
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_a_indirect(byte indirectAddress) {
         return mov_a_immediate(this.state.internalRAM.get(indirectAddress & 0xFF));
@@ -1649,8 +1792,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (A, direct)</b>
-     * @param directAddress the direct address whose value is stored in the accumulator
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address whose value is stored in the accumulator
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_a_direct(byte directAddress) {
         return mov_a_immediate(getDirectAddress(directAddress));
@@ -1658,8 +1803,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (bit, C)</b>
-     * @param bitAddress the bit address to which the value of the carry flag is copied
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit address to which the value of the carry flag is copied
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_bit_c(byte bitAddress) {
         setBit(this.state.sfrs.PSW.getBit(7), bitAddress);
@@ -1668,8 +1815,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (C, bit)</b>
-     * @param bitAddress the bit address whose value is copied to the carry flag
-     * @return the number of cycles (2)
+     * @param bitAddress
+     *     the bit address whose value is copied to the carry flag
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_c_bit(byte bitAddress) {
         this.state.sfrs.PSW.setBit(getBit(bitAddress), 7);
@@ -1680,11 +1829,16 @@ public class MC8051 implements Emulator {
      * <b>MOV (direct, direct)</b><br>
      * NOTE: The reason the parameters are flipped is that they appear in that order in machine code. In assembly they
      * are written differently:<br>
-     *     Machine code: sourceAddress     , destinationAddress
+     * <pre>
+     *     Machine code: sourceAddress     , destinationAddress<br>
      *     Assembly    : destinationAddress, sourceAddress
-     * @param srcDirect the direct source address
-     * @param destDirect the indirect source address
-     * @return the number of cycles (2)
+     * </pre>
+     * @param srcDirect
+     *     the direct source address
+     * @param destDirect
+     *     the indirect source address
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_direct_direct(byte srcDirect, byte destDirect) {
         mov_direct_immediate(destDirect, getDirectAddress(srcDirect));
@@ -1693,9 +1847,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (direct, @Ri)</b>
-     * @param directAddress the direct address to be used
-     * @param indirectAddress the indirect address to be used (typically the content of R0/R1)
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address to be used
+     * @param indirectAddress
+     *     the indirect address to be used (typically the content of R0/R1)
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_direct_indirect(byte directAddress, byte indirectAddress) {
         mov_direct_immediate(directAddress, this.state.internalRAM.get(indirectAddress & 0xFF));
@@ -1704,9 +1861,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (DPTR, #immediate)</b>
-     * @param immediateHigh the new value of DPH
-     * @param immediateLow the new value of DPL
-     * @return the number of cycles (2)
+     * @param immediateHigh
+     *     the new value of DPH
+     * @param immediateLow
+     *     the new value of DPL
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_dptr(byte immediateHigh, byte immediateLow) {
         this.state.sfrs.DPH.setValue(immediateHigh);
@@ -1716,9 +1876,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (Rn, #immediate)</b>
-     * @param ordinal specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
-     * @param immediateValue the immediate value to be stored at the specified R register
-     * @return the number of cycles (1)
+     * @param ordinal
+     *     specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
+     * @param immediateValue
+     *     the immediate value to be stored at the specified R register
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_r_immediate(int ordinal, byte immediateValue) {
         this.state.internalRAM.set(getRAddress(ordinal), immediateValue);
@@ -1727,9 +1890,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (Rn, direct)</b>
-     * @param ordinal specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
-     * @param directAddress the direct address whose content is copied to the specified R register
-     * @return the number of cycles (2)
+     * @param ordinal
+     *     specifies the R register (R<sub>ordinal</sub>); must be >= 0 and <= 7
+     * @param directAddress
+     *     the direct address whose content is copied to the specified R register
+     * @return
+     *     the number of cycles (2)
      */
     private int mov_r_direct(int ordinal, byte directAddress) {
         mov_r_immediate(ordinal, getDirectAddress(directAddress));
@@ -1738,8 +1904,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOV (direct, A)</b>
-     * @param directAddress the direct address whose content is moved to the accumulator
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address whose content is moved to the accumulator
+     * @return
+     *     the number of cycles (1)
      */
     private int mov_direct_a(byte directAddress) {
         mov_direct_immediate(directAddress, this.state.sfrs.A.getValue());
@@ -1749,9 +1917,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>MOVC (A, @A+DPTR/PC)</b><br>
      * Copy code memory to the accumulator.
-     * @param high high byte of the DPTR/PC register
-     * @param low byte of the DPTR/PC register
-     * @return the number of cycles (2)
+     * @param high
+     *     high byte of the DPTR/PC register
+     * @param low
+     *     byte of the DPTR/PC register
+     * @return
+     *     the number of cycles (2)
      */
     private int movc_a(ByteRegister high, ByteRegister low) {
         final char address = (char)((this.state.sfrs.A.getValue() & 0xFF)
@@ -1762,8 +1933,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOVX (@Ri, A)</b><br>
-     * @param indirectAddress indirect address in external RAM the value of A is moved to
-     * @return the number of cycles (2)
+     * @param indirectAddress
+     *     indirect address in external RAM the value of A is moved to
+     * @return
+     *     the number of cycles (2)
      */
     private int movx_indirect_a(byte indirectAddress) {
         this.state.externalRAM.set(indirectAddress & 0xFF, this.state.sfrs.A.getValue());
@@ -1772,7 +1945,8 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOVX (@DPTR, A)</b>
-     * @return the number of cycles (2)
+     * @return
+     *     the number of cycles (2)
      */
     private int movx_dptr_a() {
         final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
@@ -1782,8 +1956,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOVX (A, @Ri)</b>
-     * @param indirectAddress the indirect address in external RAM to move to A
-     * @return the number of cycles (2)
+     * @param indirectAddress
+     *     the indirect address in external RAM to move to A
+     * @return
+     *     the number of cycles (2)
      */
     private int movx_a_indirect(byte indirectAddress) {
         this.state.sfrs.A.setValue(this.state.externalRAM.get(indirectAddress & 0xFF));
@@ -1792,7 +1968,8 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>MOVX (A, @DPTR)</b>
-     * @return the number of cycles (2)
+     * @return
+     *     the number of cycles (2)
      */
     private int movx_a_dptr() {
         final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
@@ -1806,7 +1983,8 @@ public class MC8051 implements Emulator {
      * The carry flag is always cleared.
      * If a division by zero is attempted, the OV flag is set, otherwise it is cleared.
      * (The states of A and B after a division by zero are undefined.)
-     * @return the number of cycles (4)
+     * @return
+     *     the number of cycles (4)
      */
     private int div_ab() {
         final ByteRegister A = this.state.sfrs.A;
@@ -1830,7 +2008,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>MUL (AB)</b><br>
      * Perform an unsigned multiplication of A and B. The low byte of the result is stored in A, the high byte in B.
-     * @return the number of cycles (4)
+     * @return
+     *     the number of cycles (4)
      */
     private int mul_ab() {
         this.state.sfrs.PSW.setBit(false, 7); //MUL always clears the carry flag
@@ -1845,7 +2024,8 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>0xA5 (this opcode is reserved/not defined)</b>
-     * @return a negative value
+     * @return
+     *     a negative value
      */
     private int reserved() {
         return -42;
@@ -1855,7 +2035,8 @@ public class MC8051 implements Emulator {
      * <b>CPL (bit)</b><br>
      * Complement the specified bit.
      * @param bitAddress address of the bit that should be complemented
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int cpl(byte bitAddress) {
         setBit(!getBit(bitAddress), bitAddress);
@@ -1865,7 +2046,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>CPL (A)</b><br>
      * Complement the accumulator.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int cpl_a() {
         this.state.sfrs.A.setValue((byte)~this.state.sfrs.A.getValue());
@@ -1875,7 +2057,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>CPL (C)</b><br>
      * Complement the C flag.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int cpl_c() {
         final int C = 7;
@@ -1885,10 +2068,14 @@ public class MC8051 implements Emulator {
 
     /**
      * Helper function for the CJNE mnemonics.
-     * @param immediate1 byte 1 for the comparison
-     * @param immediate2 byte 2 for the comparison
-     * @param offset the offset to jump by if the bytes aren't equal
-     * @return the number of cycles (2)
+     * @param immediate1
+     *     byte 1 for the comparison
+     * @param immediate2
+     *     byte 2 for the comparison
+     * @param offset
+     *     the offset to jump by if the bytes aren't equal
+     * @return
+     *     the number of cycles (2)
      */
     private int _cjne(byte immediate1, byte immediate2, byte offset) {
         final int C = 7;
@@ -1899,10 +2086,14 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CJNE (@Ri, #immediate, LABEL)</b>
-     * @param indirectAddress the indirect address used to get byte 1 for the comparison (usually the content of R0/R1)
-     * @param immediateValue byte 2 for the comparison
-     * @param offset the offset to jump by if the bytes aren't equal
-     * @return the number of cycles (2)
+     * @param indirectAddress
+     *     the indirect address used to get byte 1 for the comparison (usually the content of R0/R1)
+     * @param immediateValue
+     *     byte 2 for the comparison
+     * @param offset
+     *     the offset to jump by if the bytes aren't equal
+     * @return
+     *     the number of cycles (2)
      */
     private int cjne_indirect_immediate(byte indirectAddress, byte immediateValue, byte offset) {
         return _cjne(this.state.internalRAM.get(indirectAddress & 0xFF), immediateValue, offset);
@@ -1910,9 +2101,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CJNE (A, #immediate, LABEL)</b>
-     * @param immediateValue byte 2 for the comparison
-     * @param offset the offset to jump by if byte 2 isn't equal to A
-     * @return the number of cycles (2)
+     * @param immediateValue
+     *     byte 2 for the comparison
+     * @param offset
+     *     the offset to jump by if byte 2 isn't equal to A
+     * @return
+     *     the number of cycles (2)
      */
     private int cjne_a_immediate(byte immediateValue, byte offset) {
         return _cjne(this.state.sfrs.A.getValue(), immediateValue, offset);
@@ -1920,9 +2114,12 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CJNE (A, directAddress, LABEL)</b>
-     * @param directAddress the direct address used to get byte 2 of the comparison
-     * @param offset the offset to jump by if A and byte 2 aren't equal
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address used to get byte 2 of the comparison
+     * @param offset
+     *     the offset to jump by if A and byte 2 aren't equal
+     * @return
+     *     the number of cycles (2)
      * @see #getDirectAddress(byte)
      */
     private int cjne_a_direct(byte directAddress, byte offset) {
@@ -1931,10 +2128,14 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CJNE (Rn, #immediate, LABEL)</b>
-     * @param ordinal the R register's number; must be >= 0 and <= 7
-     * @param immediateValue byte 2 for the comparison
-     * @param offset the offset to jump by if R&lt;ordinal&gt; and byte 2 aren't equal
-     * @return the number of cycles (2)
+     * @param ordinal
+     *     the R register's number; must be >= 0 and <= 7
+     * @param immediateValue
+     *     byte 2 for the comparison
+     * @param offset
+     *     the offset to jump by if R&lt;ordinal&gt; and byte 2 aren't equal
+     * @return
+     *     the number of cycles (2)
      */
     private int cjne_r_immediate(int ordinal, byte immediateValue, byte offset) {
         return _cjne(getR(ordinal), immediateValue, offset);
@@ -1942,7 +2143,8 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CLR (A)</b>
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int clr_a() {
         this.state.sfrs.A.setValue((byte)0);
@@ -1951,8 +2153,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CLR (bitAddress)</b>
-     * @param bitAddress the bit to be cleared
-     * @return the number of cycles (1)
+     * @param bitAddress
+     *     the bit to be cleared
+     * @return
+     *     the number of cycles (1)
      */
     private int clr(byte bitAddress) {
         setBit(false, bitAddress);
@@ -1961,7 +2165,8 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>CLR (C)</b>
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int clr_c() {
         this.state.sfrs.PSW.setBit(false, 7); //bit 7 is the carry flag
@@ -1972,7 +2177,8 @@ public class MC8051 implements Emulator {
      * <b>SWAP (A)</b>
      * <br>
      * Swap the high and the low nibble of the accumulator.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int swap_a() {
         final byte a = this.state.sfrs.A.getValue();
@@ -1983,8 +2189,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>XCH (A, @Ri)</b>
-     * @param indirectAddress the indirect address to be exchanged with A
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the indirect address to be exchanged with A
+     * @return
+     *     the number of cycles (1)
      */
     private int xch_a_indirect(byte indirectAddress) {
         final byte a = this.state.sfrs.A.getValue();
@@ -1995,8 +2203,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>XCH (A, direct)</b>
-     * @param directAddress the direct address to be exchanged with A
-     * @return the number of cycles (1)
+     * @param directAddress
+     *     the direct address to be exchanged with A
+     * @return
+     *     the number of cycles (1)
      */
     private int xch_a_direct(byte directAddress) {
         final byte a = this.state.sfrs.A.getValue();
@@ -2007,8 +2217,10 @@ public class MC8051 implements Emulator {
 
     /**
      * <b>XCH (A, Rn)</b>
-     * @param ordinal specifies the R register to use; must be >= 0 and <= 7
-     * @return the number of cycles (1)
+     * @param ordinal
+     *     specifies the R register to use; must be >= 0 and <= 7
+     * @return
+     *     the number of cycles (1)
      */
     private int xch_a_r(int ordinal) {
         return xch_a_indirect((byte)getRAddress(ordinal));
@@ -2017,7 +2229,8 @@ public class MC8051 implements Emulator {
     /**
      * <b>SETB (C)</b><br>
      * Set the carry flag to 1.
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int setb_c() {
         this.state.sfrs.PSW.setBit(true, 7); //bit 7 is the carry flag
@@ -2027,8 +2240,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>SETB (bitAddress)</b><br>
      * Set a bit to 1.
-     * @param bitAddress specifies the bit to be set to 1
-     * @return the number fo cycles (1)
+     * @param bitAddress
+     *     specifies the bit to be set to 1
+     * @return
+     *     the number fo cycles (1)
      */
     private int setb(byte bitAddress) {
         setBit(true, bitAddress);
@@ -2040,7 +2255,8 @@ public class MC8051 implements Emulator {
      * <br>
      * This instruction is used after two BCD numbers have been added using {@code ADD} or {@code ADDC}.
      * For an in-depth explanation see http://www.keil.com/support/man/docs/is51/is51_da.htm
-     * @return the number of cycles (1)
+     * @return
+     *     the number of cycles (1)
      */
     private int da_a() {
         final byte a = this.state.sfrs.A.getValue();
@@ -2071,9 +2287,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>DJNZ (direct, offset)</b><br>
      * Decrement the byte at the specified direct address and jump to the specified address if it is not {@code 0}.
-     * @param directAddress the direct address to decrement
-     * @param offset the offset to jump by if the byte at {@code directAddress} isn't {@code 0}
-     * @return the number of cycles (2)
+     * @param directAddress
+     *     the direct address to decrement
+     * @param offset
+     *     the offset to jump by if the byte at {@code directAddress} isn't {@code 0}
+     * @return
+     *     the number of cycles (2)
      * @see #dec(byte)
      * @see #getDirectAddress(byte)
      */
@@ -2086,9 +2305,12 @@ public class MC8051 implements Emulator {
     /**
      * <b>DJNZ (Rn, offset)</b><br>
      * Decrement the specified R register and jump by the specified offset it is not {@code 0}.
-     * @param ordinal specifies the R register to use; must be >= 0 and <= 7
-     * @param offset the offset to jump by if the R register isn't {@code 0}
-     * @return the number of cycles (2)
+     * @param ordinal
+     *     specifies the R register to use; must be >= 0 and <= 7
+     * @param offset
+     *     the offset to jump by if the R register isn't {@code 0}
+     * @return
+     *     the number of cycles (2)
      */
     private int djnz_r(int ordinal, byte offset) {
         return djnz((byte)getRAddress(ordinal), offset);
@@ -2097,8 +2319,10 @@ public class MC8051 implements Emulator {
     /**
      * <b>XCHD (A, @Ri)</b><br>
      * Swap the low-nibble of the accumulator and the indirectly addressed byte.
-     * @param indirectAddress the byte whose low-nibble is swapped with the accumulator's
-     * @return the number of cycles (1)
+     * @param indirectAddress
+     *     the byte whose low-nibble is swapped with the accumulator's
+     * @return
+     *     the number of cycles (1)
      */
     private int xchd_a(byte indirectAddress) {
         final byte a = this.state.sfrs.A.getValue();

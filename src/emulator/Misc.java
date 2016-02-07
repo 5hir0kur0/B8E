@@ -10,9 +10,12 @@ import java.util.Arrays;
 class Misc {
     /**
      * Pads a string with '0's from the left.
-     * @param length The new length.
-     * @param source The {@code String} to be padded with '0'
-     * @return The resulting {@code String}
+     * @param length
+     *     the new length
+     * @param source
+     *     the {@code String} to be padded with '0'
+     * @return
+     *     the resulting {@code String}
      */
     public static String zeroFill(String source, int length) {
         if (null == source) throw new IllegalArgumentException("source must not be null");
