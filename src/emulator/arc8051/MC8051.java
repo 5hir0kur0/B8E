@@ -11,9 +11,9 @@ import java.util.Objects;
  * NOTE: <br>
  *   The reason for all the bitwise ANDs is that Java uses signed arithmetic and thus exhibits weird behaviour
  *   when casting a negative type to a type with a greater bit count (this casting occurs automatically during almost
- *   all arithmetic operations, like e.g. bit shifting):
- *   (int)(byte)0x80 = 0xFFFFFF80
- *   In order to get the correct result, we have to do <result> & 0xFF (in this case)
+ *   all arithmetic operations, like e.g. bit shifting):<br>
+ *   <code>(int)(byte)0x80 = 0xFFFFFF80</code><br>
+ *   In order to get the correct result, we have to do <code>&lt;result&gt; & 0xFF</code> (in this case)
  *
  * @author 5hir0kur0
  */
@@ -33,6 +33,20 @@ public class MC8051 implements Emulator {
     private byte TMOD_OLD; //used by updateTimers() to keep track of the previous state TMOD when in mode 3
     private boolean TR1_OLD; //used by updateTimers() to keep track of the previous state of TR1 when in mode 3
 
+    //variables used by the updateInterruptRequestFlags() method to keep track of transitions of the
+    //external interrupts' pins
+    private boolean prevP3_3;
+    private boolean prevP3_2;
+
+    //variable used by handleInterrupts() method to keep track of the running interrupt's priority
+    //can either be 1 for high, 0 for low or -1 to indicate that no interrupt is being executed at the moment
+    private int runningInterruptPriority;
+
+    //If this is true, the currently running interrupt is interrupting another interrupt of lower priority
+    //the only case when this can happen is when an interrupt of 'low' priority is interrupted by an interrupt of 'high'
+    //priority. Consequently this can only happen once, as the interrupt running when this flag is true is of 'high'
+    //priority and thus cannot be interrupted.
+    private boolean runningInterruptInterruptedOtherInterrupt = false;
 
     /**
      * Create a new 8051 micro controller object.<br>
@@ -73,6 +87,9 @@ public class MC8051 implements Emulator {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
         this.state.setRRegisters(generateRRegisters());
         this.ignoreSOSU = ignoreSOSU;
+        this.prevP3_2 = this.state.sfrs.P3.getBit(2);
+        this.prevP3_3 = this.state.sfrs.P3.getBit(3);
+        this.runningInterruptPriority = -1;
     }
 
     /**
@@ -161,7 +178,7 @@ public class MC8051 implements Emulator {
             case       0x2F: retValue = add_r(7); break;
             case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
             case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x32: break;
+            case       0x32: retValue = reti(); break;
             case       0x33: retValue = rlc_a(); break;
             case       0x34: retValue = addc_immediate(getCodeByte()); break;
             case       0x35: retValue = addc_direct(getCodeByte()); break;
@@ -371,6 +388,7 @@ public class MC8051 implements Emulator {
         //TODO put the following in a finally-block and add exception handling
         updateParityFlag();
         updateTimers(retValue);
+        handleInterrupts();
         //The value of the R registers can be changed through memory.
         //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
         //time, so that it fires property-change-events
@@ -631,38 +649,103 @@ public class MC8051 implements Emulator {
      *     <li>Timer 0 Interrupt</li>
      *     <li>External 1 Interrupt</li>
      *     <li>Timer 1 Interrupt</li>
-     *     <li>Serial Interrupt</li>
+     *     <li>Serial Interrupt (triggered by either the TI or the RI flag)</li>
      * </ol>
      * <br>
+     * This order can be changed by changing the bits of the IP (interrupt priority) registers.
+     * Note that the original 8051 only has two priorities: low and high
+     * (as opposed to four priorities in newer models).
      * More info at: <a href="http://8052.com/tutint.phtml">http://8052.com/tutint.phtml</a><br>
-     * NOTE: This method is unfinished.
      */
     private void handleInterrupts() {
         final boolean EA = this.state.sfrs.IE.getBit(7); //global interrupt enable/disable
         if (!EA) return; //if interrupts are disables, there is nothing to do
+        if (this.runningInterruptPriority == 1) return; // a interrupt of high priority cannot be cancelled
         final boolean ES  = this.state.sfrs.IE.getBit(4); //enable serial interrupt
         final boolean ET1 = this.state.sfrs.IE.getBit(3); //enable timer 1 interrupt
         final boolean EX1 = this.state.sfrs.IE.getBit(2); //enable external 1 interrupt
         final boolean ET0 = this.state.sfrs.IE.getBit(1); //enable timer 0 interrupt
         final boolean EX0 = this.state.sfrs.IE.getBit(0); //enable external 0 interrupt
+        final BitAddressableByteRegister TCON = this.state.sfrs.TCON;
+        final BitAddressableByteRegister SCON = this.state.sfrs.SCON;
+        final BitAddressableByteRegister IP   = this.state.sfrs.IP;
 
-        //TODO: Finish this method and handle interrupts properly
+        updateInterruptRequestFlags();
 
-        //if (EX0) ;
-        //if (ET0) ;
-        //if (EX1) ;
-        //if (ET1) ;
-        //if (ES) ;
+        final boolean[] interruptRequests = {
+                EX0 && TCON.getBit(1), // external interrupt 0 (IE0)
+                ET0 && TCON.getBit(5), // timer 0 overflow (TF0)
+                EX1 && TCON.getBit(3), // external interrupt 1 (IE1)
+                ET1 && TCON.getBit(7), // timer 1 overflow (TF1)
+                ES  && (SCON.getBit(0) || SCON.getBit(1)) // SCON.1 is TI (set when a byte has been transmitted
+                                                          // through the serial port)
+                                                          // SCON.0 is RI (set when a byte has been received through the
+                                                          // serial port)
+        };
+
+        // the SCON-bits aren't cleared (that's why those indexes are set to -1)
+        final int[] tconClear = { 1 /* IE0 */, 5 /* TF0 */, 3 /* IE1 */, 7 /* TF1 */, -1, -1 };
+
+        final boolean[] priorities = {
+                IP.getBit(0), // external interrupt 0 priority
+                IP.getBit(1), // timer 0 interrupt priority
+                IP.getBit(2), // external interrupt 1 priority
+                IP.getBit(3), // timer 1 interrupt priority
+                IP.getBit(4)  // serial interrupt priority
+        };
+
+        boolean priority = true; // check high priority interrupts first
+        for (int helper = 0, i = 0; helper < 8; ++helper, i = helper % 4, priority = helper < 4) {
+            if (priority != priorities[i]) continue;
+            if (interruptRequests[i] && (priority || this.runningInterruptPriority == -1)) {
+                // if we made it this far, we can execute our interrupt
+                if (tconClear[i] >= 0) TCON.setBit(false, tconClear[i]); // clear request flag if necessary
+                this.runningInterruptPriority = priority ? 1 : 0;
+                if (this.runningInterruptPriority == 0) this.runningInterruptInterruptedOtherInterrupt = true;
+                interruptJump((char)(3 + i * 8));
+                break; // we can only execute one interrupt at a time
+            }
+        }
     }
 
     /**
-     * Jump to a specifig interrupt.
-     * NOTE: This method is unfinished.
+     * Update the interrupt request flags in {@code TCON} (except for the timer overflow flags; they are maintained by
+     * {@code updateTimers()} and {@code incrementTimer()}.
+     * The flags are updated regardless of whether their respective interrupts are enabled (because that's how MCU8051
+     * IDE behaves). Furthermore, an interrupt request flag may be reset even though its interrupt service routine
+     * has not been executed yet (for the same reason as above).
+     * NOTE: The interrupt request flags  of the serial interface and the analog/digital converter
+     * are NOT updated by this method as those features are not supported.
+     */
+    private void updateInterruptRequestFlags() {
+        final boolean IT0  = this.state.sfrs.TCON.getBit(0);
+        final boolean IT1  = this.state.sfrs.TCON.getBit(2);
+        final boolean P3_2 = this.state.sfrs.P3.getBit(2);
+        final boolean P3_3 = this.state.sfrs.P3.getBit(3);
+        boolean IE0; // interrupt request flag of external interrupt 0; located at TCON.1
+        boolean IE1; // interrupt request flag of external interrupt 1; located at TCON.3
+        if (!IT0) { // external interrupt 0 (P3.2) is triggered by level (instead of transition)
+            IE0 = !P3_2;
+        } else {
+            IE0 = this.prevP3_2 && !P3_2; //this expression checks for a falling transition at P3.2
+        }
+        if (!IT1) { // external interrupt 1 (P3.3) is triggered by level (instead of transition)
+            IE1 = !P3_3;
+        } else {
+            IE1 = this.prevP3_3 && !P3_3; //this expression checks for a falling transition at P3.3
+        }
+        this.state.sfrs.TCON.setBit(IE0, 1);
+        this.state.sfrs.TCON.setBit(IE1, 3);
+        this.prevP3_2 = P3_2;
+        this.prevP3_3 = P3_3;
+    }
+
+    /**
+     * Jump to a specific interrupt.
      * @param newPC
      *     the new value of the program counter
      */
     private void interruptJump(char newPC) {
-        //TODO: Set flags indicating that the emulator is executing an interrupt
         lcall((byte)(newPC >> 8), (byte)newPC);
     }
 
@@ -1248,6 +1331,21 @@ public class MC8051 implements Emulator {
     private int ret() {
         ljmp(_pop(!this.ignoreSOSU), _pop(!this.ignoreSOSU));
         return 2;
+    }
+
+    /**
+     * <b>Return from Interrupt</b>
+     * @return
+     *     the number of cycles (2)
+     */
+    private int reti() {
+        if (this.runningInterruptPriority < 0)
+            throw new IllegalStateException("RETI called even though no interrupt is running");
+        if (this.runningInterruptInterruptedOtherInterrupt) {
+            this.runningInterruptInterruptedOtherInterrupt = false;
+            this.runningInterruptPriority = 0;
+        } else this.runningInterruptPriority = -1;
+        return ret();
     }
 
     /**

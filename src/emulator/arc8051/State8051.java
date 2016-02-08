@@ -50,25 +50,29 @@ public class State8051 {
                 return IPFlags.values();
             }
         };
-        final BitAddressableByteRegister P3 = new BitAddressableByteRegister("P3");
+        // the initial value of all ports is specified to be 0xFF
+        final BitAddressableByteRegister P3 = new BitAddressableByteRegister("P3", (byte)0xFF);
         final ByteFlagRegister IE = new ByteFlagRegister("IE") {
             @Override
             public Enum[] getFlags() {
                 return IEFlags.values();
             }
         };
-        final BitAddressableByteRegister P2 = new BitAddressableByteRegister("P2");
+        // the initial value of all ports is specified to be 0xFF
+        final BitAddressableByteRegister P2 = new BitAddressableByteRegister("P2", (byte)0xFF);
         final BitAddressableByteRegister SCON = new BitAddressableByteRegister("SCON");
         final ByteRegister SBUF = new ByteRegister("SBUF");
-        final BitAddressableByteRegister P1 = new BitAddressableByteRegister("P1");
+        // the initial value of all ports is specified to be 0xFF
+        final BitAddressableByteRegister P1 = new BitAddressableByteRegister("P1", (byte)0xFF);
         final BitAddressableByteRegister TCON = new BitAddressableByteRegister("TCON");
         final ByteRegister TMOD = new ByteRegister("TMOD");
         final ByteRegister TL0 = new ByteRegister("TL0");
         final ByteRegister TL1 = new ByteRegister("TL1");
         final ByteRegister TH0 = new ByteRegister("TH0");
         final ByteRegister TH1 = new ByteRegister("TH1");
-        final BitAddressableByteRegister P0 = new BitAddressableByteRegister("P0");
-        final ByteRegister SP = new ByteRegister("SP", (byte)7);
+        // the initial value of all ports is specified to be 0xFF
+        final BitAddressableByteRegister P0 = new BitAddressableByteRegister("P0", (byte)0xFF);
+        final ByteRegister SP = new ByteRegister("SP", (byte)7); // the stack pointer's initial value must be 7
         final ByteRegister DPL = new ByteRegister("DPL");
         final ByteRegister DPH = new ByteRegister("DPH");
         final ByteRegister PCON = new ByteRegister("PCON");
