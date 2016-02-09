@@ -1183,6 +1183,89 @@ public class MC8051Test {
                 && testController.state.sfrs.TCON.getBit(7)); // bit 7 is TF1
     }
 
+    @Test
+    public void testUpdateInterruptRequestFlags() {
+        System.out.println("__________Testing interrupt flag updates...");
+        testController.state.sfrs.TMOD.setValue((byte)0x11);
+        testController.state.sfrs.TH0.setValue((byte)0xFF);
+        testController.state.sfrs.TL0.setValue((byte)0xFF);
+        testController.state.sfrs.TH1.setValue((byte)0xFF);
+        testController.state.sfrs.TL1.setValue((byte)0xFF);
+        testController.state.sfrs.TCON.setBit(true, 0); //IT0
+        testController.state.sfrs.TCON.setBit(true, 2); //IT1
+        testController.state.sfrs.TCON.setBit(true, 4); //TR0
+        testController.state.sfrs.TCON.setBit(true, 6); //TR1
+        testOpcode((byte) 0, 0, 1, () ->
+                        testController.state.sfrs.TCON.getValue() == (byte) 0b11110101
+        );
+        testController.state.sfrs.P3.setBit(false, 2);
+        testController.state.sfrs.P3.setBit(false, 3);
+        testOpcode((byte)0, 0, 1, () ->
+                        testController.state.sfrs.TCON.getValue() == (byte)0xFF
+        );
+        testController.state.sfrs.P3.setBit(true, 2);
+        testController.state.sfrs.P3.setBit(true, 3);
+        testController.state.sfrs.TCON.setBit(false, 0); //IT0
+        testController.state.sfrs.TCON.setBit(false, 2); //IT1
+        testOpcode((byte)0, 0, 1, () ->
+                        testController.state.sfrs.TCON.getValue() == (byte)0b11110000
+        );
+        testController.state.sfrs.P3.setBit(false, 2);
+        testController.state.sfrs.P3.setBit(false, 3);
+        testOpcode((byte)0, 0, 1, () ->
+                        testController.state.sfrs.TCON.getValue() == (byte)0b11111010
+        );
+    }
+
+    @Test
+    public void testInterrupts() throws Exception {
+        System.out.println("__________Testing interrupts...");
+        byte[] program = {
+                /* 0x0 */    (byte)0x80,       0x03,            // sjmp beginning
+                /* 0x2 */          0,                           // <padding>
+                /* 0x3 */    (byte)0x80, (byte)0xFE,            // loop: sjmp loop
+                /* 0x5 */    (byte)0xD2, (byte)0xAF,            // beginning: setb ea
+                /* 0x7 */    (byte)0xD2, (byte)0xA8,            // setb ex0
+                /* 0x9 */    (byte)0xD2, (byte)0xB4,            // setb t0
+                /* 0xB */    (byte)0xC2, (byte)0xB2,            // clr p3.2
+                /* 0xD */          0x02,       0x00,       0x0D // endlabel: ljmp endlabel
+        };
+        RAM rom = (RAM)this.testController.getCodeMemory();
+        for (int address = 0; address < program.length; ++address) rom.set(address, program[address]);
+        for (int i = 0; i < 5; ++i) testController.next();
+        assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x3);
+        byte[] program2 = {
+                /* 0x0  */   (byte)0x80,       0x16,            // sjmp beginning
+                /* 0x2  */            0,                        // <padding>
+                /* 0x3  */   (byte)0xC2, (byte)0xB3,            // clr p3.3 ; (org 03h)
+                /* 0x5  */   (byte)0xD2, (byte)0xB2,            // setb p3.2
+                /* 0x7  */            0,          0,            // nop nop
+                /* 0x9  */   (byte)0x32,                        // reti
+                /* 0xA  */         0,0,0,0,0,0,0,0,0,           // <padding>
+                /* 0x13 */   (byte)0xD2, (byte)0xB3,            // setb p3.3 ; (org 13h)
+                /* 0x15 */            0,          0,            // nop nop
+                /* 0x17 */         0x32,                        // reti
+                /* 0x18 */   (byte)0xD2, (byte)0xAF,            // beginning: setb ea ; (org 18h)
+                /* 0x1A */   (byte)0xD2, (byte)0xA8,            // setb ex0
+                /* 0x1C */   (byte)0xD2, (byte)0xAA,            // setb ex1
+                /* 0x1E */   (byte)0xD2, (byte)0xBA,            // setb px1
+                /* 0x20 */   (byte)0xC2, (byte)0xB2,            // clr p3.2
+                /* 0x22 */         0x02,          0,       0,   // endlabel: ljmp endlabel
+
+        };
+        this.setUp();
+        rom = (RAM)this.testController.getCodeMemory();
+        for (int address = 0; address < program2.length; ++address) rom.set(address, program2[address]);
+        for (int i = 0; i < 6; ++i) testController.next();
+        assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x3);
+        testController.next();
+        assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x13);
+        for (int i = 0; i < 4; ++i) testController.next();
+        assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x5);
+        for (int i = 0; i < 4; ++i) testController.next();
+        assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x22);
+    }
+
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {
         testOpcode(opcode, address, new byte[0], desiredReturn, resultCorrect);
     }
