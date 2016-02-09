@@ -658,6 +658,8 @@ public class MC8051 implements Emulator {
      * More info at: <a href="http://8052.com/tutint.phtml">http://8052.com/tutint.phtml</a><br>
      */
     private void handleInterrupts() {
+        updateInterruptRequestFlags();
+
         final boolean EA = this.state.sfrs.IE.getBit(7); //global interrupt enable/disable
         if (!EA) return; //if interrupts are disables, there is nothing to do
         if (this.runningInterruptPriority == 1) return; // a interrupt of high priority cannot be cancelled
@@ -669,8 +671,6 @@ public class MC8051 implements Emulator {
         final BitAddressableByteRegister TCON = this.state.sfrs.TCON;
         final BitAddressableByteRegister SCON = this.state.sfrs.SCON;
         final BitAddressableByteRegister IP   = this.state.sfrs.IP;
-
-        updateInterruptRequestFlags();
 
         final boolean[] interruptRequests = {
                 EX0 && TCON.getBit(1), // external interrupt 0 (IE0)

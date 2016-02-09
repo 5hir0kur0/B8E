@@ -32,6 +32,10 @@ public class State8051 {
             PX0, PT0, PX1, PT1, PS, UD0, UD1, UD3;
         }
 
+        private enum TCONFlags {
+            IT0, IE0, IT1, IE1, TR0, TF0, TR1, TF1;
+        }
+
         //TODO add flag names for other flag registers
 
         private HashMap<Byte, ByteRegister> specialFunctionRegisters;
@@ -64,7 +68,12 @@ public class State8051 {
         final ByteRegister SBUF = new ByteRegister("SBUF");
         // the initial value of all ports is specified to be 0xFF
         final BitAddressableByteRegister P1 = new BitAddressableByteRegister("P1", (byte)0xFF);
-        final BitAddressableByteRegister TCON = new BitAddressableByteRegister("TCON");
+        final ByteFlagRegister TCON = new ByteFlagRegister("TCON") {
+            @Override
+            public Enum[] getFlags() {
+                return TCONFlags.values();
+            }
+        };
         final ByteRegister TMOD = new ByteRegister("TMOD");
         final ByteRegister TL0 = new ByteRegister("TL0");
         final ByteRegister TL1 = new ByteRegister("TL1");
