@@ -23,8 +23,11 @@ public interface Emulator {
      * instruction again.
      * @return
      *     the number of machine cycles the instruction takes to execute on real hardware
+     * @throws EmulatorException
+     *     when any kind of {@code Exception} (or {@code RuntimeException}) is thrown during emulation
+     *     (The user should be given the choice to continue running the program regardless.)
      */
-    int next();
+    int next() throws EmulatorException;
 
     /**
      * @return the CPU's primary (usu. internal) {@code RAM} (This can potentially be the only {@code RAM} module the
