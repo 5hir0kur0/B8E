@@ -29,24 +29,6 @@ public class MC8051 implements Emulator {
     }
 
     State8051 state;
-    private final boolean ignoreSOSU; //ignore stack overflow/underflow
-    private byte TMOD_OLD; //used by updateTimers() to keep track of the previous state TMOD when in mode 3
-    private boolean TR1_OLD; //used by updateTimers() to keep track of the previous state of TR1 when in mode 3
-
-    //variables used by the updateInterruptRequestFlags() method to keep track of transitions of the
-    //external interrupts' pins
-    private boolean prevP3_3;
-    private boolean prevP3_2;
-
-    //variable used by handleInterrupts() method to keep track of the running interrupt's priority
-    //can either be 1 for high, 0 for low or -1 to indicate that no interrupt is being executed at the moment
-    private int runningInterruptPriority;
-
-    //If this is true, the currently running interrupt is interrupting another interrupt of lower priority
-    //the only case when this can happen is when an interrupt of 'low' priority is interrupted by an interrupt of 'high'
-    //priority. Consequently this can only happen once, as the interrupt running when this flag is true is of 'high'
-    //priority and thus cannot be interrupted.
-    private boolean runningInterruptInterruptedOtherInterrupt = false;
 
     /**
      * Create a new 8051 micro controller object.<br>
@@ -58,38 +40,20 @@ public class MC8051 implements Emulator {
      *     The size must be 65536 bytes.
      */
     public MC8051(ROM codeMemory, RAM externalRAM) {
-        this(new State8051(codeMemory, externalRAM), false);
-    }
-
-    /**
-     * Create a new 8051 micro controller object.<br>
-     * @param externalRAM
-     *     the external RAM accessible through the {@code MOVX} command; {@code null} is a valid value and implies
-     *     that there is no external RAM (and thus, all {@code MOVX}-instructions should fail)
-     * @param codeMemory
-     *     the 8051's "code memory"; The instructions will be read from this object (must not be {@code null})
-     *     The size must be 65536 bytes.
-     * @param ignoreSOSU
-     *        Do not throw an exception on stack underflow or overflow
-     */
-    public MC8051(ROM codeMemory, RAM externalRAM, boolean ignoreSOSU) { //TODO: replace ignoreSOSU with setting
-        this(new State8051(codeMemory, externalRAM), ignoreSOSU);
+        this(new State8051(codeMemory, externalRAM));
     }
 
     /**
      * Start with a specific state.
      * @param state
      *     the state of the new {@code Emulator}; must not be {@code null}
-     * @param ignoreSOSU
-     *     if {@code true}, do not throw an exception on stack underflow or overflow
      */
-    public MC8051(State8051 state, boolean ignoreSOSU) {
+    public MC8051(State8051 state) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
         this.state.setRRegisters(generateRRegisters());
-        this.ignoreSOSU = ignoreSOSU;
-        this.prevP3_2 = this.state.sfrs.P3.getBit(2);
-        this.prevP3_3 = this.state.sfrs.P3.getBit(3);
-        this.runningInterruptPriority = -1;
+        this.state.prevP3_2 = this.state.sfrs.P3.getBit(2);
+        this.state.prevP3_3 = this.state.sfrs.P3.getBit(3);
+        this.state.runningInterruptPriority = -1;
     }
 
     /**
@@ -122,277 +86,283 @@ public class MC8051 implements Emulator {
      * Execute the next instruction.<br>
      * @return
      *     the number of cycles this instruction takes
+     * @throws EmulatorException
      */
     @Override
-    public int next() {
+    public int next() throws EmulatorException {
         byte currentInstruction = getCodeByte();
         int retValue = -1;
-        switch (currentInstruction) {
-            case       0x00: retValue = nop(); break;
-            case       0x01: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x02: retValue = ljmp(getCodeByte(), getCodeByte()); break;
-            case       0x03: retValue = rr_a(); break;
-            case       0x04: retValue = inc(this.state.sfrs.A); break;
-            case       0x05: retValue = inc(getCodeByte()); break;
-            case       0x06: retValue = inc_indirect(getR(0)); break;
-            case       0x07: retValue = inc_indirect(getR(1)); break;
-            case       0x08: retValue = inc(this.state.R0); break;
-            case       0x09: retValue = inc(this.state.R1); break;
-            case       0x0A: retValue = inc(this.state.R2); break;
-            case       0x0B: retValue = inc(this.state.R3); break;
-            case       0x0C: retValue = inc(this.state.R4); break;
-            case       0x0D: retValue = inc(this.state.R5); break;
-            case       0x0E: retValue = inc(this.state.R6); break;
-            case       0x0F: retValue = inc(this.state.R7); break;
-            case       0x10: retValue = jbc(getCodeByte(), getCodeByte()); break;
-            case       0x11: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x12: retValue = lcall(getCodeByte(), getCodeByte()); break;
-            case       0x13: retValue = rrc_a(); break;
-            case       0x14: retValue = dec(this.state.sfrs.A); break;
-            case       0x15: retValue = dec(getCodeByte()); break;
-            case       0x16: retValue = dec_indirect(getR(0)); break;
-            case       0x17: retValue = dec_indirect(getR(1)); break;
-            case       0x18: retValue = dec(this.state.R0); break;
-            case       0x19: retValue = dec(this.state.R1); break;
-            case       0x1A: retValue = dec(this.state.R2); break;
-            case       0x1B: retValue = dec(this.state.R3); break;
-            case       0x1C: retValue = dec(this.state.R4); break;
-            case       0x1D: retValue = dec(this.state.R5); break;
-            case       0x1E: retValue = dec(this.state.R6); break;
-            case       0x1F: retValue = dec(this.state.R7); break;
-            case       0x20: retValue = jb(getCodeByte(), getCodeByte()); break;
-            case       0x21: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x22: retValue = ret(); break;
-            case       0x23: retValue = rl_a(); break;
-            case       0x24: retValue = add_immediate(getCodeByte()); break;
-            case       0x25: retValue = add_direct(getCodeByte()); break;
-            case       0x26: retValue = add_indirect(getR(0)); break;
-            case       0x27: retValue = add_indirect(getR(1)); break;
-            case       0x28: retValue = add_r(0); break;
-            case       0x29: retValue = add_r(1); break;
-            case       0x2A: retValue = add_r(2); break;
-            case       0x2B: retValue = add_r(3); break;
-            case       0x2C: retValue = add_r(4); break;
-            case       0x2D: retValue = add_r(5); break;
-            case       0x2E: retValue = add_r(6); break;
-            case       0x2F: retValue = add_r(7); break;
-            case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
-            case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x32: retValue = reti(); break;
-            case       0x33: retValue = rlc_a(); break;
-            case       0x34: retValue = addc_immediate(getCodeByte()); break;
-            case       0x35: retValue = addc_direct(getCodeByte()); break;
-            case       0x36: retValue = addc_indirect(getR(0)); break;
-            case       0x37: retValue = addc_indirect(getR(1)); break;
-            case       0x38: retValue = addc_r(0); break;
-            case       0x39: retValue = addc_r(1); break;
-            case       0x3A: retValue = addc_r(2); break;
-            case       0x3B: retValue = addc_r(3); break;
-            case       0x3C: retValue = addc_r(4); break;
-            case       0x3D: retValue = addc_r(5); break;
-            case       0x3E: retValue = addc_r(6); break;
-            case       0x3F: retValue = addc_r(7); break;
-            case       0x40: retValue = jc(getCodeByte()); break;
-            case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x42: retValue = orl_direct_a(getCodeByte()); break;
-            case       0x43: retValue = orl(getCodeByte(), getCodeByte()); break;
-            case       0x44: retValue = orl_a_immediate(getCodeByte()); break;
-            case       0x45: retValue = orl_a(getCodeByte()); break;
-            case       0x46: retValue = orl_a_indirect(getR(0)); break;
-            case       0x47: retValue = orl_a_indirect(getR(1)); break;
-            case       0x48: retValue = orl_a_immediate(getR(0)); break;
-            case       0x49: retValue = orl_a_immediate(getR(1)); break;
-            case       0x4A: retValue = orl_a_immediate(getR(2)); break;
-            case       0x4B: retValue = orl_a_immediate(getR(3)); break;
-            case       0x4C: retValue = orl_a_immediate(getR(4)); break;
-            case       0x4D: retValue = orl_a_immediate(getR(5)); break;
-            case       0x4E: retValue = orl_a_immediate(getR(6)); break;
-            case       0x4F: retValue = orl_a_immediate(getR(7)); break;
-            case       0x50: retValue = jnc(getCodeByte()); break;
-            case       0x51: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x52: retValue = anl_direct_a(getCodeByte()); break;
-            case       0x53: retValue = anl(getCodeByte(), getCodeByte()); break;
-            case       0x54: retValue = anl_a_immediate(getCodeByte()); break;
-            case       0x55: retValue = anl_a(getCodeByte()); break;
-            case       0x56: retValue = anl_a_indirect(getR(0)); break;
-            case       0x57: retValue = anl_a_indirect(getR(1)); break;
-            case       0x58: retValue = anl_a_immediate(getR(0)); break;
-            case       0x59: retValue = anl_a_immediate(getR(1)); break;
-            case       0x5A: retValue = anl_a_immediate(getR(2)); break;
-            case       0x5B: retValue = anl_a_immediate(getR(3)); break;
-            case       0x5C: retValue = anl_a_immediate(getR(4)); break;
-            case       0x5D: retValue = anl_a_immediate(getR(5)); break;
-            case       0x5E: retValue = anl_a_immediate(getR(6)); break;
-            case       0x5F: retValue = anl_a_immediate(getR(7)); break;
-            case       0x60: retValue = jz(getCodeByte()); break;
-            case       0x61: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case       0x62: retValue = xrl_direct_a(getCodeByte()); break;
-            case       0x63: retValue = xrl(getCodeByte(), getCodeByte()); break;
-            case       0x64: retValue = xrl_a_immediate(getCodeByte()); break;
-            case       0x65: retValue = xrl_a(getCodeByte()); break;
-            case       0x66: retValue = xrl_a_indirect(getR(0)); break;
-            case       0x67: retValue = xrl_a_indirect(getR(1)); break;
-            case       0x68: retValue = xrl_a_immediate(getR(0)); break;
-            case       0x69: retValue = xrl_a_immediate(getR(1)); break;
-            case       0x6A: retValue = xrl_a_immediate(getR(2)); break;
-            case       0x6B: retValue = xrl_a_immediate(getR(3)); break;
-            case       0x6C: retValue = xrl_a_immediate(getR(4)); break;
-            case       0x6D: retValue = xrl_a_immediate(getR(5)); break;
-            case       0x6E: retValue = xrl_a_immediate(getR(6)); break;
-            case       0x6F: retValue = xrl_a_immediate(getR(7)); break;
-            case       0x70: retValue = jnz(getCodeByte()); break;
-            case       0x71: retValue = acall(currentInstruction, getCodeByte()); break;
-            case       0x72: retValue = orl_c(getCodeByte(), false); break;
-            case       0x73: retValue = jmp_a_dptr(); break;
-            case       0x74: retValue = mov_a_immediate(getCodeByte()); break;
-            case       0x75: retValue = mov_direct_immediate(getCodeByte(), getCodeByte()); break;
-            case       0x76: retValue = mov_indirect_immediate(getR(0), getCodeByte()); break;
-            case       0x77: retValue = mov_indirect_immediate(getR(1), getCodeByte()); break;
-            case       0x78: retValue = mov_r_immediate(0, getCodeByte()); break;
-            case       0x79: retValue = mov_r_immediate(1, getCodeByte()); break;
-            case       0x7A: retValue = mov_r_immediate(2, getCodeByte()); break;
-            case       0x7B: retValue = mov_r_immediate(3, getCodeByte()); break;
-            case       0x7C: retValue = mov_r_immediate(4, getCodeByte()); break;
-            case       0x7D: retValue = mov_r_immediate(5, getCodeByte()); break;
-            case       0x7E: retValue = mov_r_immediate(6, getCodeByte()); break;
-            case       0x7F: retValue = mov_r_immediate(7, getCodeByte()); break;
-            case (byte)0x80: retValue = sjmp(getCodeByte()); break;
-            case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0x82: retValue = anl_c(getCodeByte(), false); break;
-            case (byte)0x83: retValue = movc_a(this.state.PCH, this.state.PCL); break;
-            case (byte)0x84: retValue = div_ab(); break;
-            case (byte)0x85: retValue = mov_direct_direct(getCodeByte(), getCodeByte()); break;
-            case (byte)0x86: retValue = mov_direct_indirect(getCodeByte(), getR(0)); break;
-            case (byte)0x87: retValue = mov_direct_indirect(getCodeByte(), getR(1)); break;
-            case (byte)0x88: retValue = mov_direct_immediate(getCodeByte(), getR(0)); break;
-            case (byte)0x89: retValue = mov_direct_immediate(getCodeByte(), getR(1)); break;
-            case (byte)0x8A: retValue = mov_direct_immediate(getCodeByte(), getR(2)); break;
-            case (byte)0x8B: retValue = mov_direct_immediate(getCodeByte(), getR(3)); break;
-            case (byte)0x8C: retValue = mov_direct_immediate(getCodeByte(), getR(4)); break;
-            case (byte)0x8D: retValue = mov_direct_immediate(getCodeByte(), getR(5)); break;
-            case (byte)0x8E: retValue = mov_direct_immediate(getCodeByte(), getR(6)); break;
-            case (byte)0x8F: retValue = mov_direct_immediate(getCodeByte(), getR(7)); break;
-            case (byte)0x90: retValue = mov_dptr(getCodeByte(), getCodeByte()); break;
-            case (byte)0x91: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0x92: retValue = mov_bit_c(getCodeByte()); break;
-            case (byte)0x93: retValue = movc_a(this.state.sfrs.DPH, this.state.sfrs.DPL); break;
-            case (byte)0x94: retValue = subb_immediate(getCodeByte()); break;
-            case (byte)0x95: retValue = subb_direct(getCodeByte()); break;
-            case (byte)0x96: retValue = subb_indirect(getR(0)); break;
-            case (byte)0x97: retValue = subb_indirect(getR(1)); break;
-            case (byte)0x98: retValue = subb_r(0); break;
-            case (byte)0x99: retValue = subb_r(1); break;
-            case (byte)0x9A: retValue = subb_r(2); break;
-            case (byte)0x9B: retValue = subb_r(3); break;
-            case (byte)0x9C: retValue = subb_r(4); break;
-            case (byte)0x9D: retValue = subb_r(5); break;
-            case (byte)0x9E: retValue = subb_r(6); break;
-            case (byte)0x9F: retValue = subb_r(7); break;
-            case (byte)0xA0: retValue = orl_c(getCodeByte(), true); break;
-            case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xA2: retValue = mov_c_bit(getCodeByte()); break;
-            case (byte)0xA3: retValue = inc_dptr(); break;
-            case (byte)0xA4: retValue = mul_ab(); break;
-            case (byte)0xA5: retValue = reserved(); throw new UnsupportedOperationException("0xA5 used.");
-            case (byte)0xA6: retValue = mov_indirect_direct(getR(0), getCodeByte()); break;
-            case (byte)0xA7: retValue = mov_indirect_direct(getR(1), getCodeByte()); break;
-            case (byte)0xA8: retValue = mov_r_direct(0, getCodeByte()); break;
-            case (byte)0xA9: retValue = mov_r_direct(1, getCodeByte()); break;
-            case (byte)0xAA: retValue = mov_r_direct(2, getCodeByte()); break;
-            case (byte)0xAB: retValue = mov_r_direct(3, getCodeByte()); break;
-            case (byte)0xAC: retValue = mov_r_direct(4, getCodeByte()); break;
-            case (byte)0xAD: retValue = mov_r_direct(5, getCodeByte()); break;
-            case (byte)0xAE: retValue = mov_r_direct(6, getCodeByte()); break;
-            case (byte)0xAF: retValue = mov_r_direct(7, getCodeByte()); break;
-            case (byte)0xB0: retValue = anl_c(getCodeByte(), true); break;
-            case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xB2: retValue = cpl(getCodeByte()); break;
-            case (byte)0xB3: retValue = cpl_c(); break;
-            case (byte)0xB4: retValue = cjne_a_immediate(getCodeByte(), getCodeByte()); break;
-            case (byte)0xB5: retValue = cjne_a_direct(getCodeByte(), getCodeByte()); break;
-            case (byte)0xB6: retValue = cjne_indirect_immediate(getR(0), getCodeByte(), getCodeByte()); break;
-            case (byte)0xB7: retValue = cjne_indirect_immediate(getR(1), getCodeByte(), getCodeByte()); break;
-            case (byte)0xB8: retValue = cjne_r_immediate(0, getCodeByte(), getCodeByte()); break;
-            case (byte)0xB9: retValue = cjne_r_immediate(1, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBA: retValue = cjne_r_immediate(2, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBB: retValue = cjne_r_immediate(3, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBC: retValue = cjne_r_immediate(4, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBD: retValue = cjne_r_immediate(5, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBE: retValue = cjne_r_immediate(6, getCodeByte(), getCodeByte()); break;
-            case (byte)0xBF: retValue = cjne_r_immediate(7, getCodeByte(), getCodeByte()); break;
-            case (byte)0xC0: retValue = pop(getCodeByte()); break;
-            case (byte)0xC1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xC2: retValue = clr(getCodeByte()); break;
-            case (byte)0xC3: retValue = clr_c(); break;
-            case (byte)0xC4: retValue = swap_a(); break;
-            case (byte)0xC5: retValue = xch_a_direct(getCodeByte()); break;
-            case (byte)0xC6: retValue = xch_a_indirect(getR(0)); break;
-            case (byte)0xC7: retValue = xch_a_indirect(getR(1)); break;
-            case (byte)0xC8: retValue = xch_a_r(0); break;
-            case (byte)0xC9: retValue = xch_a_r(1); break;
-            case (byte)0xCA: retValue = xch_a_r(2); break;
-            case (byte)0xCB: retValue = xch_a_r(3); break;
-            case (byte)0xCC: retValue = xch_a_r(4); break;
-            case (byte)0xCD: retValue = xch_a_r(5); break;
-            case (byte)0xCE: retValue = xch_a_r(6); break;
-            case (byte)0xCF: retValue = xch_a_r(7); break;
-            case (byte)0xD0: retValue = push(getCodeByte()); break;
-            case (byte)0xD1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xD2: retValue = setb(getCodeByte()); break;
-            case (byte)0xD3: retValue = setb_c(); break;
-            case (byte)0xD4: retValue = da_a(); break;
-            case (byte)0xD5: retValue = djnz(getCodeByte(), getCodeByte()); break;
-            case (byte)0xD6: retValue = xchd_a(getR(0)); break;
-            case (byte)0xD7: retValue = xchd_a(getR(1)); break;
-            case (byte)0xD8: retValue = djnz_r(0, getCodeByte()); break;
-            case (byte)0xD9: retValue = djnz_r(1, getCodeByte()); break;
-            case (byte)0xDA: retValue = djnz_r(2, getCodeByte()); break;
-            case (byte)0xDB: retValue = djnz_r(3, getCodeByte()); break;
-            case (byte)0xDC: retValue = djnz_r(4, getCodeByte()); break;
-            case (byte)0xDD: retValue = djnz_r(5, getCodeByte()); break;
-            case (byte)0xDE: retValue = djnz_r(6, getCodeByte()); break;
-            case (byte)0xDF: retValue = djnz_r(7, getCodeByte()); break;
-            case (byte)0xE0: retValue = movx_a_dptr(); break;
-            case (byte)0xE1: retValue = ajmp(currentInstruction, getCodeByte()); break;
-            case (byte)0xE2: retValue = movx_a_indirect(getR(0)); break;
-            case (byte)0xE3: retValue = movx_a_indirect(getR(1)); break;
-            case (byte)0xE4: retValue = clr_a(); break;
-            case (byte)0xE5: retValue = mov_a_direct(getCodeByte()); break;
-            case (byte)0xE6: retValue = mov_a_indirect(getR(0)); break;
-            case (byte)0xE7: retValue = mov_a_indirect(getR(1)); break;
-            case (byte)0xE8: retValue = mov_a_immediate(getR(0)); break;
-            case (byte)0xE9: retValue = mov_a_immediate(getR(1)); break;
-            case (byte)0xEA: retValue = mov_a_immediate(getR(2)); break;
-            case (byte)0xEB: retValue = mov_a_immediate(getR(3)); break;
-            case (byte)0xEC: retValue = mov_a_immediate(getR(4)); break;
-            case (byte)0xED: retValue = mov_a_immediate(getR(5)); break;
-            case (byte)0xEE: retValue = mov_a_immediate(getR(6)); break;
-            case (byte)0xEF: retValue = mov_a_immediate(getR(7)); break;
-            case (byte)0xF0: retValue = movx_dptr_a(); break;
-            case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
-            case (byte)0xF2: retValue = movx_indirect_a(getR(0)); break;
-            case (byte)0xF3: retValue = movx_indirect_a(getR(1)); break;
-            case (byte)0xF4: retValue = cpl_a(); break;
-            case (byte)0xF5: retValue = mov_direct_a(getCodeByte()); break;
-            case (byte)0xF6: retValue = mov_indirect_immediate(getR(0), this.state.sfrs.A.getValue()); break;
-            case (byte)0xF7: retValue = mov_indirect_immediate(getR(1), this.state.sfrs.A.getValue()); break;
-            case (byte)0xF8: retValue = mov_r_immediate(0, this.state.sfrs.A.getValue()); break;
-            case (byte)0xF9: retValue = mov_r_immediate(1, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFA: retValue = mov_r_immediate(2, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFB: retValue = mov_r_immediate(3, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFC: retValue = mov_r_immediate(4, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFD: retValue = mov_r_immediate(5, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFE: retValue = mov_r_immediate(6, this.state.sfrs.A.getValue()); break;
-            case (byte)0xFF: retValue = mov_r_immediate(7, this.state.sfrs.A.getValue()); break;
+        try {
+            switch (currentInstruction) {
+                case       0x00: retValue = nop(); break;
+                case       0x01: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case       0x02: retValue = ljmp(getCodeByte(), getCodeByte()); break;
+                case       0x03: retValue = rr_a(); break;
+                case       0x04: retValue = inc(this.state.sfrs.A); break;
+                case       0x05: retValue = inc(getCodeByte()); break;
+                case       0x06: retValue = inc_indirect(getR(0)); break;
+                case       0x07: retValue = inc_indirect(getR(1)); break;
+                case       0x08: retValue = inc(this.state.R0); break;
+                case       0x09: retValue = inc(this.state.R1); break;
+                case       0x0A: retValue = inc(this.state.R2); break;
+                case       0x0B: retValue = inc(this.state.R3); break;
+                case       0x0C: retValue = inc(this.state.R4); break;
+                case       0x0D: retValue = inc(this.state.R5); break;
+                case       0x0E: retValue = inc(this.state.R6); break;
+                case       0x0F: retValue = inc(this.state.R7); break;
+                case       0x10: retValue = jbc(getCodeByte(), getCodeByte()); break;
+                case       0x11: retValue = acall(currentInstruction, getCodeByte()); break;
+                case       0x12: retValue = lcall(getCodeByte(), getCodeByte()); break;
+                case       0x13: retValue = rrc_a(); break;
+                case       0x14: retValue = dec(this.state.sfrs.A); break;
+                case       0x15: retValue = dec(getCodeByte()); break;
+                case       0x16: retValue = dec_indirect(getR(0)); break;
+                case       0x17: retValue = dec_indirect(getR(1)); break;
+                case       0x18: retValue = dec(this.state.R0); break;
+                case       0x19: retValue = dec(this.state.R1); break;
+                case       0x1A: retValue = dec(this.state.R2); break;
+                case       0x1B: retValue = dec(this.state.R3); break;
+                case       0x1C: retValue = dec(this.state.R4); break;
+                case       0x1D: retValue = dec(this.state.R5); break;
+                case       0x1E: retValue = dec(this.state.R6); break;
+                case       0x1F: retValue = dec(this.state.R7); break;
+                case       0x20: retValue = jb(getCodeByte(), getCodeByte()); break;
+                case       0x21: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case       0x22: retValue = ret(); break;
+                case       0x23: retValue = rl_a(); break;
+                case       0x24: retValue = add_immediate(getCodeByte()); break;
+                case       0x25: retValue = add_direct(getCodeByte()); break;
+                case       0x26: retValue = add_indirect(getR(0)); break;
+                case       0x27: retValue = add_indirect(getR(1)); break;
+                case       0x28: retValue = add_r(0); break;
+                case       0x29: retValue = add_r(1); break;
+                case       0x2A: retValue = add_r(2); break;
+                case       0x2B: retValue = add_r(3); break;
+                case       0x2C: retValue = add_r(4); break;
+                case       0x2D: retValue = add_r(5); break;
+                case       0x2E: retValue = add_r(6); break;
+                case       0x2F: retValue = add_r(7); break;
+                case       0x30: retValue = jnb(getCodeByte(), getCodeByte()); break;
+                case       0x31: retValue = acall(currentInstruction, getCodeByte()); break;
+                case       0x32: retValue = reti(); break;
+                case       0x33: retValue = rlc_a(); break;
+                case       0x34: retValue = addc_immediate(getCodeByte()); break;
+                case       0x35: retValue = addc_direct(getCodeByte()); break;
+                case       0x36: retValue = addc_indirect(getR(0)); break;
+                case       0x37: retValue = addc_indirect(getR(1)); break;
+                case       0x38: retValue = addc_r(0); break;
+                case       0x39: retValue = addc_r(1); break;
+                case       0x3A: retValue = addc_r(2); break;
+                case       0x3B: retValue = addc_r(3); break;
+                case       0x3C: retValue = addc_r(4); break;
+                case       0x3D: retValue = addc_r(5); break;
+                case       0x3E: retValue = addc_r(6); break;
+                case       0x3F: retValue = addc_r(7); break;
+                case       0x40: retValue = jc(getCodeByte()); break;
+                case       0x41: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case       0x42: retValue = orl_direct_a(getCodeByte()); break;
+                case       0x43: retValue = orl(getCodeByte(), getCodeByte()); break;
+                case       0x44: retValue = orl_a_immediate(getCodeByte()); break;
+                case       0x45: retValue = orl_a(getCodeByte()); break;
+                case       0x46: retValue = orl_a_indirect(getR(0)); break;
+                case       0x47: retValue = orl_a_indirect(getR(1)); break;
+                case       0x48: retValue = orl_a_immediate(getR(0)); break;
+                case       0x49: retValue = orl_a_immediate(getR(1)); break;
+                case       0x4A: retValue = orl_a_immediate(getR(2)); break;
+                case       0x4B: retValue = orl_a_immediate(getR(3)); break;
+                case       0x4C: retValue = orl_a_immediate(getR(4)); break;
+                case       0x4D: retValue = orl_a_immediate(getR(5)); break;
+                case       0x4E: retValue = orl_a_immediate(getR(6)); break;
+                case       0x4F: retValue = orl_a_immediate(getR(7)); break;
+                case       0x50: retValue = jnc(getCodeByte()); break;
+                case       0x51: retValue = acall(currentInstruction, getCodeByte()); break;
+                case       0x52: retValue = anl_direct_a(getCodeByte()); break;
+                case       0x53: retValue = anl(getCodeByte(), getCodeByte()); break;
+                case       0x54: retValue = anl_a_immediate(getCodeByte()); break;
+                case       0x55: retValue = anl_a(getCodeByte()); break;
+                case       0x56: retValue = anl_a_indirect(getR(0)); break;
+                case       0x57: retValue = anl_a_indirect(getR(1)); break;
+                case       0x58: retValue = anl_a_immediate(getR(0)); break;
+                case       0x59: retValue = anl_a_immediate(getR(1)); break;
+                case       0x5A: retValue = anl_a_immediate(getR(2)); break;
+                case       0x5B: retValue = anl_a_immediate(getR(3)); break;
+                case       0x5C: retValue = anl_a_immediate(getR(4)); break;
+                case       0x5D: retValue = anl_a_immediate(getR(5)); break;
+                case       0x5E: retValue = anl_a_immediate(getR(6)); break;
+                case       0x5F: retValue = anl_a_immediate(getR(7)); break;
+                case       0x60: retValue = jz(getCodeByte()); break;
+                case       0x61: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case       0x62: retValue = xrl_direct_a(getCodeByte()); break;
+                case       0x63: retValue = xrl(getCodeByte(), getCodeByte()); break;
+                case       0x64: retValue = xrl_a_immediate(getCodeByte()); break;
+                case       0x65: retValue = xrl_a(getCodeByte()); break;
+                case       0x66: retValue = xrl_a_indirect(getR(0)); break;
+                case       0x67: retValue = xrl_a_indirect(getR(1)); break;
+                case       0x68: retValue = xrl_a_immediate(getR(0)); break;
+                case       0x69: retValue = xrl_a_immediate(getR(1)); break;
+                case       0x6A: retValue = xrl_a_immediate(getR(2)); break;
+                case       0x6B: retValue = xrl_a_immediate(getR(3)); break;
+                case       0x6C: retValue = xrl_a_immediate(getR(4)); break;
+                case       0x6D: retValue = xrl_a_immediate(getR(5)); break;
+                case       0x6E: retValue = xrl_a_immediate(getR(6)); break;
+                case       0x6F: retValue = xrl_a_immediate(getR(7)); break;
+                case       0x70: retValue = jnz(getCodeByte()); break;
+                case       0x71: retValue = acall(currentInstruction, getCodeByte()); break;
+                case       0x72: retValue = orl_c(getCodeByte(), false); break;
+                case       0x73: retValue = jmp_a_dptr(); break;
+                case       0x74: retValue = mov_a_immediate(getCodeByte()); break;
+                case       0x75: retValue = mov_direct_immediate(getCodeByte(), getCodeByte()); break;
+                case       0x76: retValue = mov_indirect_immediate(getR(0), getCodeByte()); break;
+                case       0x77: retValue = mov_indirect_immediate(getR(1), getCodeByte()); break;
+                case       0x78: retValue = mov_r_immediate(0, getCodeByte()); break;
+                case       0x79: retValue = mov_r_immediate(1, getCodeByte()); break;
+                case       0x7A: retValue = mov_r_immediate(2, getCodeByte()); break;
+                case       0x7B: retValue = mov_r_immediate(3, getCodeByte()); break;
+                case       0x7C: retValue = mov_r_immediate(4, getCodeByte()); break;
+                case       0x7D: retValue = mov_r_immediate(5, getCodeByte()); break;
+                case       0x7E: retValue = mov_r_immediate(6, getCodeByte()); break;
+                case       0x7F: retValue = mov_r_immediate(7, getCodeByte()); break;
+                case (byte)0x80: retValue = sjmp(getCodeByte()); break;
+                case (byte)0x81: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case (byte)0x82: retValue = anl_c(getCodeByte(), false); break;
+                case (byte)0x83: retValue = movc_a(this.state.PCH, this.state.PCL); break;
+                case (byte)0x84: retValue = div_ab(); break;
+                case (byte)0x85: retValue = mov_direct_direct(getCodeByte(), getCodeByte()); break;
+                case (byte)0x86: retValue = mov_direct_indirect(getCodeByte(), getR(0)); break;
+                case (byte)0x87: retValue = mov_direct_indirect(getCodeByte(), getR(1)); break;
+                case (byte)0x88: retValue = mov_direct_immediate(getCodeByte(), getR(0)); break;
+                case (byte)0x89: retValue = mov_direct_immediate(getCodeByte(), getR(1)); break;
+                case (byte)0x8A: retValue = mov_direct_immediate(getCodeByte(), getR(2)); break;
+                case (byte)0x8B: retValue = mov_direct_immediate(getCodeByte(), getR(3)); break;
+                case (byte)0x8C: retValue = mov_direct_immediate(getCodeByte(), getR(4)); break;
+                case (byte)0x8D: retValue = mov_direct_immediate(getCodeByte(), getR(5)); break;
+                case (byte)0x8E: retValue = mov_direct_immediate(getCodeByte(), getR(6)); break;
+                case (byte)0x8F: retValue = mov_direct_immediate(getCodeByte(), getR(7)); break;
+                case (byte)0x90: retValue = mov_dptr(getCodeByte(), getCodeByte()); break;
+                case (byte)0x91: retValue = acall(currentInstruction, getCodeByte()); break;
+                case (byte)0x92: retValue = mov_bit_c(getCodeByte()); break;
+                case (byte)0x93: retValue = movc_a(this.state.sfrs.DPH, this.state.sfrs.DPL); break;
+                case (byte)0x94: retValue = subb_immediate(getCodeByte()); break;
+                case (byte)0x95: retValue = subb_direct(getCodeByte()); break;
+                case (byte)0x96: retValue = subb_indirect(getR(0)); break;
+                case (byte)0x97: retValue = subb_indirect(getR(1)); break;
+                case (byte)0x98: retValue = subb_r(0); break;
+                case (byte)0x99: retValue = subb_r(1); break;
+                case (byte)0x9A: retValue = subb_r(2); break;
+                case (byte)0x9B: retValue = subb_r(3); break;
+                case (byte)0x9C: retValue = subb_r(4); break;
+                case (byte)0x9D: retValue = subb_r(5); break;
+                case (byte)0x9E: retValue = subb_r(6); break;
+                case (byte)0x9F: retValue = subb_r(7); break;
+                case (byte)0xA0: retValue = orl_c(getCodeByte(), true); break;
+                case (byte)0xA1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case (byte)0xA2: retValue = mov_c_bit(getCodeByte()); break;
+                case (byte)0xA3: retValue = inc_dptr(); break;
+                case (byte)0xA4: retValue = mul_ab(); break;
+                case (byte)0xA5: retValue = reserved();
+                case (byte)0xA6: retValue = mov_indirect_direct(getR(0), getCodeByte()); break;
+                case (byte)0xA7: retValue = mov_indirect_direct(getR(1), getCodeByte()); break;
+                case (byte)0xA8: retValue = mov_r_direct(0, getCodeByte()); break;
+                case (byte)0xA9: retValue = mov_r_direct(1, getCodeByte()); break;
+                case (byte)0xAA: retValue = mov_r_direct(2, getCodeByte()); break;
+                case (byte)0xAB: retValue = mov_r_direct(3, getCodeByte()); break;
+                case (byte)0xAC: retValue = mov_r_direct(4, getCodeByte()); break;
+                case (byte)0xAD: retValue = mov_r_direct(5, getCodeByte()); break;
+                case (byte)0xAE: retValue = mov_r_direct(6, getCodeByte()); break;
+                case (byte)0xAF: retValue = mov_r_direct(7, getCodeByte()); break;
+                case (byte)0xB0: retValue = anl_c(getCodeByte(), true); break;
+                case (byte)0xB1: retValue = acall(currentInstruction, getCodeByte()); break;
+                case (byte)0xB2: retValue = cpl(getCodeByte()); break;
+                case (byte)0xB3: retValue = cpl_c(); break;
+                case (byte)0xB4: retValue = cjne_a_immediate(getCodeByte(), getCodeByte()); break;
+                case (byte)0xB5: retValue = cjne_a_direct(getCodeByte(), getCodeByte()); break;
+                case (byte)0xB6: retValue = cjne_indirect_immediate(getR(0), getCodeByte(), getCodeByte()); break;
+                case (byte)0xB7: retValue = cjne_indirect_immediate(getR(1), getCodeByte(), getCodeByte()); break;
+                case (byte)0xB8: retValue = cjne_r_immediate(0, getCodeByte(), getCodeByte()); break;
+                case (byte)0xB9: retValue = cjne_r_immediate(1, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBA: retValue = cjne_r_immediate(2, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBB: retValue = cjne_r_immediate(3, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBC: retValue = cjne_r_immediate(4, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBD: retValue = cjne_r_immediate(5, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBE: retValue = cjne_r_immediate(6, getCodeByte(), getCodeByte()); break;
+                case (byte)0xBF: retValue = cjne_r_immediate(7, getCodeByte(), getCodeByte()); break;
+                case (byte)0xC0: retValue = pop(getCodeByte()); break;
+                case (byte)0xC1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case (byte)0xC2: retValue = clr(getCodeByte()); break;
+                case (byte)0xC3: retValue = clr_c(); break;
+                case (byte)0xC4: retValue = swap_a(); break;
+                case (byte)0xC5: retValue = xch_a_direct(getCodeByte()); break;
+                case (byte)0xC6: retValue = xch_a_indirect(getR(0)); break;
+                case (byte)0xC7: retValue = xch_a_indirect(getR(1)); break;
+                case (byte)0xC8: retValue = xch_a_r(0); break;
+                case (byte)0xC9: retValue = xch_a_r(1); break;
+                case (byte)0xCA: retValue = xch_a_r(2); break;
+                case (byte)0xCB: retValue = xch_a_r(3); break;
+                case (byte)0xCC: retValue = xch_a_r(4); break;
+                case (byte)0xCD: retValue = xch_a_r(5); break;
+                case (byte)0xCE: retValue = xch_a_r(6); break;
+                case (byte)0xCF: retValue = xch_a_r(7); break;
+                case (byte)0xD0: retValue = push(getCodeByte()); break;
+                case (byte)0xD1: retValue = acall(currentInstruction, getCodeByte()); break;
+                case (byte)0xD2: retValue = setb(getCodeByte()); break;
+                case (byte)0xD3: retValue = setb_c(); break;
+                case (byte)0xD4: retValue = da_a(); break;
+                case (byte)0xD5: retValue = djnz(getCodeByte(), getCodeByte()); break;
+                case (byte)0xD6: retValue = xchd_a(getR(0)); break;
+                case (byte)0xD7: retValue = xchd_a(getR(1)); break;
+                case (byte)0xD8: retValue = djnz_r(0, getCodeByte()); break;
+                case (byte)0xD9: retValue = djnz_r(1, getCodeByte()); break;
+                case (byte)0xDA: retValue = djnz_r(2, getCodeByte()); break;
+                case (byte)0xDB: retValue = djnz_r(3, getCodeByte()); break;
+                case (byte)0xDC: retValue = djnz_r(4, getCodeByte()); break;
+                case (byte)0xDD: retValue = djnz_r(5, getCodeByte()); break;
+                case (byte)0xDE: retValue = djnz_r(6, getCodeByte()); break;
+                case (byte)0xDF: retValue = djnz_r(7, getCodeByte()); break;
+                case (byte)0xE0: retValue = movx_a_dptr(); break;
+                case (byte)0xE1: retValue = ajmp(currentInstruction, getCodeByte()); break;
+                case (byte)0xE2: retValue = movx_a_indirect(getR(0)); break;
+                case (byte)0xE3: retValue = movx_a_indirect(getR(1)); break;
+                case (byte)0xE4: retValue = clr_a(); break;
+                case (byte)0xE5: retValue = mov_a_direct(getCodeByte()); break;
+                case (byte)0xE6: retValue = mov_a_indirect(getR(0)); break;
+                case (byte)0xE7: retValue = mov_a_indirect(getR(1)); break;
+                case (byte)0xE8: retValue = mov_a_immediate(getR(0)); break;
+                case (byte)0xE9: retValue = mov_a_immediate(getR(1)); break;
+                case (byte)0xEA: retValue = mov_a_immediate(getR(2)); break;
+                case (byte)0xEB: retValue = mov_a_immediate(getR(3)); break;
+                case (byte)0xEC: retValue = mov_a_immediate(getR(4)); break;
+                case (byte)0xED: retValue = mov_a_immediate(getR(5)); break;
+                case (byte)0xEE: retValue = mov_a_immediate(getR(6)); break;
+                case (byte)0xEF: retValue = mov_a_immediate(getR(7)); break;
+                case (byte)0xF0: retValue = movx_dptr_a(); break;
+                case (byte)0xF1: retValue = acall(currentInstruction, getCodeByte()); break;
+                case (byte)0xF2: retValue = movx_indirect_a(getR(0)); break;
+                case (byte)0xF3: retValue = movx_indirect_a(getR(1)); break;
+                case (byte)0xF4: retValue = cpl_a(); break;
+                case (byte)0xF5: retValue = mov_direct_a(getCodeByte()); break;
+                case (byte)0xF6: retValue = mov_indirect_immediate(getR(0), this.state.sfrs.A.getValue()); break;
+                case (byte)0xF7: retValue = mov_indirect_immediate(getR(1), this.state.sfrs.A.getValue()); break;
+                case (byte)0xF8: retValue = mov_r_immediate(0, this.state.sfrs.A.getValue()); break;
+                case (byte)0xF9: retValue = mov_r_immediate(1, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFA: retValue = mov_r_immediate(2, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFB: retValue = mov_r_immediate(3, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFC: retValue = mov_r_immediate(4, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFD: retValue = mov_r_immediate(5, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFE: retValue = mov_r_immediate(6, this.state.sfrs.A.getValue()); break;
+                case (byte)0xFF: retValue = mov_r_immediate(7, this.state.sfrs.A.getValue()); break;
+            }
+        } catch (Exception e) {
+             //TODO: Log exception
+             throw new EmulatorException(e);
+        } finally {
+            updateParityFlag();
+            updateTimers(retValue);
+            handleInterrupts();
+            //The value of the R registers can be changed through memory.
+            //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
+            //time, so that it fires property-change-events
+            for (int i = 0; i < 8; ++i) this.state.getR(i).setValue(this.state.getR(i).getValue());
         }
-        //TODO put the following in a finally-block and add exception handling
-        updateParityFlag();
-        updateTimers(retValue);
-        handleInterrupts();
-        //The value of the R registers can be changed through memory.
-        //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
-        //time, so that it fires property-change-events
-        for (int i = 0; i < 8; ++i) this.state.getR(i).setValue(this.state.getR(i).getValue());
         return retValue;
     }
 
@@ -455,19 +425,6 @@ public class MC8051 implements Emulator {
      */
     private byte getR(int ordinal) {
         return this.state.internalRAM.get(getRAddress(ordinal));
-    }
-
-    /**
-     * Set the value of an R register.<br>
-     * @param ordinal
-     *     The R register to be used (E.g. '5' implies R5)
-     * @param newValue
-     *     R<sub>ordinal</sub>'s new value
-     * @throws IllegalArgumentException
-     *     when given an illegal ordinal
-     */
-    private void setR(int ordinal, byte newValue) {
-        this.state.internalRAM.set(getRAddress(ordinal), newValue);
     }
 
     /**
@@ -535,8 +492,8 @@ public class MC8051 implements Emulator {
         final int howMuch1;
         if (MODE0 != 3) {
             if (MODE1 == 3) throw new IllegalStateException("Timer 1 cannot be put in mode 3 when timer 0 isn't");
-            this.TMOD_OLD = tmod;
-            this.TR1_OLD = TR1;
+            this.state.TMOD_OLD = tmod;
+            this.state.TR1_OLD = TR1;
             if (CT0) //timer 0 counts events
                 howMuch0 = this.state.sfrs.P3.getBit(4) ? 1 : 0; //P3.4 is T0
             else //timer 0 counts cycles
@@ -553,14 +510,14 @@ public class MC8051 implements Emulator {
                 incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, 7, MODE1, howMuch1); //bit 7 in TCON is TF1
         } else { //mode 3 (split mode)
             if (MODE1 != 3) throw new IllegalStateException("When timer 0 is in mode 3, timer 1 must be too");
-            final boolean GATE1_OLD = (this.TMOD_OLD & 0x80) != 0;
-            final boolean CT1_OLD   = (this.TMOD_OLD & 0x40) != 0;
-            final int MODE1_OLD     = (this.TMOD_OLD & 0x30) >> 4;
+            final boolean GATE1_OLD = (this.state.TMOD_OLD & 0x80) != 0;
+            final boolean CT1_OLD   = (this.state.TMOD_OLD & 0x40) != 0;
+            final int MODE1_OLD     = (this.state.TMOD_OLD & 0x30) >> 4;
             if (CT1_OLD)
                 throw new IllegalStateException("Timer 1 cannot count events when timer 0 is in mode 3");
             if (GATE1_OLD)
                 throw new IllegalStateException("Timer 1 cannot be used with GATE when timer 0 is in mode 3");
-            if (this.TR1_OLD)
+            if (this.state.TR1_OLD)
                 //-1 is given, because timer 1 does not have an OV flag when timer 0 is in mode 3
                 incrementTimer(this.state.sfrs.TH1, this.state.sfrs.TL1, -1, MODE1_OLD, cycles);
 
@@ -662,7 +619,7 @@ public class MC8051 implements Emulator {
 
         final boolean EA = this.state.sfrs.IE.getBit(7); //global interrupt enable/disable
         if (!EA) return; //if interrupts are disables, there is nothing to do
-        if (this.runningInterruptPriority == 1) return; // a interrupt of high priority cannot be cancelled
+        if (this.state.runningInterruptPriority == 1) return; // a interrupt of high priority cannot be cancelled
         final boolean ES  = this.state.sfrs.IE.getBit(4); //enable serial interrupt
         final boolean ET1 = this.state.sfrs.IE.getBit(3); //enable timer 1 interrupt
         final boolean EX1 = this.state.sfrs.IE.getBit(2); //enable external 1 interrupt
@@ -697,11 +654,12 @@ public class MC8051 implements Emulator {
         boolean priority = true; // check high priority interrupts first
         for (int helper = 0, i = 0; helper < 8; ++helper, i = helper % 4, priority = helper < 4) {
             if (priority != priorities[i]) continue;
-            if (interruptRequests[i] && (priority || this.runningInterruptPriority == -1)) {
+            if (interruptRequests[i] && (priority || this.state.runningInterruptPriority == -1)) {
                 // if we made it this far, we can execute our interrupt
                 if (tconClear[i] >= 0) TCON.setBit(false, tconClear[i]); // clear request flag if necessary
-                this.runningInterruptPriority = priority ? 1 : 0;
-                if (this.runningInterruptPriority == 0) this.runningInterruptInterruptedOtherInterrupt = true;
+                this.state.runningInterruptPriority = priority ? 1 : 0;
+                if (this.state.runningInterruptPriority == 0)
+                    this.state.runningInterruptInterruptedOtherInterrupt = true;
                 interruptJump((char)(3 + i * 8));
                 break; // we can only execute one interrupt at a time
             }
@@ -727,17 +685,17 @@ public class MC8051 implements Emulator {
         if (!IT0) { // external interrupt 0 (P3.2) is triggered by level (instead of transition)
             IE0 = !P3_2;
         } else {
-            IE0 = this.prevP3_2 && !P3_2; //this expression checks for a falling transition at P3.2
+            IE0 = this.state.prevP3_2 && !P3_2; //this expression checks for a falling transition at P3.2
         }
         if (!IT1) { // external interrupt 1 (P3.3) is triggered by level (instead of transition)
             IE1 = !P3_3;
         } else {
-            IE1 = this.prevP3_3 && !P3_3; //this expression checks for a falling transition at P3.3
+            IE1 = this.state.prevP3_3 && !P3_3; //this expression checks for a falling transition at P3.3
         }
         this.state.sfrs.TCON.setBit(IE0, 1);
         this.state.sfrs.TCON.setBit(IE1, 3);
-        this.prevP3_2 = P3_2;
-        this.prevP3_3 = P3_3;
+        this.state.prevP3_2 = P3_2;
+        this.state.prevP3_3 = P3_3;
     }
 
     /**
@@ -894,14 +852,16 @@ public class MC8051 implements Emulator {
      * @return
      *     the byte from the stack
      * @see #pop(byte)
+     * @throws IllegalArgumentException
+     *     on stack underflow
      */
-    private byte _pop(boolean exceptionOnUnderflow) {
+    private byte _pop(boolean exceptionOnUnderflow) throws IllegalStateException {
         int resultingAddress = this.state.sfrs.SP.getValue() & 0xFF;
         byte result = this.state.internalRAM.get(resultingAddress);
         --resultingAddress;
         this.state.sfrs.SP.setValue((byte)resultingAddress);
-        if (resultingAddress < 0 && exceptionOnUnderflow && !ignoreSOSU)
-            throw new IllegalArgumentException("Stack underflow.");
+        if (resultingAddress < 0 && exceptionOnUnderflow && !this.state.ignoreSOSU)
+            throw new IllegalStateException("Stack underflow.");
         return result;
     }
 
@@ -1327,9 +1287,11 @@ public class MC8051 implements Emulator {
      * Get a code memory address (2 bytes) from the stack and jump to that address.
      * @return
      *     the number of cycles (2)
+     * @throws IllegalStateException
+     *     on stack underflow
      */
-    private int ret() {
-        ljmp(_pop(!this.ignoreSOSU), _pop(!this.ignoreSOSU));
+    private int ret() throws IllegalStateException {
+        ljmp(_pop(!this.state.ignoreSOSU), _pop(!this.state.ignoreSOSU));
         return 2;
     }
 
@@ -1337,14 +1299,16 @@ public class MC8051 implements Emulator {
      * <b>Return from Interrupt</b>
      * @return
      *     the number of cycles (2)
+     * @throws IllegalStateException
+     *     on stack underflow
      */
     private int reti() {
-        if (this.runningInterruptPriority < 0)
+        if (this.state.runningInterruptPriority < 0)
             throw new IllegalStateException("RETI called even though no interrupt is running");
-        if (this.runningInterruptInterruptedOtherInterrupt) {
-            this.runningInterruptInterruptedOtherInterrupt = false;
-            this.runningInterruptPriority = 0;
-        } else this.runningInterruptPriority = -1;
+        if (this.state.runningInterruptInterruptedOtherInterrupt) {
+            this.state.runningInterruptInterruptedOtherInterrupt = false;
+            this.state.runningInterruptPriority = 0;
+        } else this.state.runningInterruptPriority = -1;
         return ret();
     }
 
@@ -1362,7 +1326,7 @@ public class MC8051 implements Emulator {
         int resultingAddress = (this.state.sfrs.SP.getValue() & 0xFF) + 1;
         this.state.internalRAM.set(resultingAddress & 0xFF, value);
         this.state.sfrs.SP.setValue((byte)resultingAddress);
-        if (resultingAddress > 0xFF && !ignoreSOSU)
+        if (resultingAddress > 0xFF && !this.state.ignoreSOSU)
             throw new IllegalStateException("Stack overflow.");
         return 2;
     }
@@ -1378,7 +1342,7 @@ public class MC8051 implements Emulator {
      * @see #setDirectAddress(byte, byte)
      */
     private int pop(byte direct) throws IllegalStateException {
-        setDirectAddress(direct, _pop(!ignoreSOSU));
+        setDirectAddress(direct, _pop(!this.state.ignoreSOSU));
         return 2;
     }
 
@@ -2037,7 +2001,9 @@ public class MC8051 implements Emulator {
      *     the number of cycles (2)
      */
     private int movx_indirect_a(byte indirectAddress) {
-        this.state.externalRAM.set(indirectAddress & 0xFF, this.state.sfrs.A.getValue());
+        if (null != this.state.externalRAM)
+            this.state.externalRAM.set(indirectAddress & 0xFF, this.state.sfrs.A.getValue());
+        else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
         return 2;
     }
 
@@ -2048,7 +2014,9 @@ public class MC8051 implements Emulator {
      */
     private int movx_dptr_a() {
         final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
-        this.state.externalRAM.set(address, this.state.sfrs.A.getValue());
+        if (null != this.state.externalRAM)
+            this.state.externalRAM.set(address, this.state.sfrs.A.getValue());
+        else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
         return 2;
     }
 
@@ -2060,7 +2028,9 @@ public class MC8051 implements Emulator {
      *     the number of cycles (2)
      */
     private int movx_a_indirect(byte indirectAddress) {
-        this.state.sfrs.A.setValue(this.state.externalRAM.get(indirectAddress & 0xFF));
+        if (null != this.state.externalRAM)
+            this.state.sfrs.A.setValue(this.state.externalRAM.get(indirectAddress & 0xFF));
+        else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
         return 2;
     }
 
@@ -2071,7 +2041,9 @@ public class MC8051 implements Emulator {
      */
     private int movx_a_dptr() {
         final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
-        this.state.sfrs.A.setValue(this.state.externalRAM.get(address));
+        if (null != this.state.externalRAM)
+            this.state.sfrs.A.setValue(this.state.externalRAM.get(address));
+        else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
         return 2;
     }
 
@@ -2123,10 +2095,13 @@ public class MC8051 implements Emulator {
     /**
      * <b>0xA5 (this opcode is reserved/not defined)</b>
      * @return
-     *     a negative value
+     *     1
+     * @throws UnsupportedOperationException
+     *     when it is called (except when {@code ignoreUndefined} is set to {@code true})
      */
     private int reserved() {
-        return -42;
+        if (!this.state.ignoreUndefined) throw new UnsupportedOperationException("0xA5 used.");
+        return 1;
     }
 
     /**
