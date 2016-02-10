@@ -1,14 +1,54 @@
 package emulator.arc8051;
 
 import emulator.*;
+import misc.Settings;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * This class represents the internal state of the 8051 micro controller.
  * This includes all the registers and the internal memory.
  */
 public class State8051 {
+
+    byte TMOD_OLD; //used by updateTimers() to keep track of the previous state TMOD when in mode 3
+    boolean TR1_OLD; //used by updateTimers() to keep track of the previous state of TR1 when in mode 3
+
+    //variables used by the updateInterruptRequestFlags() method to keep track of transitions of the
+    //external interrupts' pins
+    boolean prevP3_3;
+    boolean prevP3_2;
+
+    //variable used by handleInterrupts() method to keep track of the running interrupt's priority
+    //can either be 1 for high, 0 for low or -1 to indicate that no interrupt is being executed at the moment
+    int runningInterruptPriority;
+
+    //If this is true, the currently running interrupt is interrupting another interrupt of lower priority
+    //the only case when this can happen is when an interrupt of 'low' priority is interrupted by an interrupt of 'high'
+    //priority. Consequently this can only happen once, as the interrupt running when this flag is true is of 'high'
+    //priority and thus cannot be interrupted.
+    boolean runningInterruptInterruptedOtherInterrupt = false;
+
+    //settings:
+    final static String IGNORE_SO_SU = "emulator.ignore-stack-overflow-and-stack-underflow";
+    final static String IGNORE_SO_SU_DEFAULT = "false";
+    final boolean ignoreSOSU; //ignore stack overflow/underflow
+
+    final static String IGNORE_UNDEFINED_MNEMONIC = "emulator.ignore-undefined-mnemonic";
+    final static String IGNORE_UNDEFINED_MNEMONIC_DEFAULT = "false";
+    final boolean ignoreUndefined;
+
+    final static String IGNORE_ALL_EXCEPTIONS = "emulator.ignore-all-exceptions";
+    final static String IGNORE_ALL_EXCEPTIONS_DEFAULT = "false";
+    final boolean ignoreExceptions;
+
+     //initialize default values for settings
+    static {
+        Settings.INSTANCE.setDefault(IGNORE_SO_SU, IGNORE_SO_SU_DEFAULT);
+        Settings.INSTANCE.setDefault(IGNORE_UNDEFINED_MNEMONIC, IGNORE_UNDEFINED_MNEMONIC_DEFAULT);
+        Settings.INSTANCE.setDefault(IGNORE_ALL_EXCEPTIONS, IGNORE_ALL_EXCEPTIONS_DEFAULT);
+    }
 
     /**
      * This class represents the SFR area of the 8051 micro controller.
@@ -251,6 +291,15 @@ public class State8051 {
         this.externalRAM = externalRAM;
         this.PCH = new ByteRegister("PCH");
         this.PCL = new ByteRegister("PCL");
+
+        //settings
+        final Predicate<String> isValidBoolean = s -> "true".equals(s) || "false".equals(s);
+        this.ignoreExceptions = Boolean.parseBoolean(Settings.INSTANCE.getProperty(
+                IGNORE_ALL_EXCEPTIONS, IGNORE_ALL_EXCEPTIONS_DEFAULT, isValidBoolean));
+        this.ignoreSOSU = Boolean.parseBoolean(Settings.INSTANCE.getProperty(
+                IGNORE_SO_SU, IGNORE_SO_SU_DEFAULT, isValidBoolean)) || this.ignoreExceptions;
+        this.ignoreUndefined = Boolean.parseBoolean(Settings.INSTANCE.getProperty(
+                IGNORE_UNDEFINED_MNEMONIC, IGNORE_UNDEFINED_MNEMONIC_DEFAULT, isValidBoolean)) || this.ignoreExceptions;
     }
 
     @Override

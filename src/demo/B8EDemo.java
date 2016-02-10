@@ -5,10 +5,7 @@ import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
 import assembler.util.problems.Problem;
-import emulator.Emulator;
-import emulator.RAM;
-import emulator.ROM;
-import emulator.Register;
+import emulator.*;
 import emulator.arc8051.MC8051;
 
 import java.io.BufferedOutputStream;
@@ -96,46 +93,45 @@ public class B8EDemo {
             System.out.print(">>> ");
             String s = in.nextLine();
             s = s.toLowerCase();
-            if ("run".equals(s) || "r".equals(s)) emulator.next();
-            else if (s.startsWith("run ") || s.startsWith("r ")) {
-                for (int i = 0; i < Integer.parseInt(s.split(" ")[1]); ++i) emulator.next();
-            }
-            else if ("runv".equals(s) || "rv".equals(s)) {
-                emulator.next();
-                System.out.println(emulator);
-            }
-            else if (s.startsWith("runv ") || s.startsWith("rv ")) {
-                for (int i = 0; i < Integer.parseInt(s.split(" ")[1]); ++i) {
+            try {
+                if ("run".equals(s) || "r".equals(s)) emulator.next();
+                else if (s.startsWith("run ") || s.startsWith("r ")) {
+                    for (int i = 0; i < Integer.parseInt(s.split(" ")[1]); ++i) emulator.next();
+                } else if ("runv".equals(s) || "rv".equals(s)) {
                     emulator.next();
                     System.out.println(emulator);
-                }
-            }
-            else if ("printstate".equals(s) || "ps".equals(s)) {
-                boolean first = true;
-                System.out.println("Registers_______________________________________________");
-                for (Register r : emulator.getRegisters()) {
-                    if (first) first = false;
-                    else System.out.println("________________________________________________________");
-                    System.out.printf("|%19s          |%10s              |%n",
-                            r.getName(), r.getHexadecimalDisplayValue());
-                }
-                System.out.println("Internal_RAM_____________________________________________________________________________________");
-                for (int i = 0; i < emulator.getMainMemory().getSize(); ++i) {
-                    if (i % 32 == 0 && i != 0) System.out.println("|");
-                    System.out.printf("|%02X", emulator.getMainMemory().get(i) & 0xFF);
-                }
-                System.out.println("|\n-------------------------------------------------------------------------------------------------");
-            }
-            else if (s.startsWith("print ") || s.startsWith("p ")) {
-                String regName = s.split(" ")[1].toUpperCase();
-                for (Register r : emulator.getRegisters()) {
-                    if (regName.equals(r.getName())) {
-                        System.out.printf("%5s = %4s%n", r.getName(), r.getHexadecimalDisplayValue());
-                        break;
+                } else if (s.startsWith("runv ") || s.startsWith("rv ")) {
+                    for (int i = 0; i < Integer.parseInt(s.split(" ")[1]); ++i) {
+                        emulator.next();
+                        System.out.println(emulator);
                     }
-                }
+                } else if ("printstate".equals(s) || "ps".equals(s)) {
+                    boolean first = true;
+                    System.out.println("Registers_______________________________________________");
+                    for (Register r : emulator.getRegisters()) {
+                        if (first) first = false;
+                        else System.out.println("________________________________________________________");
+                        System.out.printf("|%19s          |%10s              |%n",
+                                r.getName(), r.getHexadecimalDisplayValue());
+                    }
+                    System.out.println("Internal_RAM_____________________________________________________________________________________");
+                    for (int i = 0; i < emulator.getMainMemory().getSize(); ++i) {
+                        if (i % 32 == 0 && i != 0) System.out.println("|");
+                        System.out.printf("|%02X", emulator.getMainMemory().get(i) & 0xFF);
+                    }
+                    System.out.println("|\n-------------------------------------------------------------------------------------------------");
+                } else if (s.startsWith("print ") || s.startsWith("p ")) {
+                    String regName = s.split(" ")[1].toUpperCase();
+                    for (Register r : emulator.getRegisters()) {
+                        if (regName.equals(r.getName())) {
+                            System.out.printf("%5s = %4s%n", r.getName(), r.getHexadecimalDisplayValue());
+                            break;
+                        }
+                    }
+                } else if ("exit".equals(s) || "x".equals(s)) System.exit(0);
+            } catch (EmulatorException ee) {
+                ee.printStackTrace();
             }
-            else if ("exit".equals(s) || "x".equals(s)) System.exit(0);
         }
     }
 }

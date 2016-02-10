@@ -1,6 +1,7 @@
 package emulator.arc8051;
 
 import emulator.ByteRegister;
+import emulator.EmulatorException;
 import emulator.FlagRegister;
 import emulator.RAM;
 import org.junit.Before;
@@ -87,7 +88,11 @@ public class MC8051Test {
             ram.set(pch << 8, instruction);
             ram.set((pch << 8) + 1, arg);
             final char resultingAddress = (char)((pch << 8) & 0xF800 | arg & 0xFF | (i << 8));
-            assertTrue(testController.next() == 2);
+            try {
+                assertTrue(testController.next() == 2);
+            } catch (EmulatorException e) {
+                e.printStackTrace();
+            }
             char actualResult = (char)(testController.state.PCH.getValue() << 8 & 0xff00
                     | testController.state.PCL.getValue() & 0xff);
             System.out.println("actualResult = "+actualResult+" resultingAddress = "+resultingAddress);
@@ -99,7 +104,11 @@ public class MC8051Test {
         ram.set(0xFFF+1, (byte)0);
         System.out.println("Testing the base address...");
         System.out.printf("Opcode: %02X%n", STATIC_AJMP & 0xFF);
-        testController.next();
+        try {
+            testController.next();
+        } catch (EmulatorException e) {
+            e.printStackTrace();
+        }
         assertTrue(testController.state.PCH.getValue() == (byte)0x10);
         assertTrue(testController.state.PCL.getValue() == (byte)0x00);
     }
@@ -115,7 +124,11 @@ public class MC8051Test {
         ram.set(0, LJMP);
         ram.set(1, arg1);
         ram.set(2, arg2);
-        assertTrue(testController.next() == 2);
+        try {
+            assertTrue(testController.next() == 2);
+        } catch (EmulatorException e) {
+            e.printStackTrace();
+        }
         assertTrue(testController.state.PCH.getValue() == arg1);
         assertTrue(testController.state.PCL.getValue() == arg2);
     }
@@ -130,7 +143,11 @@ public class MC8051Test {
         tmp.set(addr, LCALL);
         testController.state.PCH.setValue((byte) (addr >>> 8));
         testController.state.PCL.setValue((byte) addr);
-        testController.next();
+        try {
+            testController.next();
+        } catch (EmulatorException e) {
+            e.printStackTrace();
+        }
         testOpcode(RET, 0, 2, () -> {
             int pc = testController.state.PCH.getValue() << 8 & 0xff00 | testController.state.PCL.getValue() & 0xff;
             return pc == addr + 3 && testController.state.sfrs.SP.getValue() == (byte)7;
@@ -910,11 +927,13 @@ public class MC8051Test {
                 && !PSW.getBit(7) && PSW.getBit(0));
     }
 
-    @Test(expected=UnsupportedOperationException.class)
-    public void testReserved() {
+    @Test(expected=EmulatorException.class)
+    public void testReserved() throws EmulatorException {
         final byte RESERVED = (byte)0xA5;
         System.out.println("__________Testing <reserved>...");
-        testOpcode(RESERVED, 0, 1, () -> false);
+        RAM rom = (RAM) testController.getCodeMemory();
+        rom.set(0, RESERVED);
+        testController.next();
     }
 
     @Test
@@ -1156,7 +1175,11 @@ public class MC8051Test {
         testController.state.sfrs.TCON.setBit(true, 4);
         final int num = r.nextInt(0xff)+12;
         for (int i = 0; i < num; ++i) {
-            testController.next();
+            try {
+                testController.next();
+            } catch (EmulatorException e) {
+                e.printStackTrace();
+            }
         }
         final int timer1_16 = testController.state.sfrs.TH0.getValue() << 8 & 0xFF00
                 | testController.state.sfrs.TL0.getValue() & 0xFF;
@@ -1173,7 +1196,11 @@ public class MC8051Test {
         testController.state.sfrs.TCON.setBit(true, 6);
         testController.state.sfrs.TCON.setBit(true, 4);
         for (int i = 0; i < 256; ++i) {
-            testController.next();
+            try {
+                testController.next();
+            } catch (EmulatorException e) {
+                e.printStackTrace();
+            }
         }
         assertTrue(testController.state.sfrs.TH0.getValue() == (byte)0x42
                 && testController.state.sfrs.TL0.getValue() == (byte)0x42
@@ -1277,7 +1304,11 @@ public class MC8051Test {
         for (int i = 0; i < args.length; ++i) ram.set(address+i+1, args[i]);
         testController.state.PCH.setValue((byte) (address >>> 8));
         testController.state.PCL.setValue((byte) address);
-        assertTrue(testController.next() == desiredReturn);
+        try {
+            assertTrue(testController.next() == desiredReturn);
+        } catch (EmulatorException e) {
+            e.printStackTrace();
+        }
         assertTrue(resultCorrect.getAsBoolean());
     }
 }
