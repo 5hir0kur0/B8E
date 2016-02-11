@@ -742,18 +742,8 @@ public class MC8051 implements Emulator {
     private void setDirectAddress(byte address, byte value) throws IndexOutOfBoundsException {
         if ((address & 0xFF) < 0x80) //if the address in in the directly addressable part of the internal RAM
             this.state.internalRAM.set(address & 0xFF, value);
-        else {
-            if (!this.state.sfrs.hasAddress(address)) {
-                //If the program attempts to use a value in the SFR area which does not hold a register,
-                //create a new register and throw an exception (because the program would exhibit undefined behaviour
-                //on real hardware
-                this.state.sfrs.addRegister(address, new ByteRegister(String.format("TMP_SFR#%02X", address & 0xFF)));
-                int pcOfThisInstruction = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
-                throw new IndexOutOfBoundsException("Illegal address used at " + pcOfThisInstruction + ": "
-                        + (address & 0xFF));
-            }
+        else
             this.state.sfrs.getRegister(address).setValue(value);
-        }
     }
 
     /**
@@ -763,10 +753,10 @@ public class MC8051 implements Emulator {
      * @return
      *     a {@code BitAddress} object containing the direct address of the byte containing the specified bit and a
      *     bit mask for the bit
-     * @throws IllegalArgumentException
+     * @throws IndexOutOfBoundsException
      *     when given an invalid bit address
      */
-    private BitAddress decodeBitAddress(byte bitAddress) throws IllegalArgumentException {
+    private BitAddress decodeBitAddress(byte bitAddress) throws IndexOutOfBoundsException {
         int address = bitAddress & 0xFF; //trying to prevent strange behaviour with negative bytes...
         int retAddress;
         byte retBitMask;
@@ -775,32 +765,9 @@ public class MC8051 implements Emulator {
             final int START_OF_BIT_MEMORY = 0x20;
             retAddress = START_OF_BIT_MEMORY + address / 8;
         } else {
-            ByteRegister tmp;
-            switch (address - address % 8) {
-                case 0x80: tmp = this.state.sfrs.P0; break; // P0
-                case 0x88: tmp = this.state.sfrs.TCON; break; // TCON
-                case 0x90: tmp = this.state.sfrs.P1; break; // P1
-                case 0x98: tmp = this.state.sfrs.SCON; break; // SCON
-                case 0xA0: tmp = this.state.sfrs.P2; break; // P2
-                case 0xA8: tmp = this.state.sfrs.IE; break; // IE
-                case 0xB0: tmp = this.state.sfrs.P3; break; // P3
-                case 0xB8: tmp = this.state.sfrs.IP; break; // IP
-                case 0xD0: tmp = this.state.sfrs.PSW; break; // PSW
-                case 0xE0: tmp = this.state.sfrs.A; break; // ACC
-                case 0xF0: tmp = this.state.sfrs.B; break; // B
-                default:
-                    int tmpAddr = address - address % 8;
-                    tmp = this.state.sfrs.getRegister((byte)tmpAddr);
-                    if (null == tmp) {
-                        //if the program attempts to use an illegal address, a new SFR ist created at this address
-                        //and an exception is thrown, so that the user can continue, if he wants
-                        //(on real hardware, the behaviour in this case might be undefined)
-                        int pc = this.state.PCH.getValue() << 8 & 0xFF00 | this.state.PCL.getValue() & 0xFF;
-                        tmp = new ByteRegister(String.format("TMP_SFR#%02X", tmpAddr & 0xFF));
-                        this.state.sfrs.addRegister((byte)tmpAddr, tmp);
-                        throw new IndexOutOfBoundsException("Invalid bit address: " + address + " at " + pc);
-                    }
-            }
+            byte tmpAddress = (byte)(address -  address % 8);
+            //we cannot just return the calculated address, because the SFR might not exist
+            ByteRegister tmp = this.state.sfrs.getRegister(tmpAddress);
             retAddress = this.state.sfrs.getAddress(tmp);
         }
 
@@ -1300,16 +1267,20 @@ public class MC8051 implements Emulator {
      * @return
      *     the number of cycles (2)
      * @throws IllegalStateException
-     *     on stack underflow
+     *     on stack underflow or when it was called but there were no running interrupts
      */
-    private int reti() {
-        if (this.state.runningInterruptPriority < 0)
-            throw new IllegalStateException("RETI called even though no interrupt is running");
-        if (this.state.runningInterruptInterruptedOtherInterrupt) {
+    private int reti() throws IllegalStateException {
+        boolean throwException = false;
+        if (this.state.runningInterruptPriority < 0) throwException = true;
+        else if (this.state.runningInterruptInterruptedOtherInterrupt) {
             this.state.runningInterruptInterruptedOtherInterrupt = false;
             this.state.runningInterruptPriority = 0;
         } else this.state.runningInterruptPriority = -1;
-        return ret();
+        ret();
+        if (throwException && !this.state.ignoreExceptions)
+            //TODO: Log exception
+            throw new IllegalStateException("RETI called even though no interrupt is running");
+        return 2;
     }
 
     /**
@@ -1327,6 +1298,7 @@ public class MC8051 implements Emulator {
         this.state.internalRAM.set(resultingAddress & 0xFF, value);
         this.state.sfrs.SP.setValue((byte)resultingAddress);
         if (resultingAddress > 0xFF && !this.state.ignoreSOSU)
+            //TODO: Log exception
             throw new IllegalStateException("Stack overflow.");
         return 2;
     }
@@ -2004,6 +1976,7 @@ public class MC8051 implements Emulator {
         if (null != this.state.externalRAM)
             this.state.externalRAM.set(indirectAddress & 0xFF, this.state.sfrs.A.getValue());
         else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
+        //TODO: Log exception
         return 2;
     }
 
@@ -2017,6 +1990,7 @@ public class MC8051 implements Emulator {
         if (null != this.state.externalRAM)
             this.state.externalRAM.set(address, this.state.sfrs.A.getValue());
         else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
+        //TODO: Log exception
         return 2;
     }
 
@@ -2028,9 +2002,11 @@ public class MC8051 implements Emulator {
      *     the number of cycles (2)
      */
     private int movx_a_indirect(byte indirectAddress) {
+        this.state.sfrs.A.setValue((byte)0);
         if (null != this.state.externalRAM)
             this.state.sfrs.A.setValue(this.state.externalRAM.get(indirectAddress & 0xFF));
         else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
+        //TODO: Log exception
         return 2;
     }
 
@@ -2041,9 +2017,11 @@ public class MC8051 implements Emulator {
      */
     private int movx_a_dptr() {
         final int address = this.state.sfrs.DPH.getValue() << 8 & 0xFF00 | this.state.sfrs.DPL.getValue() & 0xFF;
+        this.state.sfrs.A.setValue((byte)0);
         if (null != this.state.externalRAM)
             this.state.sfrs.A.setValue(this.state.externalRAM.get(address));
         else if (!this.state.ignoreExceptions) throw new IllegalStateException("no external RAM, but MOVX was used");
+        //TODO: Log exception
         return 2;
     }
 
@@ -2101,6 +2079,7 @@ public class MC8051 implements Emulator {
      */
     private int reserved() {
         if (!this.state.ignoreUndefined) throw new UnsupportedOperationException("0xA5 used.");
+        //TODO: Log exception
         return 1;
     }
 

@@ -43,11 +43,16 @@ public class State8051 {
     final static String IGNORE_ALL_EXCEPTIONS_DEFAULT = "false";
     final boolean ignoreExceptions;
 
+    final static String IGNORE_UNDEFINED_SFRS = "emulator.ignore-undefined-sfrs";
+    final static String IGNORE_UNDEFINED_SFRS_DEFAULT = "false";
+    final boolean ignoreUndefinedSfrs;
+
      //initialize default values for settings
     static {
         Settings.INSTANCE.setDefault(IGNORE_SO_SU, IGNORE_SO_SU_DEFAULT);
         Settings.INSTANCE.setDefault(IGNORE_UNDEFINED_MNEMONIC, IGNORE_UNDEFINED_MNEMONIC_DEFAULT);
         Settings.INSTANCE.setDefault(IGNORE_ALL_EXCEPTIONS, IGNORE_ALL_EXCEPTIONS_DEFAULT);
+        Settings.INSTANCE.setDefault(IGNORE_UNDEFINED_SFRS, IGNORE_UNDEFINED_SFRS_DEFAULT);
     }
 
     /**
@@ -75,6 +80,8 @@ public class State8051 {
         private enum TCONFlags {
             IT0, IE0, IT1, IE1, TR0, TF0, TR1, TF1;
         }
+
+        private final boolean ignoreUndefinedSfrs;
 
         //TODO add flag names for other flag registers
 
@@ -126,42 +133,46 @@ public class State8051 {
         final ByteRegister DPH = new ByteRegister("DPH");
         final ByteRegister PCON = new ByteRegister("PCON");
 
-        private SpecialFunctionRegisters() {
+        private SpecialFunctionRegisters(boolean ignoreUndefinedSfrs) {
             this.specialFunctionRegisters = new HashMap<>(21);
-            specialFunctionRegisters.put((byte)0xF0, B);
-            specialFunctionRegisters.put((byte)0xE0, A);
-            specialFunctionRegisters.put((byte)0xD0, PSW);
-            specialFunctionRegisters.put((byte)0xB8, IP);
-            specialFunctionRegisters.put((byte)0xB0, P3);
-            specialFunctionRegisters.put((byte)0xA8, IE);
-            specialFunctionRegisters.put((byte)0xA0, P2);
-            specialFunctionRegisters.put((byte)0x98, SCON);
-            specialFunctionRegisters.put((byte)0x99, SBUF);
-            specialFunctionRegisters.put((byte)0x90, P1);
-            specialFunctionRegisters.put((byte)0x88, TCON);
-            specialFunctionRegisters.put((byte)0x89, TMOD);
-            specialFunctionRegisters.put((byte)0x8A, TL0);
-            specialFunctionRegisters.put((byte)0x8B, TL1);
-            specialFunctionRegisters.put((byte)0x8C, TH0);
-            specialFunctionRegisters.put((byte)0x8D, TH1);
-            specialFunctionRegisters.put((byte)0x80, P0);
-            specialFunctionRegisters.put((byte)0x81, SP);
-            specialFunctionRegisters.put((byte)0x82, DPL);
-            specialFunctionRegisters.put((byte)0x83, DPH);
-            specialFunctionRegisters.put((byte)0x87, PCON);
+            this.specialFunctionRegisters.put((byte)0xF0, B);
+            this.specialFunctionRegisters.put((byte)0xE0, A);
+            this.specialFunctionRegisters.put((byte)0xD0, PSW);
+            this.specialFunctionRegisters.put((byte)0xB8, IP);
+            this.specialFunctionRegisters.put((byte)0xB0, P3);
+            this.specialFunctionRegisters.put((byte)0xA8, IE);
+            this.specialFunctionRegisters.put((byte)0xA0, P2);
+            this.specialFunctionRegisters.put((byte)0x98, SCON);
+            this.specialFunctionRegisters.put((byte)0x99, SBUF);
+            this.specialFunctionRegisters.put((byte)0x90, P1);
+            this.specialFunctionRegisters.put((byte)0x88, TCON);
+            this.specialFunctionRegisters.put((byte)0x89, TMOD);
+            this.specialFunctionRegisters.put((byte)0x8A, TL0);
+            this.specialFunctionRegisters.put((byte)0x8B, TL1);
+            this.specialFunctionRegisters.put((byte)0x8C, TH0);
+            this.specialFunctionRegisters.put((byte)0x8D, TH1);
+            this.specialFunctionRegisters.put((byte)0x80, P0);
+            this.specialFunctionRegisters.put((byte)0x81, SP);
+            this.specialFunctionRegisters.put((byte)0x82, DPL);
+            this.specialFunctionRegisters.put((byte)0x83, DPH);
+            this.specialFunctionRegisters.put((byte)0x87, PCON);
+            this.ignoreUndefinedSfrs = ignoreUndefinedSfrs;
         }
 
         @Override
         public byte get(int index) {
-            if (index < 0 || index > 255) throw new IndexOutOfBoundsException("SFR index too big or too small.");
+            if (index < 0x80 || index > 255)
+                throw new IndexOutOfBoundsException("SFR index too big or too small: "+index);
             if (specialFunctionRegisters.containsKey((byte)index))
                 return specialFunctionRegisters.get((byte)index).getValue();
-            else throw new IndexOutOfBoundsException("SFR index out of range");
+            else if (!this.ignoreUndefinedSfrs) throw new IndexOutOfBoundsException("SFR index out of range: "+index);
+            else return 0;
         }
 
         @Override
         public byte[] get(int index, int length) {
-            if (index < 0 || index > 255) throw new IndexOutOfBoundsException("SFR index too big or too small.");
+            if (index < 0x80 || index > 255)
+                throw new IndexOutOfBoundsException("SFR index too big or too small: "+index);
             if (length < 1) throw new IllegalArgumentException("length must be bigger than or equal to 1");
             byte[] ret = new byte[length];
             for (int i = 0; i < ret.length; ++i) {
@@ -246,7 +257,15 @@ public class State8051 {
          */
         ByteRegister getRegister(byte address) {
             if ((address & 0xFF) < 0x80) throw new IllegalArgumentException("Invalid address for SFR: "+address);
-            return this.specialFunctionRegisters.get(address);
+            if (this.specialFunctionRegisters.containsKey(address)) return this.specialFunctionRegisters.get(address);
+            //If the program attempts to use a value in the SFR area which does not hold a register,
+            //create a new register and throw an exception (because the program would exhibit undefined behaviour
+            //on real hardware
+            ByteRegister tmp = new ByteRegister(String.format("TMP_SFR#%02X", address & 0xFF));
+            this.addRegister(address, tmp);
+            if (!this.ignoreUndefinedSfrs)
+                throw new IndexOutOfBoundsException("Illegal SFR address: " + (address & 0xFF));
+            else return tmp;
         }
 
         /**
@@ -286,11 +305,6 @@ public class State8051 {
         this.codeMemory = Objects.requireNonNull(codeMemory, "trying to create MC8051 object without code memory");
         if (this.codeMemory.getSize() != 65536)
             throw new IllegalArgumentException("code memory has to be 2^16 bytes long");
-        this.sfrs = new SpecialFunctionRegisters();
-        this.internalRAM = new RAM(256);
-        this.externalRAM = externalRAM;
-        this.PCH = new ByteRegister("PCH");
-        this.PCL = new ByteRegister("PCL");
 
         //settings
         final Predicate<String> isValidBoolean = s -> "true".equals(s) || "false".equals(s);
@@ -300,6 +314,15 @@ public class State8051 {
                 IGNORE_SO_SU, IGNORE_SO_SU_DEFAULT, isValidBoolean)) || this.ignoreExceptions;
         this.ignoreUndefined = Boolean.parseBoolean(Settings.INSTANCE.getProperty(
                 IGNORE_UNDEFINED_MNEMONIC, IGNORE_UNDEFINED_MNEMONIC_DEFAULT, isValidBoolean)) || this.ignoreExceptions;
+        this.ignoreUndefinedSfrs = Boolean.parseBoolean(Settings.INSTANCE.getProperty(
+                IGNORE_UNDEFINED_SFRS, IGNORE_UNDEFINED_SFRS_DEFAULT, isValidBoolean
+        )) || this.ignoreExceptions;
+
+        this.sfrs = new SpecialFunctionRegisters(this.ignoreUndefinedSfrs);
+        this.internalRAM = new RAM(256);
+        this.externalRAM = externalRAM;
+        this.PCH = new ByteRegister("PCH");
+        this.PCL = new ByteRegister("PCL");
     }
 
     @Override
