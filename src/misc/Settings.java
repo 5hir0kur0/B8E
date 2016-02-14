@@ -97,6 +97,32 @@ public enum Settings {
     }
 
     /**
+     * Get a boolean property.
+     * @param key the property's key
+     * @param defaultValue the default value to be returned if the key does not have a value associated with it, if
+     *                     the value is not a valid integer.
+     * @return either the value found at {@code key} or {@code defaultValue} of the property.
+     *         Note: If no default value is specified {@code true} will be returned.
+     */
+    public boolean getBoolProperty(String key, boolean defaultValue) {
+        String res = this.settings.getProperty(key);
+        if (null == res || res.trim().isEmpty()) return defaultValue;
+        return Boolean.parseBoolean(res);
+    }
+
+    /**
+     * Get a boolean property.
+     * @param key the property's key
+     * @return the boolean found at {@code key} or {@code defaultValue}
+     */
+    public boolean getBoolProperty(String key) {
+        String res = this.settings.getProperty(key);
+        if (null == res || res.trim().isEmpty())
+            return Boolean.parseBoolean(this.defaults.getProperty(key));
+        return Boolean.parseBoolean(res);
+    }
+
+    /**
      * Set a default value for a key.
      * @param key the key to be used
      * @param value the value to be set as the default for the given key

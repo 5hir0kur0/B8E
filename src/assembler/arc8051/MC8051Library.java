@@ -1794,21 +1794,18 @@ public class MC8051Library {
     }
 
     /**
-     * Generates an error for a given ErrorHandling.<br>
-     * The messages will be taken from 2 given Strings and
-     * added to the problems List.
+     * Generates a Problem for a given error Setting. (The Setting must be verifiable with
+     * {@link AssemblerSettings#VALID_ERROR})<br>
+     * The messages will be taken from 2 given Strings and the
+     * generated problem added to the Problems List.
      *
-     * @param cause the cause of the problem.
+     * @param cause the cause of the Problem.
      * @param settingName the setting (by name) that should be used for generating the Problem.
      * @param errorMessage the message String for the case of a generated error
      * @param warningMessage the message String for the case of an generated warning
-     *
-     * @return
-     *      an error with the given messages and error type.<br>
-     *      If the error is set to be ignored, <code>null</code> will be returned.
      */
-    private static void getErrorSetting(Token cause, String settingName,
-                                                String errorMessage, String warningMessage) {
+    public static void getErrorSetting(Token cause, String settingName,
+                                       String errorMessage, String warningMessage) {
         String setting = Settings.INSTANCE.getProperty(settingName, AssemblerSettings.VALID_ERROR);
         switch (setting) {
             case "error":
@@ -1823,4 +1820,38 @@ public class MC8051Library {
                 throw new IllegalArgumentException("Illegal value for error setting! (\""+setting+"\")");
         }
     }
+    /**
+     * Modifies a given Problem for a given error Setting. (The Setting must be verifiable
+     * with {@link AssemblerSettings#VALID_ERROR}.)<br>
+     * The messages will be taken from 2 given Strings and
+     * added to a specified List.
+     *
+     * @param p the Problem to be modified and added
+     * @param settingName the setting (by name) that should be used for generating the Problem.
+     * @param errorMessage the message String for the case of a generated Problem
+     * @param warningMessage the message String for the case of an generated warning
+     * @param problems the List the newly modified Problem will be added to
+     */
+    public static void getGeneralErrorSetting(Problem p, String settingName,
+                                              String errorMessage, String warningMessage,
+                                              List<Problem> problems) {
+        String setting = Settings.INSTANCE.getProperty(settingName, AssemblerSettings.VALID_ERROR);
+        switch (setting) {
+            case "error":
+                p.setType(Type.ERROR);
+                p.setMessage(errorMessage);
+                break;
+            case "warn":
+                p.setType(Type.WARNING);
+                p.setMessage(warningMessage);
+                break;
+            case "ignore":
+                break;
+            default:
+                throw new IllegalArgumentException("Illegal value for error setting! (\""+setting+"\")");
+        }
+
+        problems.add(p);
+    }
+
 }

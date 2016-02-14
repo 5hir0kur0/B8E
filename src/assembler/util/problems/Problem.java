@@ -56,7 +56,7 @@ public class Problem<T> implements Comparable<Problem> {
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "("+type+")["+(path == null ? "?":path.toString())+":"+
-                (line!=-1?line:"?")+"]:"+" \""+message+"\" (Caused by: "+cause.toString()+")";
+                (line!=-1?line:"?")+"]:"+" \""+message+"\""+(cause != null ? " (Caused by: "+cause.toString()+")" : "");
     }
 
     public enum Type {
