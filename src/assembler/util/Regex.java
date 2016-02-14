@@ -12,17 +12,22 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
+ * Represents a <code>Regex</code> that can be used with the preprocessor
+ * or other text-based parts of the assembler.<br>
+ * For a detailed documentation of the features see the documentation of
+ * the constructor: {@link #Regex(String, Path, int, List)}
+ *
  * @author Noxgrim
  */
 public class Regex {
     /** The internal Pattern.*/
-    Pattern match;
+    private Pattern match;
     /** The String a match will be replaced. Supports groups.*/
-    String substitution;
+    private String substitution;
     /** The <code>Regex</code>'s modifier. */
-    StringBuffer modifier;
+    private StringBuffer modifier;
     /** The segments (all Strings that are separated by '/'. */
-    String[] segments;
+    private String[] segments;
 
     /** Whether all occurrences (<code>true</code>) or only the first will be replaced by the substitution. */
     private boolean global = true;  // Only in substitution
@@ -38,47 +43,200 @@ public class Regex {
     private Path problemFile;
     /** The line that will be used when creating new Problems. */
     private int problemFileLine;
-    /** The line that will be used when creating new Problems. */
+    /** The List newly created Problems will be added to. */
     private List<Problem> problems;
 
 
     //Valid modifier
-    public final char SUBSTITUTE_MODIFIER = 's';
-    public final char ERROR_ON_MATCH_MODIFIER = 'e';
-    public final char ERROR_ON_MISMATCH_MODIFIER = 'E';
-    public final char WARNING_ON_MATCH_MODIFIER = 'w';
+    /** Adds a substitute segment which will be used to substitute a match. */
+    public final char SUBSTITUTE_MODIFIER          = 's';
+    /** Adds a segments that specifies a message of a ERROR that will be created if the pattern matches. */
+    public final char ERROR_ON_MATCH_MODIFIER      = 'e';
+    /** Adds a segments that specifies a message of a ERROR that will be created if the pattern mismatches. */
+    public final char ERROR_ON_MISMATCH_MODIFIER   = 'E';
+    /** Adds a segments that specifies a message of a WARNING that will be created if the pattern matches. */
+    public final char WARNING_ON_MATCH_MODIFIER    = 'w';
+    /** Adds a segments that specifies a message of a WARNING that will be created if the pattern mismatches. */
     public final char WARNING_ON_MISMATCH_MODIFIER = 'W';
-    public final char INFO_ON_MATCH_MODIFIER = 'i';
-    public final char INFO_ON_MISMATCH_MODIFIER = 'I';
+    /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern matches. */
+    public final char INFO_ON_MATCH_MODIFIER       = 'i';
+    /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern mismatches. */
+    public final char INFO_ON_MISMATCH_MODIFIER    = 'I';
 
     //Valid flags
-    public final char WHOLE_LINE_FLAG = 'g';
-    public final char ONLY_FIRST_FLAG = 'G';
-    public final char MODIFIABLE_FLAG = 'm';
-    public final char UNMODIFIABLE_FLAG = 'M';
-    public final char REPLACE_IN_STRING_FLAG = 's';
-    public final char DONT_REPLACE_IN_STRING_FLAG = 'S';
-    public final char CASE_INSENSITIVE_FLAG = 'i';
-    public final char CASE_SENSITIVE_FLAG = 'I';
+    /** Makes a <code>Regex</code> replace all occurrences of the pattern with the substitution. */
+    public final char WHOLE_LINE_FLAG              = 'g';
+    /** Makes a <code>Regex</code> replace only the first occurrence of the pattern with the substitution. */
+    public final char ONLY_FIRST_FLAG              = 'G';
+    /** Flags a <code>Regex</code> as modifiable. */
+    public final char MODIFIABLE_FLAG              = 'm';
+    /** Flags a <code>Regex</code> as not modifiable. */
+    public final char UNMODIFIABLE_FLAG            = 'M';
+    /**
+     * Makes a <code>Regex</code> replace occurrences of a pattern with the substitution within a String
+     * (everything within single (<code>'\''</code>) and double (<code>'"'</code>) quotes).
+     */
+    public final char REPLACE_IN_STRING_FLAG       = 's';
+    /**
+     * Makes a <code>Regex</code> replace occurrences of a pattern with the substitution in everything but within a
+     * String (everything within single (<code>'\''</code>) and double (<code>'"'</code>) quotes).
+     */
+    public final char DONT_REPLACE_IN_STRING_FLAG  = 'S';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code> case insensitive by using the
+     * {@link Pattern#CASE_INSENSITIVE} flag.
+     */
+    public final char CASE_INSENSITIVE_FLAG        = 'i';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code> case sensitive by not using the
+     * {@link Pattern#CASE_INSENSITIVE} flag.
+     */
+    public final char CASE_SENSITIVE_FLAG          = 'I';
 
 
     /**
-     * Constructs a <code>Regex</code>.
-     * //TODO: Finish documentation.
-     * @param pattern
+     * Constructs a <code>Regex</code>.<br>
+     * The <code>Regex</code> will be compiled from a format.<br>
+     * <br>
+     * The format is divided into different segments by a <code>'/'</code>
+     * (which can be escaped with a leading backslash (<code>'\\'</code>))<br>
+     * E.g.: <code>first/2nd/3\/rd/forth</code>.<br>
+     * <br>
+     * Explanation of the different segments:<br>
+     * <pre>
+     *     s/(\d+)H/~hex-number~/I
+     *     1   2         3       4
+     *
+     *     1 Modifiers
+     *     2 Pattern
+     *     3 Modifier-segment(s)
+     *     4 Flags
+     * </pre>
+     *
+     * <h1>1 Modifiers:</h1>
+     * The first segment is always interpreted as the modifiers segment and describes the following
+     * segments and how they are interpreted. Each segment type is described by a character.<br>
+     * Possible modifiers:<br>
+     * <table>
+     *     <tr><th>Char</th><th>Name</th><th>Function</th></tr>
+     *     <tr><td><code>s</code></td><td>Substitution</td><td>
+     *         Specifies a segment which text will be used to substitute a match from the
+     *         Pattern. Group References are supported. If multiple Substitution modifiers
+     *         are given, the content of the last referenced segment will be used.
+     *     </td></tr>
+     *     <tr><td><code>e</code> and <code>E</code></td><td>Error on (mis)match</td><td>
+     *         Specifies a segment which text will be used as the message of a newly created
+     *         <code>Problem</code> with the type <code>ERROR</code> on a match (<code>e</code>)
+     *         or mismatch <code>(E)</code>. If the <code>Problem</code> is created on a match,
+     *         Group references are supported. Each occurrence of this modifier will result in
+     *         a corresponding <code>Problem</code> even if it has occurred before.
+     *     </td></tr>
+     *     <tr><td><code>w</code> and <code>W</code></td><td>Warning on (mis)match</td><td>
+     *         The same as 'e and E' but with <code>WARNING</code> as type of the
+     *         <code>Problem</code>.
+     *     </td></tr>
+     *     <tr><td><code>i</code> and <code>I</code></td><td>Information on (mis)match</td><td>
+     *         The same as 'e and E' but with <code>INFORMATION</code> as type of the
+     *         <code>Problem</code>.
+     *     </td></tr>
+     * </table>
+     * Note #1: The order of the modifier characters specifies how a segment is interpreted.<br> So
+     *          the corresponding segment can be calculated by adding <code>2</code> to index
+     *          (beginning with <code>0</code>) of the modifier character.<br>
+     * Note #2: This segment has to be specified for the <code>Regex</code> to work properly.
+     *
+     * <h1>2 Pattern:</h1>
+     * The Pattern of the <code>Regex</code>. This uses Java's {@link Pattern} API.<br>
+     * Some special sequences that will be replaced with internal the pattern for different assembler
+     * and operand types can be used. To use one of this classes just type <code>\T{<i>name</i>}</code>
+     * (mind the capital <code>T</code>) with <code><i>name</i></code> being one of the following values:
+     * <table>
+     *      <tr><th>Name</th><th>Corresponding constant in {@link MC8051Library}</th></tr>
+     *      <tr><td>number</td><td>NUMBER_PATTERN</td></tr>
+     *      <tr><td>address</td><td>ADDRESS_PATTERN</td></tr>
+     *      <tr><td>constant</td><td>CONSTANT_PATTERN</td></tr>
+     *      <tr>negated_address</td><td>NEGATED_ADDRESS_PATTERN</td></tr>
+     *      <tr>address_offset</td><td>ADDRESS_OFFSET_PATTERN</td></tr>
+     *      <tr>bit_addressing</td><td>BIT_ADDRESSING_PATTERN</td></tr>
+     *      <tr>symbol</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr>label</td><td>LABEL_PATTERN</td></tr>
+     *      <tr>name</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr>mnemonic_name</td><td>MNEMONIC_NAME_PATTERN</td></tr>
+     *      <tr>indirect_name</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr>indirect_symbol</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     * </table>
+     * Note: Like the modifier-segment the second segment will always be interpreted as the pattern of the
+     *       <code>Regex</code> and is required for it to work properly.
+     *
+     * <h1>3 Modifier-segments:</h1>
+     * All segments after the pattern segment will be interpreted as modifier segments as specified by the
+     * modifier segment. The <code>Regex</code> expects a segment for every valid modifier in the modifier
+     * segment.<br>
+     * The behavior of the segment is specified by the corresponding modifier.
+     *
+     * <h2>Group Reference</h2>
+     * Some modifiers allow Group References. Groups can be referenced by using the group's number preceding
+     * with a <code>'$'</code>, <code>"\\"</code> (backslash) or <code>"\\g"</code>, e.g: <code>$1</code> to
+     * reference the first group.<br>
+     * Any prefix can be escaped with a backslash (<code>'\\'</code>) like <code>'\\$10'</code> also the number
+     * can be separated from a literal number by surrounding it with curly brackets (<code>${1}2</code>).
+     *
+     * <h1>4 Flags</h1>
+     * The optional segment after the last modifier segment will be interpreted as the flag segment. This
+     * segments may contain flag characters. A uppercase letter always is the negation of a lowercase one
+     * (<code>'I'</code> is the negation of <code>'i'</code>). The last flag character is always the one
+     * that affects the <code>Regex</code>, e.g.: in <code>"iIiIIi"</code> only <code>'i'</code> will affect
+     * the <code>Regex</code>.<table>
+     *     <tr><th>Char</th><th>Name</th><th>Function</th><th>Default</th></tr>
+     *     <tr><td><code>i</code></td><td>Case Insensitive</td><td>
+     *         The <code>Pattern</code> of will be compiled with the {@link Pattern#CASE_INSENSITIVE} flag.</td>
+     *         <td>X</td></tr>
+     *     <tr><td><code>I</code></td><td>Case Sensitive</td><td>
+     *     The <code>Pattern</code> of wont be compiled with the {@link Pattern#CASE_INSENSITIVE} flag.</td></tr>
+     *     <tr><td><code>g</code></td><td>Replace all</td><td>
+     *         Every occurrence of the pattern will be replaced with the substitution.
+     *     </td><td>X</td></tr>
+     *     <tr><td><code>G</code></td><td>Replace first</td><td>
+     *         Only the first occurrence of the pattern will be replaced with the substitution.
+     *     </td></tr>
+     *     <tr><td><code>s</code></td><td>Replace in Strings</td><td>
+     *         Tells the <code>Regex</code> to replace everything, including Strings which are any characters surrounded
+     *         by simple (<code>'\''</code>) or double (<code>'"'</code>) quotes.</td></tr>
+     *     <tr><td><code>S</code></td><td>Don't replace in Strings</td><td>
+     *         Tells the <code>Regex</code> to replace everything, <u>except</u> Strings which are any characters
+     *         surrounded by simple (<code>'\''</code>) or double (<code>'"'</code>) quotes.</td><td>X</td></tr>
+     *     <tr><td><code>m</code></td><td>Modifiable</td><td>
+     *         Marks this <code>Regex</code> as modifiable.</td><td>X</td></tr>
+     *     <tr><td><code>M</code></td><td>Unmodifiable</td><td>
+     *         Marks this <code>Regex</code> as unmodifiable and tells the processing unit not to replace it with
+     *         a <code>Regex</code> with the same pattern.</td></tr>
+     * </table>
+     *
+     * <h1>Ignoring</h1>
+     * All trailing segments as well as invalid modifiers or flags will be ignored and don't count to the required
+     * segment count, but may result in a <code>Problem</code>.
+     *
+     * @param format
+     *      the format of the <code>Regex</code>.
      * @param problemFile
+     *      the <code>Path</code> that will be used as argument in newly
+     *      created <code>Problem</code>s.
      * @param problemFileLine
+     *      the line that will be used as argument in newly created
+     *      <code>Problem</code>s.
      * @param problemList
+     *      the <code>List</code> newly created <code>Problem</code>s will
+     *      be added to.
      *
      * @see #compile(String[])
      */
-    public Regex(String pattern, Path problemFile, int problemFileLine, List<Problem> problemList) {
-        Objects.requireNonNull(pattern, "'Pattern cannot be 'null'!");
+    public Regex(String format, Path problemFile, int problemFileLine, List<Problem> problemList) {
+        Objects.requireNonNull(format, "'format' cannot be 'null'!");
         setProblemReport(problemFile, problemFileLine, problemList);
         modifier = new StringBuffer();
         substitution = null;
 
-        String[] segments = pattern.split("(?<!\\\\)/");
+        String[] segments = format.split("(?<!\\\\)/");
         for (int i = 0; i < segments.length; i++)
             segments[i] = segments[i].replaceAll("\\\\/", "/");
         compile(segments);
