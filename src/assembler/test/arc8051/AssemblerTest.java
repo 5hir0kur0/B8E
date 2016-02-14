@@ -10,6 +10,7 @@ import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
 import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
+import assembler.util.Regex;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
 import org.junit.Before;
@@ -177,6 +178,7 @@ public class AssemblerTest {
 
     @Test
     public void testTokenizer_AddToken() {
+        System.out.println("____________Testing Tokenizer8051.addToken()");
         Method m = null;
         try {
             m = tokenizer.getClass().getDeclaredMethod("addToken",
@@ -214,6 +216,30 @@ public class AssemblerTest {
             fail("Unexpected Exception!");
         }
         m.setAccessible(false);
+    }
+
+
+    @Test
+    public void testRegex() {
+        System.out.println("____________Testing Regex()");
+        List<Problem> problems = new ArrayList<>();
+        try {
+            //TODO: Finish!
+            String regex = "ws/(\\d+)/Oh noes!/~/g";
+            Regex r = new Regex(regex, Paths.get("src/assembler/test/arc8051/imaginary.asm"), 42, problems);
+
+            System.out.println("Result: " + r.perform("4 + 2 == 42"));
+
+
+            System.out.println("Problems:");
+            for (Problem p : problems)
+                System.out.println(p);
+            System.out.println("Total: "+problems.size());
+        } catch (Exception e) {
+            System.out.flush();
+            e.printStackTrace();
+            fail("Unexpected Exception!");
+        }
     }
 
     @Test

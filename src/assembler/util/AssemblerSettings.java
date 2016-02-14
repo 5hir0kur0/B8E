@@ -5,7 +5,6 @@ import misc.Settings;
 
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 /**
  * A temporary class to store the assembler settings.
@@ -23,6 +22,7 @@ public class AssemblerSettings {
      * A side effect of this behavior is that every valid number
      * will be recognised as a hexadecimal number if <code>16</code>
      * is used as a value and the notation is set to prefix.
+     * <br>
      * Valid values: 2, 8, 10, 16, "auto"<br>
      * Defaults to: 10
      */
@@ -31,6 +31,7 @@ public class AssemblerSettings {
      * The used notations for numbers.<br>
      * Can be either "prefix" (0, 0x or 0b) or
      * "postfix"/"suffix" (b, o, q, d or h).<br>
+     * <br>
      * Valid values: "prefix", "postfix", "suffix"<br>
      * Defaults to: "postfix"
      */
@@ -41,6 +42,7 @@ public class AssemblerSettings {
      * mnemonic-operand combination.<br>
      *     E.g. in <code>add a, R1</code> does not need the <code>a</code>
      *     to be recognised so <code>add R1</code> is valid as well.<br>
+     * <br>
      * Valid values: "error", "warn", "ignore"<br>
      * Defaults to: "error"
      */
@@ -55,16 +57,18 @@ public class AssemblerSettings {
     public static final String UNNECESSARY_OPERANDS = "assembler.errors.unnecessary-operands";
     /**
      * The extension of assembly source files.<br>
+     * <br>
      * Valid values: All values that start with a dot '.' and are then followed
-     * by word characters.<br>
+     *               by word characters.<br>
      * Defaults to: ".asm"
      */
     public static final String SOURCE_FILE_EXTENSION = "assembler.output.file-extensions.asm";
 
     /**
      * The extension of Intel-HEX files.<br>
+     * <br>
      * Valid values: All values that start with a dot '.' and are then followed
-     * by word characters.<br>
+     *               by word characters.<br>
      * Defaults to: ".hex"
      */
     public static final String HEX_FILE_EXTENSION = "assembler.output.file-extensions.hex";
@@ -77,13 +81,48 @@ public class AssemblerSettings {
      * If this behaviour has been turned off a missing end directive will
      * only result in an error and instructions after the end directive will
      * be assembled normally.<br>
+     * <br>
      * Valid values: true, false<br>
      * Defaults to: true
      */
     public static final String END_ENFORCEMENT = "assembler.directives.end.enforce";
 
     /**
+     * The behaviour if multiple problem modifiers that react to the same circumstance
+     * (not matching or matching) are defined.<br>
+     * This setting defaults to "error" because a circumstance would generate two
+     * different ProblemTypes what is hardly intended behaviour for the most time.<br>
+     * <br>
+     * Valid values: "error", "warn", "ignore"<br>
+     * Defaults to: "error"
+     */
+    public static final String MULTIPLE_SAME_MATCH_CASE = "assembler.errors.regex.same-match-case";
+
+    /**
+     * The behaviour if a given <code>Regex</code> encounters segments that are not used.
+     * All segments after the flags-segment count as unused and are ignored.<br>
+     * <br>
+     * Valid values: "error", "warn", "ignore"<br>
+     * Defaults to: "warn"
+     */
+    public static final String UNNECESSARY_SEGMENTS = "assembler.errors.regex.unnecessary-segments";
+
+    /**
+     * The default flags of a <code>Regex</code>.<br>
+     * This setting is realized by always inserting the default flags at the start of any
+     * flags-segment. The preset flag then can be "deactivated" on a specific regex by
+     * using the corresponding negated flag on it. Example: <code>'I'</code> can be used
+     * to negate the effect of a preset <code>'i'</code>.<br>
+     * <br>
+     * Valid values: <i>all Strings</i><br>
+     * Defaults to: ""
+     */
+    public static final String DEFAULT_FLAGS = "assembler.directives.regex.default-flags";
+
+
+    /**
      * The behavior if no end directive was found.<br>
+     * <br>
      * Valid values: "error", "warn", "ignore"<br>
      * Defaults to: "warn"
      */
@@ -91,6 +130,7 @@ public class AssemblerSettings {
 
     /**
      * The default behaviour if an address offset operator is used.<br>
+     * <br>
      * Valid values: "error", "warn", "ignore"<br>
      * Defaults to: "warn"
      */
@@ -108,13 +148,16 @@ public class AssemblerSettings {
 
         s.setDefault(OBVIOUS_OPERANDS, "error");
         s.setDefault(UNNECESSARY_OPERANDS, "error");
-        s.setDefault(END_MISSING, "warn");
         s.setDefault(ADDRESS_OFFSET, "warn");
+        s.setDefault(END_MISSING, "warn");
+        s.setDefault(MULTIPLE_SAME_MATCH_CASE, "error");
+        s.setDefault(UNNECESSARY_SEGMENTS, "warn");
 
         s.setDefault(SOURCE_FILE_EXTENSION, ".asm");
         s.setDefault(HEX_FILE_EXTENSION, ".hex");
 
         s.setDefault(END_ENFORCEMENT, "true");
+        s.setDefault(DEFAULT_FLAGS, "");
     }
 
     /**
