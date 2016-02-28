@@ -1,21 +1,17 @@
 package gui;
 
+import misc.Pair;
 import misc.Settings;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.util.List;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -32,34 +28,34 @@ public class LineNumberSyntaxPane extends JPanel {
     private final static String FONT_SIZE_SETTING = "gui.editor.font-size";
     private final static String FONT_SIZE_SETTING_DEFAULT = "12";
     private final static IntPredicate IS_VALID_FONT_SIZE = i -> i > 0 && i < 9001;
-    private final static String SYNTAX_THEME_SETTING = "gui.editor.syntax-theme";
-    private final static String SYNTAX_THEME_SETTING_DEFAULT = "base16-default";
-    private final static Pattern THEME_NAME_PATTERN = Pattern.compile("[\\w\\-]+");
-    private final static Predicate<String> IS_VALID_THEME_NAME = s -> THEME_NAME_PATTERN.matcher(s).matches();
+
+    final static String LINE_END = "\n";
+
 
     static {
         Settings.INSTANCE.setDefault(FONT_SETTING, FONT_SETTING_DEFAULT);
         Settings.INSTANCE.setDefault(FONT_SIZE_SETTING, FONT_SIZE_SETTING_DEFAULT);
-        Settings.INSTANCE.setDefault(SYNTAX_THEME_SETTING, SYNTAX_THEME_SETTING_DEFAULT);
     }
 
     private final JTextArea lineNumbers;
     private final JTextPane code;
-    private final String LINE_END = "\n";
     //{ String tmp = System.getProperty("line.separator"); this.LINE_END = null == tmp || tmp.isEmpty() ? "\n" : tmp; }
     //Apparently, \n is always used at runtime --^
     //TODO: Test this on windows!
     private int lastLine = 1;
-    private final Writer out;
 
-    public LineNumberSyntaxPane(Map<Pattern, AttributeSet> style, Reader in, Writer out) throws IOException {
+    private List<Pair<Pattern, AttributeSet>> style;
+
+    private String fileExtension;
+
+    public LineNumberSyntaxPane(String fileExtension) throws IOException {
         super(new BorderLayout());
 
         this.lineNumbers = new JTextArea("1");
         this.lineNumbers.setLineWrap(false);
         this.lineNumbers.setEditable(false);
-        this.lineNumbers.setEnabled(false);
-        this.lineNumbers.setMargin(new Insets(1, 1, 1, 2));
+        //this.lineNumbers.setEnabled(false);
+        this.lineNumbers.setMargin(new Insets(1, 4, 1, 4));
 
         this.code = new JTextPane();
         this.code.setMargin(new Insets(1, 1, 1, 1));
@@ -67,16 +63,13 @@ public class LineNumberSyntaxPane extends JPanel {
         this.add(lineNumbers, BorderLayout.LINE_START);
         this.add(code, BorderLayout.CENTER);
 
-        if (in != null) this.code.read(in, null);
-        this.out = out;
-
-        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(style,
+        this.fileExtension = Objects.requireNonNull(fileExtension);
+        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(SyntaxThemes.EMPTY_LIST,
                 (Observable, Object) -> updateLineNumbers());
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
-        this.code.setText("public class Test {\npublic static void main(String[] args) {\nSystem.out.println(\"This is a test\");\n}\n}");
         updateLineNumbers();
-        updateComponentStyle();
+        updateTheme();
     }
 
     public void setFontSize(int newSize) {
@@ -91,39 +84,32 @@ public class LineNumberSyntaxPane extends JPanel {
         return this.code.getFont().getSize();
     }
 
-    public void setStyle(HashMap<String, String> style) {
-        //TODO
-        //this.style = verifyAndConvertStyle(style);
-        updateComponentStyle();
-        updateSyntaxHighlighting();
-    }
-
-
-    public void updateComponentStyle() {
+    public void updateTheme() {
         Font f = new Font(Settings.INSTANCE.getProperty(FONT_SETTING, FONT_SETTING_DEFAULT, IS_VALID_FONT_NAME),
                 Font.PLAIN,
                 Settings.INSTANCE.getIntProperty(FONT_SIZE_SETTING,
                         Integer.parseInt(FONT_SIZE_SETTING_DEFAULT), IS_VALID_FONT_SIZE));
         this.lineNumbers.setFont(f);
         this.code.setFont(f);
-        Color background = Color.WHITE; //getSpecialExpressionColor("background-color", Color.WHITE);
-        Color foreground = Color.BLACK; //getSpecialExpressionColor("foreground-color", Color.BLACK);
-        this.lineNumbers.setBackground(background);
-        this.code.setBackground(background);
-        this.lineNumbers.setForeground(foreground);
-        this.code.setForeground(foreground);
+        this.lineNumbers.setBackground(SyntaxThemes.getCurrentTheme().getLineNumberBackground());
+        this.code.setBackground(SyntaxThemes.getCurrentTheme().getCodeBackground());
+        this.lineNumbers.setForeground(SyntaxThemes.getCurrentTheme().getLineNumberForeground());
+        this.code.setForeground(SyntaxThemes.getCurrentTheme().getCodeForeground());
+        this.style = verifyStyle(SyntaxThemes.getCurrentTheme().getStyleForType(this.fileExtension));
+        ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(this.style);
+        this.updateSyntaxHighlighting();
     }
 
     public void updateSyntaxHighlighting() {
+        ((SyntaxHighlightedDocument)this.code.getDocument()).updateCompleteSyntaxHighlighting();
+    }
+
+    public void store() {
         //TODO
     }
 
-    public void write() throws IOException {
-        this.code.write(Objects.requireNonNull(this.out, "Attempting to write to null-Writer."));
-    }
-
-    public void write(Writer out) throws IOException {
-        this.code.write(Objects.requireNonNull(out, "Attempting to write to null-Writer."));
+    public void reload() {
+        //TODO
     }
 
     private void addLines(int count) {
@@ -154,11 +140,6 @@ public class LineNumberSyntaxPane extends JPanel {
         //This turned out to be unnecessary --^
     }
 
-    private Color getSpecialExpressionColor(String expr, Color defaultValue) {
-        //TODO
-        return Color.BLACK;
-    }
-
     private static int numDigits(long number) {
         if (!(number >= 0))
             throw new IllegalArgumentException("Cannot calculate the number of digits of a negative number.");
@@ -174,5 +155,14 @@ public class LineNumberSyntaxPane extends JPanel {
 
     private static int lineCount(JTextComponent jtc) {
         return jtc.getDocument().getDefaultRootElement().getElementCount(); //swing voodoo magic
+    }
+
+    private static List<Pair<Pattern, AttributeSet>> verifyStyle(List<Pair<Pattern, AttributeSet>> style) {
+        Objects.requireNonNull(style).forEach(p -> {
+            if (null == p) throw new IllegalArgumentException("pair must not be null");
+            if (null == p.x || null == p.y) throw new IllegalArgumentException("invalid style");
+            if (p.x.matcher("").groupCount() < 1) throw new IllegalArgumentException("invalid style");
+        });
+        return style;
     }
 }
