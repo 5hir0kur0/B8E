@@ -1,15 +1,13 @@
 package assembler;
 
-import assembler.tokens.LabelToken;
-import assembler.tokens.OperandToken;
-import assembler.tokens.Token;
-import assembler.tokens.Tokens;
+import assembler.tokens.*;
 import assembler.util.*;
 import assembler.util.assembling.ArchitectureProvider;
 import assembler.util.assembling.Assembled;
 import assembler.util.assembling.LabelConsumer;
 import assembler.util.assembling.Mnemonic;
 import assembler.util.problems.ExceptionProblem;
+import assembler.util.problems.PreprocessingProblem;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenProblem;
 import com.sun.corba.se.impl.io.TypeMismatchException;
@@ -17,6 +15,7 @@ import misc.Settings;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -42,6 +41,9 @@ public class Assembler {
      * The preprocessor used by the assembler.
      */
     private Preprocessor preprocessor;
+
+    /** The source file. */
+    private Path srcFile;
 
 
     public Assembler(ArchitectureProvider provider, Preprocessor preprocessor, Tokenizer tokenizer) {
@@ -73,23 +75,30 @@ public class Assembler {
      */
     public List<Problem> assemble(Path directory, String file, BufferedOutputStream output) {
         List<Problem> problems = new ArrayList<>();
-        try (BufferedReader input = Files.newBufferedReader(Paths.get(directory.toString(),
+        try {
+            srcFile = Paths.get(directory.toString(),
                 file + Settings.INSTANCE.getProperty(AssemblerSettings.SOURCE_FILE_EXTENSION,
-                        AssemblerSettings.VALID_FILE_EXTENSION)));
-             StringWriter prepOutput  = new StringWriter()){
+                        AssemblerSettings.VALID_FILE_EXTENSION));
+        } catch (InvalidPathException e) {
+            problems.add(new PreprocessingProblem("Invalid source file path!", Problem.Type.ERROR, directory, 0,
+                    directory.toString() + file + AssemblerSettings.SOURCE_FILE_EXTENSION));
+            return problems;
+        }
 
-            problems.addAll(preprocessor.preprocess(input, prepOutput));
+        try (BufferedReader input = Files.newBufferedReader(srcFile)){
 
-            try (StringReader tokenInput = new StringReader(prepOutput.toString())) {
+            List<String> inputOutput = new LinkedList<>();
+            problems.addAll(preprocessor.preprocess(input, inputOutput));
 
-                List<Token> tokens = tokenizer.tokenize(tokenInput, problems);
-                List<Byte> codes = new ArrayList<>();
-                problems.addAll(_assemble(directory, file, tokens, codes));
 
-                for (byte b : codes)
-                    output.write(b);
-                output.close();
-            }
+            List<Token> tokens = tokenizer.tokenize(inputOutput, problems);
+            List<Byte> codes = new ArrayList<>();
+            problems.addAll(_assemble(directory, file, tokens, codes));
+
+            for (byte b : codes)
+                output.write(b);
+            output.close();
+
 
             Collections.sort(problems);
         } catch (IOException e) {
@@ -98,7 +107,7 @@ public class Assembler {
         return problems;
     }
 
-    private List<Problem> _assemble(Path directory, String file, List<Token> tokens, List<Byte> output) {
+    private List<Problem> _assemble(Path directory, String fileName, List<Token> tokens, List<Byte> output) {
         List<Problem> problems = new ArrayList<>();
         provider.clearProblems();
         List<Assembled> assembled = new ArrayList<>();
@@ -119,7 +128,7 @@ public class Assembler {
                             .findFirst().orElse(null);
 
                     if (m == null) {
-                        problems.add(new TokenProblem("Unknown Mnemonic!", Problem.Type.ERROR, t));
+                        problems.add(new TokenProblem("Unknown Mnemonic!", Problem.Type.ERROR, srcFile, t));
                         continue;
                     }
 
@@ -135,7 +144,7 @@ public class Assembler {
 
                     if (operands.size() < m.getMinimumOperands()) {
                         problems.add(new TokenProblem("Mnemonic must have at least " + m.getMinimumOperands() +
-                                " operand"+(m.getMinimumOperands() != 1?"s":"")+"!", Problem.Type.ERROR, t));
+                                " operand"+(m.getMinimumOperands() != 1?"s":"")+"!", Problem.Type.ERROR, srcFile, t));
                         continue;
                     }
 
@@ -159,7 +168,7 @@ public class Assembler {
                     }
 
                     if (operands.stream().anyMatch(x->x instanceof Tokens.SymbolToken)) {
-                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, operands.stream().
+                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, srcFile, operands.stream().
                                 filter(x -> x instanceof Tokens.SymbolToken).findFirst().get()));
                         continue;
                     }
@@ -189,8 +198,14 @@ public class Assembler {
                     labels.add(lt);
                     break;
                 }
+                case DIRECTIVE: {
+                    if (t instanceof FileChangeToken) {
+                        provider.setAssembledFile(srcFile = ((FileChangeToken) t).getFile());
+                    } else
+                        problems.add(new TokenProblem("Unknown directive token!", Problem.Type.ERROR, srcFile, t));
+                }
                 default:
-                    problems.add(new TokenProblem("Token does not belong here!", Problem.Type.ERROR, t));
+                    problems.add(new TokenProblem("Token does not belong here!", Problem.Type.ERROR, srcFile, t));
             }
         }
 
@@ -199,7 +214,7 @@ public class Assembler {
         output.addAll(link(assembled));
 
         try (HexWriter hex = new HexWriter(Files.newBufferedWriter(Paths.get(directory.toString(),
-                file+Settings.INSTANCE.getProperty(AssemblerSettings.HEX_FILE_EXTENSION,
+                fileName+Settings.INSTANCE.getProperty(AssemblerSettings.HEX_FILE_EXTENSION,
                         AssemblerSettings.VALID_FILE_EXTENSION))))) {
             hex.writeAll(assembled);
         } catch (Exception e) {
@@ -227,7 +242,7 @@ public class Assembler {
                             unresolved = false;
                         }
                     if (unresolved)
-                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, tokens.get(i)));
+                        problems.add(new TokenProblem("Unresolved Symbol!", Problem.Type.ERROR, srcFile, tokens.get(i)));
                 }
                 if (tokens.get(i) instanceof OperandToken)
                     operands.add((OperandToken) tokens.get(i));
