@@ -24,5 +24,5 @@ public interface Preprocessor {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    List<? extends Problem> preprocess(BufferedReader input, StringWriter output);
+    List<? extends Problem> preprocess(BufferedReader input, List<String> output);
 }
