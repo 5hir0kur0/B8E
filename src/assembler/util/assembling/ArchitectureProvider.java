@@ -3,6 +3,7 @@ package assembler.util.assembling;
 import assembler.tokens.OperandToken;
 import assembler.util.problems.Problem;
 
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -28,6 +29,14 @@ public interface ArchitectureProvider {
      * Clears the Problem List.
      */
     void clearProblems();
+
+    /**
+     * Sets the current file for assembling.
+     *
+     * @param file
+     *      the Path to be used.
+     */
+    void setAssembledFile(Path file);
 
     /**
      * Creates a new Token that is used from Mnemonics that

@@ -49,49 +49,49 @@ public class Regex {
 
     //Valid modifier
     /** Adds a substitute segment which will be used to substitute a match. */
-    public final char SUBSTITUTE_MODIFIER          = 's';
+    public static final char SUBSTITUTE_MODIFIER          = 's';
     /** Adds a segments that specifies a message of a ERROR that will be created if the pattern matches. */
-    public final char ERROR_ON_MATCH_MODIFIER      = 'e';
+    public static final char ERROR_ON_MATCH_MODIFIER      = 'e';
     /** Adds a segments that specifies a message of a ERROR that will be created if the pattern mismatches. */
-    public final char ERROR_ON_MISMATCH_MODIFIER   = 'E';
+    public static final char ERROR_ON_MISMATCH_MODIFIER   = 'E';
     /** Adds a segments that specifies a message of a WARNING that will be created if the pattern matches. */
-    public final char WARNING_ON_MATCH_MODIFIER    = 'w';
+    public static final char WARNING_ON_MATCH_MODIFIER    = 'w';
     /** Adds a segments that specifies a message of a WARNING that will be created if the pattern mismatches. */
-    public final char WARNING_ON_MISMATCH_MODIFIER = 'W';
+    public static final char WARNING_ON_MISMATCH_MODIFIER = 'W';
     /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern matches. */
-    public final char INFO_ON_MATCH_MODIFIER       = 'i';
+    public static final char INFO_ON_MATCH_MODIFIER       = 'i';
     /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern mismatches. */
-    public final char INFO_ON_MISMATCH_MODIFIER    = 'I';
+    public static final char INFO_ON_MISMATCH_MODIFIER    = 'I';
 
     //Valid flags
     /** Makes a <code>Regex</code> replace all occurrences of the pattern with the substitution. */
-    public final char WHOLE_LINE_FLAG              = 'g';
+    public static final char WHOLE_LINE_FLAG              = 'g';
     /** Makes a <code>Regex</code> replace only the first occurrence of the pattern with the substitution. */
-    public final char ONLY_FIRST_FLAG              = 'G';
+    public static final char ONLY_FIRST_FLAG              = 'G';
     /** Flags a <code>Regex</code> as modifiable. */
-    public final char MODIFIABLE_FLAG              = 'm';
+    public static final char MODIFIABLE_FLAG              = 'm';
     /** Flags a <code>Regex</code> as not modifiable. */
-    public final char UNMODIFIABLE_FLAG            = 'M';
+    public static final char UNMODIFIABLE_FLAG            = 'M';
     /**
      * Makes a <code>Regex</code> replace occurrences of a pattern with the substitution within a String
      * (everything within single (<code>'\''</code>) and double (<code>'"'</code>) quotes).
      */
-    public final char REPLACE_IN_STRING_FLAG       = 's';
+    public static final char REPLACE_IN_STRING_FLAG       = 's';
     /**
      * Makes a <code>Regex</code> replace occurrences of a pattern with the substitution in everything but within a
      * String (everything within single (<code>'\''</code>) and double (<code>'"'</code>) quotes).
      */
-    public final char DONT_REPLACE_IN_STRING_FLAG  = 'S';
+    public static final char DO_NOT_REPLACE_IN_STRING_FLAG = 'S';
     /**
      * Makes the <code>Regex</code>'s <code>Pattern</code> case insensitive by using the
      * {@link Pattern#CASE_INSENSITIVE} flag.
      */
-    public final char CASE_INSENSITIVE_FLAG        = 'i';
+    public static final char CASE_INSENSITIVE_FLAG        = 'i';
     /**
      * Makes the <code>Regex</code>'s <code>Pattern</code> case sensitive by not using the
      * {@link Pattern#CASE_INSENSITIVE} flag.
      */
-    public final char CASE_SENSITIVE_FLAG          = 'I';
+    public static final char CASE_SENSITIVE_FLAG          = 'I';
 
 
     /**
@@ -510,7 +510,7 @@ public class Regex {
                 case REPLACE_IN_STRING_FLAG:
                     replaceString = true;
                     break;
-                case DONT_REPLACE_IN_STRING_FLAG:
+                case DO_NOT_REPLACE_IN_STRING_FLAG:
                     replaceString = false;
                     break;
                 case MODIFIABLE_FLAG:
@@ -584,7 +584,7 @@ public class Regex {
      * creates desired problems.<br>
      * Special options (defined via the flags) will also be taken care of.<br>
      * <br>
-     * If the <code>DONT_REPLACE_IN_STRING_FLAG</code> is used the string first will
+     * If the <code>DO_NOT_REPLACE_IN_STRING_FLAG</code> is used the string first will
      * be spilt and the not-string (quoted with <code>'"'</code> or <code>'\'</code>)
      * each of the line fragments will be used for processing. Because each substring
      * is threaded like a single target, for each of it a separated Problem will be
@@ -603,8 +603,10 @@ public class Regex {
      * @see #replaceGroups(Matcher, String)
      */
     public String perform(String target) {
+        if (match == null) return target;
+
         Objects.requireNonNull(target, "'Target' String cannot be 'null'!");
-        Pattern p = Pattern.compile("(?:(?<!\\\\)\".*(?<!\\\\)\")|(?:(?<!\\\\)'.*(?<!\\\\)')");
+        Pattern p = MC8051Library.STRING_PATTERN;
         boolean matched = false;
         String[] substrings = replaceString ? new String[]{target} : p.split(target);
 
@@ -677,7 +679,7 @@ public class Regex {
      * creates desired problems.<br>
      * Special options (defined via the flags) will also be taken care of.<br>
      * <br>
-     * If the <code>DONT_REPLACE_IN_STRING_FLAG</code> is used the string first will
+     * If the <code>DO_NOT_REPLACE_IN_STRING_FLAG</code> is used the string first will
      * be spilt and the not-string (quoted with <code>'"'</code> or <code>'\'</code>)
      * each of the line fragments will be used for processing. Because each substring
      * is threaded like a single target, for each of it a separated Problem will be
@@ -822,5 +824,33 @@ public class Regex {
      */
     public boolean isModifiable() {
         return modifiable;
+    }
+
+    /**
+     * @return
+     *      whether the internal pattern isn't <code>null</code> and
+     *      the <code>Regex</code> has at least one modifier segment.
+     */
+    public boolean isValid() {
+        return match != null && segments.length > 0;
+    }
+
+    /**
+     * @param obj
+     *      the other Object to be tested.
+     * @return
+     *      <code>true</code> if <code>obj</code> is a <code>Regex</code> and the
+     *      internal <code>Pattern</code>s use the same pattern.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        if (!(obj instanceof Regex)) return false;
+
+        Regex other = (Regex) obj;
+
+        if (this.match == null || other.match == null) return false;
+
+        return match.toString().equals(((Regex) obj).match.toString());
     }
 }

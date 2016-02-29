@@ -28,5 +28,5 @@ public interface Tokenizer {
      * @return
      *      a list of tokens that can be processed by the assembler.
      */
-    List<Token> tokenize(StringReader input, List<Problem> problems);
+    List<Token> tokenize(List<String> input, List<Problem> problems);
 }

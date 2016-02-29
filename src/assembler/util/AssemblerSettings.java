@@ -74,18 +74,15 @@ public class AssemblerSettings {
     public static final String HEX_FILE_EXTENSION = "assembler.output.file-extensions.hex";
 
     /**
-     * Enforce the intended behaviour of the end directive:<br>
-     * The intended behaviour is that all lines after the end directive
-     * must contain only whitespace or comments and mustn't contain other
-     * directives or instructions.<br>
-     * If this behaviour has been turned off a missing end directive will
-     * only result in an error and instructions after the end directive will
-     * be assembled normally.<br>
+     * The behavior if non comment or white-space line are found after the use of an
+     * end directive.<br>
+     * Normally code isn't allowed the use of an end directive and will result in a
+     * Problem. Also any code after an end directive will be ignored by the assembler.<br>
      * <br>
-     * Valid values: true, false<br>
-     * Defaults to: true
+     * Valid values: "error", "warn", "ignore"<br>
+     * Defaults to: "warn"
      */
-    public static final String END_ENFORCEMENT = "assembler.directives.end.enforce";
+    public static final String END_CODE_AFTER = "assembler.directives.end.code-after";
 
     /**
      * The behaviour if multiple problem modifiers that react to the same circumstance
@@ -156,7 +153,7 @@ public class AssemblerSettings {
         s.setDefault(SOURCE_FILE_EXTENSION, ".asm");
         s.setDefault(HEX_FILE_EXTENSION, ".hex");
 
-        s.setDefault(END_ENFORCEMENT, "true");
+        s.setDefault(END_CODE_AFTER, "warn");
         s.setDefault(DEFAULT_FLAGS, "");
     }
 
