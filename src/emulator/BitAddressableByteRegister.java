@@ -7,6 +7,11 @@ package emulator;
  */
 public class BitAddressableByteRegister extends ByteRegister implements BitAddressable {
 
+    @SuppressWarnings("unused")
+    private BitAddressableByteRegister() { // no-arg constructor for JAXB
+        super("missing name");
+    }
+
     /**
      * @param name
      *     the {@code ByteRegister}'s name; must not be {@code null} or empty

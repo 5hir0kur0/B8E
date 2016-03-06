@@ -1,5 +1,9 @@
 package emulator;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlTransient;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 
@@ -12,12 +16,18 @@ import java.beans.PropertyChangeSupport;
  *
  * @author Gordian
  */
+@XmlAccessorType(XmlAccessType.FIELD)
 public class ByteRegister implements Register {
-    private final String name;
+    @XmlAttribute private final String name;
     private byte value;
 
     //fires whenever value is changed
-    private PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
+    @XmlTransient private final PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
+
+    @SuppressWarnings("unused")
+    private ByteRegister() { // no-arg constructor for JAXB
+        this.name = null;
+    }
 
     /**
      * @param name
@@ -26,7 +36,7 @@ public class ByteRegister implements Register {
      *     the {@code ByteRegister}'s initial value
      */
     public ByteRegister(String name, byte initialValue) {
-       if (null == name || name.isEmpty())
+       if (null == name || name.trim().isEmpty())
            throw new IllegalArgumentException("Register names must not be null or empty.");
         this.name = name;
         setValue(initialValue);

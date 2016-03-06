@@ -1,5 +1,7 @@
 package emulator;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -74,5 +76,41 @@ public interface Emulator {
      */
     default boolean hasCodeMemory() {
         return false;
+    }
+
+    /**
+     * Check whether the current emulator can be serialized.
+     * @return {@code true} if the class can be serialized or {@code false} otherwise
+     */
+    default boolean canBeSerialized() {
+        return false;
+    }
+
+    /**
+     * Save the {@code Emulator}'s state to the specified path.
+     * @param path
+     *     the path the internal state ist stored to; must be a valid and accessible path
+     * @throws UnsupportedOperationException
+     *     if the {@code Emulator} does not support serialization
+     * @throws IOException
+     *     if there was an IO error
+     */
+    default void saveStateTo(Path path) throws IOException, UnsupportedOperationException {
+        throw new UnsupportedOperationException("Emulator::serializeTo");
+    }
+
+    /**
+     * Load the {@code Emulator}'s state from the specified path.
+     * <br>
+     * NOTE: If the {@code Emulator}-class supports this feature it should also provide a constructor for this task.
+     * @param path
+     *     the path the internal state ist loaded from; must be a valid and accessible path
+     * @throws UnsupportedOperationException
+     *     if the {@code Emulator} does not support serialization
+     * @throws IOException
+     *     if there was an IO error
+     */
+    default void loadStateFrom(Path path) throws IOException, UnsupportedOperationException{
+        throw new UnsupportedOperationException("Emulator::loadStateFrom");
     }
 }

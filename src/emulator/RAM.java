@@ -1,5 +1,8 @@
 package emulator;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.adapters.XmlAdapter;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -8,8 +11,12 @@ import java.util.Iterator;
  *
  * @author Gordian
  */
+@XmlAccessorType(XmlAccessType.FIELD)
 public class RAM implements ROM {
     protected byte[] memory;
+
+    @SuppressWarnings("unused")
+    private RAM() {} // no-arg constructor for JAXB
 
     /**
      * Create a new {@code RAM} object.
@@ -88,5 +95,10 @@ public class RAM implements ROM {
         if (!(other instanceof RAM)) return false;
         RAM tmp = (RAM)other;
         return Arrays.equals(this.memory, tmp.memory);
+    }
+
+    public static class RomAdapter extends XmlAdapter<RAM, ROM> {
+        @Override public ROM unmarshal(RAM r) { return r; }
+        @Override public RAM marshal(ROM r) { return (RAM)r; }
     }
 }
