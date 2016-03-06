@@ -1,5 +1,7 @@
 package emulator;
 
+import java.util.List;
+
 /**
  * A bit-addressable register with named indexes.
  *
@@ -10,7 +12,7 @@ public interface FlagRegister extends Register, BitAddressable {
      * @return the register's flags as {@code Enum}s. The ordinal represents the index and the name is
      *         the symbolic name of the flag.
      */
-    Enum[] getFlags();
+    List<Flag> getFlags();
 
     /**
      * @param index
@@ -18,7 +20,8 @@ public interface FlagRegister extends Register, BitAddressable {
      * @return
      *     the flag's name as a {@code String}
      */
+    @Deprecated
     default String getName(int index) {
-        return getFlags()[index].name();
+        return getFlags().get(index).name;
     }
 }
