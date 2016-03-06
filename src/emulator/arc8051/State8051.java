@@ -3,6 +3,8 @@ package emulator.arc8051;
 import emulator.*;
 import misc.Settings;
 
+import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -10,6 +12,8 @@ import java.util.function.Predicate;
  * This class represents the internal state of the 8051 micro controller.
  * This includes all the registers and the internal memory.
  */
+@XmlRootElement(namespace = "https://github.com/5hir0kur0/B8E")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class State8051 {
 
     byte TMOD_OLD; //used by updateTimers() to keep track of the previous state TMOD when in mode 3
@@ -33,19 +37,19 @@ public class State8051 {
     //settings:
     final static String IGNORE_SO_SU = "emulator.ignore-stack-overflow-and-stack-underflow";
     final static String IGNORE_SO_SU_DEFAULT = "false";
-    final boolean ignoreSOSU; //ignore stack overflow/underflow
+    @XmlAttribute final boolean ignoreSOSU; //ignore stack overflow/underflow
 
     final static String IGNORE_UNDEFINED_MNEMONIC = "emulator.ignore-undefined-mnemonic";
     final static String IGNORE_UNDEFINED_MNEMONIC_DEFAULT = "false";
-    final boolean ignoreUndefined;
+    @XmlAttribute final boolean ignoreUndefined;
 
     final static String IGNORE_ALL_EXCEPTIONS = "emulator.ignore-all-exceptions";
     final static String IGNORE_ALL_EXCEPTIONS_DEFAULT = "false";
-    final boolean ignoreExceptions;
+    @XmlAttribute final boolean ignoreExceptions;
 
     final static String IGNORE_UNDEFINED_SFRS = "emulator.ignore-undefined-sfrs";
     final static String IGNORE_UNDEFINED_SFRS_DEFAULT = "false";
-    final boolean ignoreUndefinedSfrs;
+    @XmlAttribute final boolean ignoreUndefinedSfrs;
 
      //initialize default values for settings
     static {
@@ -63,23 +67,8 @@ public class State8051 {
      * of {@code instance.get((byte)0xE0)}. It should not be a problem as the set of registers is not intended to
      * be changed during the execution of the program.
      */
+    @XmlAccessorType(XmlAccessType.FIELD)
     static class SpecialFunctionRegisters implements ROM {
-
-        private enum PSWFlags {
-            P, UD, OV, RS0, RS1, F0, AC, C;
-        }
-
-        private enum IEFlags {
-            EX0, ET0, EX1, ET1, ES, UD0, UD1, EA;
-        }
-
-        private enum IPFlags {
-            PX0, PT0, PX1, PT1, PS, UD0, UD1, UD3;
-        }
-
-        private enum TCONFlags {
-            IT0, IE0, IT1, IE1, TR0, TF0, TR1, TF1;
-        }
 
         private final boolean ignoreUndefinedSfrs;
 
@@ -89,38 +78,26 @@ public class State8051 {
 
         final BitAddressableByteRegister B = new BitAddressableByteRegister("B");
         final BitAddressableByteRegister A = new BitAddressableByteRegister("A");
-        final ByteFlagRegister PSW = new ByteFlagRegister("PSW") {
-            @Override
-            public Enum[] getFlags() {
-                return PSWFlags.values();
-            }
-        };
-        final ByteFlagRegister IP = new ByteFlagRegister("IP") {
-            @Override
-            public Enum[] getFlags() {
-                return IPFlags.values();
-            }
-        };
+        final ByteFlagRegister PSW = new ByteFlagRegister("PSW",
+                Flag.fromNames("P", "UD", "OV", "RS0", "RS1", "F0", "AC", "C")
+        );
+        final ByteFlagRegister IP = new ByteFlagRegister("IP",
+                Flag.fromNames("EX0", "ET0", "EX1", "ET1", "ES", "UD0", "UD1", "EA")
+        );
         // the initial value of all ports is specified to be 0xFF
         final BitAddressableByteRegister P3 = new BitAddressableByteRegister("P3", (byte)0xFF);
-        final ByteFlagRegister IE = new ByteFlagRegister("IE") {
-            @Override
-            public Enum[] getFlags() {
-                return IEFlags.values();
-            }
-        };
+        final ByteFlagRegister IE = new ByteFlagRegister("IE",
+                Flag.fromNames("EX0", "ET0", "EX1", "ET1", "ES", "UD0", "UD1", "EA")
+        );
         // the initial value of all ports is specified to be 0xFF
         final BitAddressableByteRegister P2 = new BitAddressableByteRegister("P2", (byte)0xFF);
         final BitAddressableByteRegister SCON = new BitAddressableByteRegister("SCON");
         final ByteRegister SBUF = new ByteRegister("SBUF");
         // the initial value of all ports is specified to be 0xFF
         final BitAddressableByteRegister P1 = new BitAddressableByteRegister("P1", (byte)0xFF);
-        final ByteFlagRegister TCON = new ByteFlagRegister("TCON") {
-            @Override
-            public Enum[] getFlags() {
-                return TCONFlags.values();
-            }
-        };
+        final ByteFlagRegister TCON = new ByteFlagRegister("TCON",
+                Flag.fromNames("IT0", "IE0", "IT1", "IE1", "TR0", "TF0", "TR1", "TF1")
+        );
         final ByteRegister TMOD = new ByteRegister("TMOD");
         final ByteRegister TL0 = new ByteRegister("TL0");
         final ByteRegister TL1 = new ByteRegister("TL1");
@@ -133,7 +110,17 @@ public class State8051 {
         final ByteRegister DPH = new ByteRegister("DPH");
         final ByteRegister PCON = new ByteRegister("PCON");
 
+        @SuppressWarnings("unused")
+        private SpecialFunctionRegisters() { // no-arg constructor for JAXB
+            ignoreUndefinedSfrs = false;
+        }
+
         private SpecialFunctionRegisters(boolean ignoreUndefinedSfrs) {
+            updateSfrMap();
+            this.ignoreUndefinedSfrs = ignoreUndefinedSfrs;
+        }
+
+        void updateSfrMap() {
             this.specialFunctionRegisters = new HashMap<>(21);
             this.specialFunctionRegisters.put((byte)0xF0, B);
             this.specialFunctionRegisters.put((byte)0xE0, A);
@@ -156,7 +143,6 @@ public class State8051 {
             this.specialFunctionRegisters.put((byte)0x82, DPL);
             this.specialFunctionRegisters.put((byte)0x83, DPH);
             this.specialFunctionRegisters.put((byte)0x87, PCON);
-            this.ignoreUndefinedSfrs = ignoreUndefinedSfrs;
         }
 
         @Override
@@ -170,6 +156,7 @@ public class State8051 {
         }
 
         @Override
+        @Deprecated
         public byte[] get(int index, int length) {
             if (index < 0x80 || index > 255)
                 throw new IndexOutOfBoundsException("SFR index too big or too small: "+index);
@@ -224,7 +211,7 @@ public class State8051 {
             SpecialFunctionRegisters tmp = (SpecialFunctionRegisters)other;
             for (byte b : this.specialFunctionRegisters.keySet()) {
                 try {
-                    if (tmp.get(b) == this.get(b)) return false;
+                    if (tmp.getRegister(b) == null || !tmp.getRegister(b).equals(this.getRegister(b))) return false;
                 } catch (IndexOutOfBoundsException e) {
                     return false;
                 }
@@ -283,15 +270,27 @@ public class State8051 {
 
     SpecialFunctionRegisters sfrs;
 
-    RAM internalRAM;
+    final RAM internalRAM;
 
-    RAM externalRAM;
+    final RAM externalRAM;
 
-    ROM codeMemory;
+    @XmlJavaTypeAdapter(RAM.RomAdapter.class)
+    final ROM codeMemory;
 
     ByteRegister PCH, PCL;
 
-    ByteRegister R7, R6, R5, R4, R3, R2, R1, R0;
+    @XmlTransient ByteRegister R7, R6, R5, R4, R3, R2, R1, R0;
+
+    @SuppressWarnings("unused")
+    private State8051() { // no-arg constructor for JAXB
+        this.ignoreSOSU = false;
+        this.ignoreExceptions = false;
+        this.ignoreUndefined = false;
+        this.ignoreUndefinedSfrs = false;
+        this.internalRAM = null;
+        this.externalRAM = null;
+        this.codeMemory = null;
+    };
 
     /**
      * @param codeMemory
@@ -336,9 +335,10 @@ public class State8051 {
         if (this.externalRAM != null) {
             if (!this.externalRAM.equals(tmp.externalRAM)) return false;
         }
-        if (!this.PCL.equals(tmp.PCL)) return false;
-        if (!this.PCH.equals(tmp.PCH)) return false;
-        return true;
+        if (!this.PCL.equals(tmp.PCL) || !this.PCH.equals(tmp.PCH)) return false;
+        if (!(this.TMOD_OLD == tmp.TMOD_OLD && this.TR1_OLD == tmp.TR1_OLD && this.prevP3_2 == tmp.prevP3_2 &&
+                this.prevP3_3 == tmp.prevP3_3)) return false;
+        return this.sfrs.equals(tmp.sfrs);
     }
 
     /**

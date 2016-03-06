@@ -7,6 +7,9 @@ import emulator.RAM;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
@@ -46,7 +49,8 @@ public class MC8051Test {
     @Test
     public void testGetPSW() throws Exception {
         FlagRegister psw = testController.getPSW();
-        assertTrue(psw != null && psw.getName(7).equals("C") && psw.getHexadecimalDisplayValue().equals("00"));
+        assertTrue(psw != null && psw.getFlags().get(7).name.equals("C")
+                && psw.getHexadecimalDisplayValue().equals("00"));
     }
 
     @Test
@@ -408,7 +412,7 @@ public class MC8051Test {
     public void testPush() {
         System.out.println("__________Testing PUSH...");
         final byte PUSH = (byte)0xD0;
-        final byte arg = (byte)r.nextInt(256);
+        final byte arg = (byte)r.nextInt(255);
         final int stack = r.nextInt(100);
         testController.state.sfrs.SP.setValue((byte)stack);
         testOpcode(PUSH, 111, new byte[]{arg}, 2, () -> testController.state.internalRAM.get(stack + 1) == arg
@@ -419,7 +423,7 @@ public class MC8051Test {
     public void testPop() {
         System.out.println("__________Testing POP...");
         final byte POP = (byte)0xC0;
-        final byte stack = (byte)r.nextInt(256);
+        final byte stack = (byte)(1 + r.nextInt(255));
         final byte arg = (byte)0x42;
         final byte addr = (byte)r.nextInt(0x80);
         testController.state.sfrs.SP.setValue(stack);
@@ -1291,6 +1295,39 @@ public class MC8051Test {
         assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x5);
         for (int i = 0; i < 4; ++i) testController.next();
         assertTrue((PCH.getValue() << 8 & 0xFF00 | PCL.getValue() & 0xFF) == 0x22);
+    }
+
+    @Test
+    public void testXmlSerialization() throws IOException {
+        System.out.println("__________Testing serialization to XML...");
+        // generate some state
+        testController.state.PCH.setValue((byte)r.nextInt(256));
+        testController.state.PCL.setValue((byte)r.nextInt(256));
+        testController.state.R7.setValue((byte)r.nextInt(256));
+        testController.state.R6.setValue((byte)r.nextInt(256));
+        testController.state.R5.setValue((byte)r.nextInt(256));
+        testController.state.R4.setValue((byte)r.nextInt(256));
+        testController.state.R3.setValue((byte)r.nextInt(256));
+        testController.state.R2.setValue((byte)r.nextInt(256));
+        testController.state.R1.setValue((byte)r.nextInt(256));
+        testController.state.R0.setValue((byte)r.nextInt(256));
+        ((RAM)testController.state.codeMemory).set(r.nextInt(65536), (byte)r.nextInt(256));
+        testController.state.internalRAM.set(r.nextInt(256), (byte)r.nextInt(256));
+        testController.state.externalRAM.set(r.nextInt(65536), (byte)r.nextInt(256));
+        testController.state.sfrs.PSW.setBit(true, 0);
+        testController.state.sfrs.A.setValue((byte)0x2a);
+        testController.state.sfrs.DPH.setValue((byte)r.nextInt(256));
+        testController.state.sfrs.P2.setBit(true, r.nextInt(8));
+        testController.state.sfrs.TMOD.setValue((byte)r.nextInt(256));
+        Path p = Paths.get("/tmp/" + r.nextInt(9000) + ".b8eSerializationTest");
+        System.out.println("test path: "+p);
+        testController.saveStateTo(p);
+        State8051 restoredState = new MC8051(p).state;
+        assertTrue("failed serialization test", testController.state.equals(restoredState));
+        assertTrue("sfr map not updated after deserialization",
+                restoredState.sfrs.B == restoredState.sfrs.getRegister((byte)0xf0)
+                && restoredState.sfrs.PSW == restoredState.sfrs.getRegister((byte)0xd0)
+        );
     }
 
     private void testOpcode(byte opcode, int address, int desiredReturn, BooleanSupplier resultCorrect) {

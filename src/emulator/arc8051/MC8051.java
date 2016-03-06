@@ -2,6 +2,12 @@ package emulator.arc8051;
 
 import emulator.*;
 
+import javax.xml.bind.JAXB;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -48,12 +54,23 @@ public class MC8051 implements Emulator {
      * @param state
      *     the state of the new {@code Emulator}; must not be {@code null}
      */
-    public MC8051(State8051 state) {
+    MC8051(State8051 state) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
         this.state.setRRegisters(generateRRegisters());
         this.state.prevP3_2 = this.state.sfrs.P3.getBit(2);
         this.state.prevP3_3 = this.state.sfrs.P3.getBit(3);
         this.state.runningInterruptPriority = -1;
+    }
+
+    /**
+     * Start with a specified state stored on the file system.
+     * @param serializedState
+     *     {@code Path} to the serialized state; must be a valid and accessible path
+     * @throws IOException
+     *     if there is an IO error
+     */
+    public MC8051(Path serializedState) throws IOException {
+        this.loadStateFrom(serializedState);
     }
 
     /**
@@ -382,6 +399,33 @@ public class MC8051 implements Emulator {
         return this.state.externalRAM != null;
     }
 
+    @Override
+    public boolean canBeSerialized() {
+        return true;
+    }
+
+    @Override
+    public void saveStateTo(Path path) throws IOException {
+        try (Writer out = Files.newBufferedWriter(path)) {
+            JAXB.marshal(this.state, out);
+        }
+    }
+
+    @Override
+    public void loadStateFrom(Path path) throws IOException {
+        try (Reader in = Files.newBufferedReader(path)) {
+            this.state = JAXB.unmarshal(in, State8051.class);
+            this.state.sfrs.updateSfrMap();
+            this.state.setRRegisters(this.generateRRegisters());
+        }
+    }
+
+    private static State8051 readState(Path path) throws IOException {
+        try (Reader in = Files.newBufferedReader(path)) {
+            return JAXB.unmarshal(in, State8051.class);
+        }
+    }
+
 
     /**
      * Get a byte from code memory and increment the PC.<br>
@@ -445,7 +489,7 @@ public class MC8051 implements Emulator {
         ByteRegister[] rRegisters = new ByteRegister[8];
         for (int i = 0; i < rRegisters.length; ++i) {
             final int tmpOrdinal = i;
-            rRegisters[i] = new ByteRegister("R"+i) {
+            rRegisters[i] = new ByteRegister("R"+i, MC8051.this.state.internalRAM.get(getRAddress(i))) {
 
                 @Override public void setValue(byte newValue) {
                     MC8051.this.state.internalRAM.set(getRAddress(tmpOrdinal), newValue);
