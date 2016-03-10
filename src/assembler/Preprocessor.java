@@ -2,8 +2,7 @@ package assembler;
 
 import assembler.util.problems.Problem;
 
-import java.io.BufferedReader;
-import java.io.StringWriter;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -14,7 +13,7 @@ public interface Preprocessor {
     /**
      * Preprocesses an input.
      *
-     * @param input
+     * @param file
      *      The input that will be preprocessed.
      * @param output
      *      The output the result will be written to.<br>
@@ -24,5 +23,5 @@ public interface Preprocessor {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    List<? extends Problem> preprocess(BufferedReader input, List<String> output);
+    List<? extends Problem> preprocess(Path file, List<String> output);
 }
