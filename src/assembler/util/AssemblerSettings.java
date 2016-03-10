@@ -133,6 +133,34 @@ public class AssemblerSettings {
      */
     public static final String ADDRESS_OFFSET = "assembler.errors.address-offset-used";
 
+    /**
+     * Defines how often a file can be included within itself with before
+     * resulting in a Problem.<br>
+     * If the value is <code>0</code> recursion is not possible!<br>
+     * <br>
+     * Valid values: <i>all integer non negative values.</i><br>
+     * Defaults to: 0
+     */
+    public static final String INCLUDE_RECURSIVE_DEPTH = "assembler.directives.include.max-recursive-depth";
+
+    /**
+     * The path that is used to search for path includes (in angle brackets
+     * <code>&lt;&gt;</code>).<br>
+     * Multiple paths can be separated with a semicolon (<code>;</code>)<br>
+     * <br>
+     * Valid values:
+     * Defaults to: "include"
+     */
+    public static final String INCLUDE_PATH = "assembler.directives.include.path";
+
+    /**
+     * Determines whether the preprocessor searches recursively for a given file
+     * in the given path.<br>
+     * Valid values: true, false<br>
+     * Defaults to: false
+     */
+    public static final String INCLUDE_RECURSIVE_SEARCH = "assembler.directives.include.path.recursive-search";
+
 
     /**
      * Initialize all settings that are used by the assembler.
@@ -155,6 +183,9 @@ public class AssemblerSettings {
 
         s.setDefault(END_CODE_AFTER, "warn");
         s.setDefault(DEFAULT_FLAGS, "");
+        s.setDefault(INCLUDE_RECURSIVE_DEPTH, "1");
+        s.setDefault(INCLUDE_PATH, "includes");
+        s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
     }
 
     /**
@@ -163,7 +194,7 @@ public class AssemblerSettings {
     public static final Predicate<String> VALID_ERROR = x -> x.equalsIgnoreCase("error") || x.equalsIgnoreCase("warn")
             || x.equalsIgnoreCase("ignore");
 
-    public static final Predicate<String> VALID_FILE_EXTENSION = x -> MC8051Library.FILE_EXTENSION_PATTER.matcher(x)
+    public static final Predicate<String> VALID_FILE_EXTENSION = x -> MC8051Library.FILE_EXTENSION_PATTERN.matcher(x)
             .matches();
 
     /**

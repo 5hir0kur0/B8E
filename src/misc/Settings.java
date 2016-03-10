@@ -77,6 +77,23 @@ public enum Settings {
     /**
      * Get an integral property.
      * @param key the property's key
+     * @param valueIsValid if the {@code test()} method yields {@code false}, {@code defaultValue} will be returned.
+     * @return the integer found at {@code key}, {@code defaultValue} or {@code 0} if no value could be found
+     */
+    public int getIntProperty(String key, IntPredicate valueIsValid) {
+        int defaultVal;
+        try {
+            defaultVal = Integer.parseInt(this.defaults.getProperty(key));
+        } catch (NumberFormatException | NullPointerException e) {
+            //TODO: log exception
+            return 0;
+        }
+        return getIntProperty(key, defaultVal, valueIsValid);
+    }
+
+    /**
+     * Get an integral property.
+     * @param key the property's key
      * @param defaultValue the default value to be returned if the key does not have a value associated with it, if
      *                     the value is not a valid integer or if {@code valueIsValid.test()} yields {@code false}.
      * @param valueIsValid if the {@code test()} method yields {@code false}, {@code defaultValue} will be returned.

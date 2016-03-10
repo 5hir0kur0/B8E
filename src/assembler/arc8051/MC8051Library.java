@@ -133,7 +133,7 @@ public class MC8051Library {
     /**
      * Pattern for a valid file extension.
      */
-    public static final Pattern FILE_EXTENSION_PATTER   = Pattern.compile("\\.\\w+");
+    public static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("\\.\\w+");
 
     /** Reserved symbols. Contains "A", "C" and all R-Registers. */
     public static final String[] RESERVED_NAMES = {"A", "C", "DPTR", "AB", "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7"};
