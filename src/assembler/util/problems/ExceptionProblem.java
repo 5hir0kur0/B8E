@@ -3,6 +3,7 @@ package assembler.util.problems;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Path;
 
 /**
  * Represents a Problem is created if an exception
@@ -13,6 +14,9 @@ import java.io.StringWriter;
 public class ExceptionProblem extends Problem<Exception> {
     public ExceptionProblem(String message, Type type, Exception cause) {
         super(message, type, cause);
+    }
+    public ExceptionProblem(String message, Type type, Path file, int line, Exception cause) {
+        super(message, type, file, line, cause);
     }
 
     /**

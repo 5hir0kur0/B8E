@@ -28,6 +28,11 @@ public class Regex {
     private StringBuffer modifier;
     /** The segments (all Strings that are separated by '/'. */
     private String[] segments;
+    /**
+     * A lowercased representation of the Regex's Pattern.<br>
+     * Used for equality purposes if the Regex is case insensitive.
+     */
+    private String lowerCased;
 
     /** Whether all occurrences (<code>true</code>) or only the first will be replaced by the substitution. */
     private boolean global = true;  // Only in substitution
@@ -47,7 +52,7 @@ public class Regex {
     private List<Problem> problems;
 
 
-    //Valid modifier
+    //Valid modifiers
     /** Adds a substitute segment which will be used to substitute a match. */
     public static final char SUBSTITUTE_MODIFIER          = 's';
     /** Adds a segments that specifies a message of a ERROR that will be created if the pattern matches. */
@@ -357,7 +362,7 @@ public class Regex {
             }
 
             if (substitution && cp == SUBSTITUTE_MODIFIER) {
-                problems.add(new PreprocessingProblem("Multiple substitution modifier!", Problem.Type.ERROR,
+                problems.add(new PreprocessingProblem("Multiple substitution modifiers!", Problem.Type.ERROR,
                         problemFile, problemFileLine, mods));
                 ret = false;
             }
@@ -459,6 +464,7 @@ public class Regex {
                         "Unknown type name!", Problem.Type.ERROR, problemFile, problemFileLine, m.group(1)));
 
             this.match = Pattern.compile(result, caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
+            this.lowerCased = Regex.patternToLowercase(result);
             return true;
 
         } catch (PatternSyntaxException e) {
@@ -851,6 +857,40 @@ public class Regex {
 
         if (this.match == null || other.match == null) return false;
 
-        return match.toString().equals(((Regex) obj).match.toString());
+        if (this.caseSensitive && other.caseSensitive)
+            return match.pattern().equals(other.match.pattern());
+        else
+            return lowerCased.equals(other.lowerCased);
+            // If one or both of them are case insensitive
+            // they will cover the same cases
+    }
+
+    /**
+     * Lowercases all characters in a pattern that aren't needed for
+     * a character class or similar.<br>
+     *
+     * @param pattern
+     *      the pattern as a String to be lowercased.
+     * @return
+     *      the lowercased pattern.
+     */
+    public static String patternToLowercase(final String pattern) {
+        StringBuilder sb = new StringBuilder(pattern.length());
+        int last = 0, beforeLast = 0;
+        boolean escape = false;
+        for (int cp : pattern.chars().toArray()) {
+            if (beforeLast == '\\' && last == 'p') // POSIX character class names
+                escape = true;                     // are case sensitive so they
+            else if (escape && cp == '}')          // have to stay untouched.
+                escape = false;
+
+            if (last == '\\' || escape)
+                sb.appendCodePoint(cp);
+            else
+                sb.appendCodePoint(Character.toLowerCase(cp));
+
+            beforeLast = last; last = cp;
+        }
+        return sb.toString();
     }
 }
