@@ -63,11 +63,6 @@ public class Tokenizer8051 implements Tokenizer {
                             Path newPath = Paths.get(fileString);
                             line = 0;
 
-                            if (args.length > 2)
-                                problems.add(new TokenizingProblem("Too many arguments for 'file' directive!",
-                                        Problem.Type.WARNING, file, line,
-                                        Arrays.toString(Arrays.copyOfRange(args, 2, args.length))));
-
                             if (args.length > 1)
                                 directives[1].perform(args[1]);
 
@@ -115,10 +110,7 @@ public class Tokenizer8051 implements Tokenizer {
                                 } else
                                     line = --newLine;
                             }
-                            if (args.length > 1)
-                                problems.add(new TokenizingProblem("Too many arguments for 'line' directive!",
-                                        Problem.Type.WARNING, file, line,
-                                        Arrays.toString(Arrays.copyOfRange(args, 1, args.length))));
+
                             return true;
 
                         } catch (NumberFormatException e) {
