@@ -134,14 +134,15 @@ public class AssemblerSettings {
     public static final String ADDRESS_OFFSET = "assembler.errors.address-offset-used";
 
     /**
-     * Defines how often a file can be included within itself with before
+     * Defines how many files can be included inside included files before
      * resulting in a Problem.<br>
-     * If the value is <code>0</code> recursion is not possible!<br>
+     * If the value is <code>0</code> including within a included file is
+     * not possible!<br>
      * <br>
      * Valid values: <i>all integer non negative values.</i><br>
-     * Defaults to: 0
+     * Defaults to: 256
      */
-    public static final String INCLUDE_RECURSIVE_DEPTH = "assembler.directives.include.max-recursive-depth";
+    public static final String INCLUDE_DEPTH = "assembler.directives.include.max-depth";
 
     /**
      * The path that is used to search for path includes (in angle brackets
@@ -183,7 +184,7 @@ public class AssemblerSettings {
 
         s.setDefault(END_CODE_AFTER, "warn");
         s.setDefault(DEFAULT_FLAGS, "");
-        s.setDefault(INCLUDE_RECURSIVE_DEPTH, "1");
+        s.setDefault(INCLUDE_DEPTH, "256");
         s.setDefault(INCLUDE_PATH, "includes");
         s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
     }

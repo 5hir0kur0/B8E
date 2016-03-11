@@ -31,7 +31,7 @@ public class Preprocessor8051 implements Preprocessor {
     private int line;
 
     private List<Regex> regexes;
-    private HashMap<Path, Integer> included;
+    private int includeDepth;
 
     private List<String> output;
     private int outputIndex;
@@ -180,37 +180,19 @@ public class Preprocessor8051 implements Preprocessor {
                             }
                         }
 
-                        try {  // Check for recursive inclusion.
-                            if (Files.isSameFile(target, currentFile)) {
-                                final int maxRecursive = Settings.INSTANCE.getIntProperty(
-                                        AssemblerSettings.INCLUDE_RECURSIVE_DEPTH, x -> x >= 0);
-                                if (maxRecursive == 0) {
-                                    problems.add(new PreprocessingProblem("Recursive including is deactivated!",
-                                            Problem.Type.ERROR, currentFile, line, target.toString()));
-                                    return false;
-                                }
-                                for (Path p : included.keySet())
-                                    if (Files.isSameFile(p, target)) {
-                                        final int times = included.get(p);
-                                        if (maxRecursive <= times) {
-                                            problems.add(new PreprocessingProblem("Maximal recursion depth reached!",
-                                                    Problem.Type.ERROR, currentFile, line, target.toString()));
-                                            return false;
-                                        } else
-                                            included.put(p, times+1);
-                                        break;
-                                    } else
-                                        included.put(currentFile, 1); // File has will be included the second time.
-                            } else
-                                for (Path p : included.keySet())
-                                    if (Files.isSameFile(p, currentFile)) {
-                                        included.put(p, 0); // Reset recursive value.
-                                        break;
-                                    }
-                        } catch (IOException | SecurityException e) {
-                            problems.add(new ExceptionProblem("Could not check for recursive inclusion!",
-                                    Problem.Type.ERROR, currentFile, line, e));
-                        }
+                        final int maxDepth = Settings.INSTANCE.getIntProperty(
+                                AssemblerSettings.INCLUDE_DEPTH, x -> x >= 0);
+                        if (maxDepth == 0) {
+                            problems.add(new PreprocessingProblem("Including inside includes is deactivated!",
+                                    Problem.Type.ERROR, currentFile, line, target.toString()));
+                            return false;
+                        } else if (maxDepth <= includeDepth) {
+                            problems.add(new PreprocessingProblem("Maximal inclusion depth reached!",
+                                    Problem.Type.ERROR, currentFile, line, target.toString()));
+                            return false;
+                        } else
+                            ++includeDepth;
+
 
                         List<String> fileContent = readFile(target);
 
@@ -226,7 +208,8 @@ public class Preprocessor8051 implements Preprocessor {
 
                             output.add(++outputIndex, "$file \"" + target.toString() + "\"");
                             output.addAll(++outputIndex, fileContent);
-                            output.add(outputIndex+=fileContent.size()+1, "$file \"" + target.toString() + "\" " + line+1);
+                            output.add(outputIndex+=fileContent.size()+1, null);
+                            output.add(outputIndex+=fileContent.size()+2, "$file \"" + target.toString() + "\" " + line+1);
 
 
                             if (args.length > 1)
@@ -392,7 +375,6 @@ public class Preprocessor8051 implements Preprocessor {
         problems = new LinkedList<>();
         output = new ArrayList<>(50);
         regexes = new LinkedList<>();
-        included = new HashMap<>(8);
     }
 
     @Override
@@ -401,71 +383,70 @@ public class Preprocessor8051 implements Preprocessor {
         regexes.clear();
         this.output.clear();
         currentFile = null;
-        try {
-            {
-                List<String> tmp = readFile(file);
-                if (tmp == null)
-                    return problems;
-                else {
-                    this.output = tmp;
-                    currentFile = file;
-                }
+
+        {
+            List<String> tmp = readFile(file);
+            if (tmp == null)
+                return problems;
+            else {
+                this.output = tmp;
+                currentFile = file;
             }
-
-            line = 0;
-            endState = 1;
-
-            String lineString = null, original;
-            output.add("$file \"" + currentFile.toString() + "\""); // Add directive for main source file
-            // for Tokenizer and Assembler
-            for (outputIndex = 1; outputIndex < output.size(); ++outputIndex) {
-                this.line++;
-                lineString = original = output.get(outputIndex);
-
-                if (endState > 0) {
-
-                    for (Regex regex : regexes)
-                        lineString = regex.perform(lineString,    // Perform all registered regular expressions
-                                currentFile, line, problems);     // on the current line.
-
-                    lineString = cutComment(lineString);          // Cut comments
-
-                    lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
-
-                    // TODO: Evaluate mathematical expressions with SimpleMath
-
-                    if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
-                        lineString = handleDirective(lineString); // Line is a directive: handle it
-                    else
-                        lineString = lowerCase(lineString);       // Only convert lines to lowercase if they
-                    // are not a directive because fallthrough
-                    // directives may be case sensitive.
-
-                    output.add(lineString);
-                } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == 0) {
-                    // If the line contains more than just comments or white space
-                    // and no Problem has been created yet
-                    MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
-                            AssemblerSettings.END_CODE_AFTER, "No code allowed after use of 'end' directive!",
-                            "All code after an 'end' directive will be ignored.", problems);
-                    endState = -1;
-                }
-
-            }
-
-            if (endState > 0)
-                MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
-                        AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
-                        problems);
-
-
-            output.addAll(this.output);
-            this.output.clear();
-        } catch (OutOfMemoryError e) {
-            output.clear();
-            System.gc(); // Invoke Garbage Collector to get enough memory for the new Problem (hopefully...).
-            problems.add(new PreprocessingProblem("Out of memory!", Problem.Type.ERROR, currentFile, line, null));
         }
+
+        line = 0;
+        endState = 1;
+        includeDepth = 0;
+
+        String lineString = null, original;
+        output.add("$file \"" + currentFile.toString() + "\""); // Add directive for main source file
+        // for Tokenizer and Assembler
+        for (outputIndex = 1; outputIndex < output.size(); ++outputIndex) {
+            this.line++;
+            lineString = original = output.get(outputIndex);
+
+            if (lineString == null) {
+                if (includeDepth > 0) --includeDepth;
+            } else if (endState > 0) {
+
+                for (Regex regex : regexes)
+                    lineString = regex.perform(lineString,    // Perform all registered regular expressions
+                            currentFile, line, problems);     // on the current line.
+
+                lineString = cutComment(lineString);          // Cut comments
+
+                lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
+
+                // TODO: Evaluate mathematical expressions with SimpleMath
+
+                if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
+                    lineString = handleDirective(lineString); // Line is a directive: handle it
+                else
+                    lineString = lowerCase(lineString);       // Only convert lines to lowercase if they
+                // are not a directive because fallthrough
+                // directives may be case sensitive.
+
+                output.add(lineString);
+            } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == 0) {
+                // If the line contains more than just comments or white space
+                // and no Problem has been created yet
+                MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
+                        AssemblerSettings.END_CODE_AFTER, "No code allowed after use of 'end' directive!",
+                        "All code after an 'end' directive will be ignored.", problems);
+                endState = -1;
+            }
+
+        }
+
+        if (endState > 0)
+            MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
+                    AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
+                    problems);
+
+
+        output.addAll(this.output);
+        this.output.clear();
+
         return problems;
     }
 
