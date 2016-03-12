@@ -54,10 +54,11 @@ public enum SyntaxThemes {
                                         DEFAULT.base04, // address
                                         DEFAULT.base08, // valid record type
                                         DEFAULT.base08, // invalid record type
-                                        DEFAULT.base02, // data a
-                                        DEFAULT.base0E, // data b
+                                        DEFAULT.base0E, // data
                                         DEFAULT.base04, // checksum foreground
-                                        DEFAULT.base0A  // checksum background
+                                        DEFAULT.base0A, // checksum background
+                                        DEFAULT.base01, // EOF foreground
+                                        DEFAULT.base0C  // EOF background
                                 );
                                 return hexTheme;
                             case "properties":
@@ -122,18 +123,17 @@ public enum SyntaxThemes {
     static final List<Pair<Pattern, AttributeSet>> EMPTY_LIST = Collections.emptyList();
 
     //intel hex patterns
+    private static final Pattern EOF = Pattern.compile("^:(00000001)FF\\s*$");
     private static final Pattern START_CODE = Pattern.compile("^(:)");
     private static final Pattern DATA_BYTE_COUNT = Pattern.compile("^:([\\da-fA-F]{2})");
     private static final Pattern ADDRESS = Pattern.compile("^:[\\da-fA-F]{2}([\\da-fA-F]{4})");
     private static final Pattern VALID_RECORD_TYPE = Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}(0[0-5])");
     private static final Pattern INVALID_RECORD_TYPE =
             Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}(0[6-9a-fA-F]|[1-9a-fA-F][\\da-fA-F])");
-    private static final Pattern DATA_A =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}.*?(?:([\\da-fA-F]{2})[\\da-fA-F]{2})*");
-    private static final Pattern DATA_B =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}.*?(?:[\\da-fA-F]{2}([\\da-fA-F]{2})(?!$))*");
+    private static final Pattern DATA =
+            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}.*?((?:[\\da-fA-F]{2}(?!$\\s*))*)");
     private static final Pattern CHECKSUM =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}(?:[\\da-fA-F]{2})*([\\da-fA-F]{2})$");
+            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}(?:[\\da-fA-F]{2})*([\\da-fA-F]{2})\\s*$");
 
     //properties file patterns
     private static final Pattern PROP_COMMENT = Pattern.compile("([#!].*)$");
@@ -143,6 +143,7 @@ public enum SyntaxThemes {
     private static final Pattern PROP_VALUE =
             Pattern.compile("^\\s*(?:[\\w]|\\\\\\s)+\\s*[=:]\\s*([^\\s].*)$|^\\s*([^\\s].*)\\s*$");
     private static final Pattern PROP_END_ESCAPE = Pattern.compile("(\\\\)$");
+
 
     SyntaxThemes(String name,
                  Color base00, // the colors are set in the constructor, because they are final and
@@ -228,21 +229,32 @@ public enum SyntaxThemes {
                                                                   Color addressColor,
                                                                   Color validRecordTypeColor,
                                                                   Color invalidRecordTypeColor,
-                                                                  Color dataAColor,
-                                                                  Color dataBColor,
+                                                                  Color dataColor,
                                                                   Color checksumForegroundColor,
-                                                                  Color checksumBackgroundColor
+                                                                  Color checksumBackgroundColor,
+                                                                  Color eofForegroundColor,
+                                                                  Color eofBackgroundColor
                                                                  ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
         tmp.add(new Pair<>(START_CODE, create(StyleConstants.Foreground, startCodeColor)));
         tmp.add(new Pair<>(DATA_BYTE_COUNT, create(StyleConstants.Foreground, dataByteCountColor)));
         tmp.add(new Pair<>(ADDRESS, create(StyleConstants.Foreground, addressColor)));
         tmp.add(new Pair<>(VALID_RECORD_TYPE, create(StyleConstants.Foreground, validRecordTypeColor)));
-        tmp.add(new Pair<>(INVALID_RECORD_TYPE, create(StyleConstants.Background, invalidRecordTypeColor)));
-        tmp.add(new Pair<>(DATA_A, create(StyleConstants.Foreground, dataAColor)));
-        tmp.add(new Pair<>(DATA_B, create(StyleConstants.Foreground, dataBColor)));
+        tmp.add(new Pair<>(INVALID_RECORD_TYPE, create(StyleConstants.StrikeThrough, true,
+                StyleConstants.Foreground, invalidRecordTypeColor)));
+        tmp.add(new Pair<>(DATA, create(StyleConstants.Foreground, dataColor)));
         tmp.add(new Pair<>(CHECKSUM, create(StyleConstants.Foreground, checksumForegroundColor,
                 StyleConstants.Background, checksumBackgroundColor)));
+        tmp.add(new Pair<>(EOF, create(StyleConstants.Foreground, eofForegroundColor,
+                StyleConstants.Background, eofBackgroundColor)));
+        return tmp;
+    }
+
+    private static List<Pair<Pattern, AttributeSet>> createAsmSourceFileTheme(Color commentColor,
+                                                                              Color stringColor,
+                                                                              Color labelColor,
+                                                                              Color mnemonic) {
+        List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
         return tmp;
     }
 
