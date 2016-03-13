@@ -37,6 +37,7 @@ public enum SyntaxThemes {
     {
         List<Pair<Pattern, AttributeSet>> hexTheme = null;
         List<Pair<Pattern, AttributeSet>> propertiesTheme = null;
+        List<Pair<Pattern, AttributeSet>> asmTheme = null;
 
         @Override public SyntaxTheme getSyntaxTheme() {
             if (null == DEFAULT.syntaxTheme) {
@@ -46,14 +47,35 @@ public enum SyntaxThemes {
                         switch (Objects.requireNonNull(type).toLowerCase()) {
                             case "asm":
                             case "asm51":
-                                throw new UnsupportedOperationException();
+                                if (null == asmTheme) asmTheme = SyntaxThemes.createAsmSourceFileTheme(
+                                        DEFAULT.base05, // comments
+                                        DEFAULT.base0D, // strings
+                                        DEFAULT.base0A, // labels
+                                        DEFAULT.base09, // mnemonics
+                                        DEFAULT.base09, // commas
+                                        DEFAULT.base03, // number radix (pre- or suffixes)
+                                        DEFAULT.base0E, // decimal numbers
+                                        DEFAULT.base0E, // binary numbers
+                                        DEFAULT.base0E, // octal numbers
+                                        DEFAULT.base0E, // hexadecimal numbers
+                                        DEFAULT.base08, // number error
+                                        DEFAULT.base09, // symbol indirect reserved
+                                        DEFAULT.base0A, // symbol reserved
+                                        DEFAULT.base08, // symbol reserved error
+                                        DEFAULT.base0B, // type prefix
+                                        DEFAULT.base0C, // symbols (in general)
+                                        DEFAULT.base09, // dot operator
+                                        DEFAULT.base08  // errors
+                                );
+                                return asmTheme;
                             case "hex":
                                 if (null == hexTheme) hexTheme = SyntaxThemes.createIntelHexTheme(
+                                        DEFAULT.base04, // irrelevant
+                                        DEFAULT.base08, // error
                                         DEFAULT.base04, // start code
                                         DEFAULT.base09, // data byte
                                         DEFAULT.base04, // address
                                         DEFAULT.base08, // valid record type
-                                        DEFAULT.base08, // invalid record type
                                         DEFAULT.base0E, // data
                                         DEFAULT.base04, // checksum foreground
                                         DEFAULT.base0A, // checksum background
@@ -123,17 +145,15 @@ public enum SyntaxThemes {
     static final List<Pair<Pattern, AttributeSet>> EMPTY_LIST = Collections.emptyList();
 
     //intel hex patterns
-    private static final Pattern EOF = Pattern.compile("^:(00000001)FF\\s*$");
-    private static final Pattern START_CODE = Pattern.compile("^(:)");
-    private static final Pattern DATA_BYTE_COUNT = Pattern.compile("^:([\\da-fA-F]{2})");
-    private static final Pattern ADDRESS = Pattern.compile("^:[\\da-fA-F]{2}([\\da-fA-F]{4})");
-    private static final Pattern VALID_RECORD_TYPE = Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}(0[0-5])");
-    private static final Pattern INVALID_RECORD_TYPE =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}(0[6-9a-fA-F]|[1-9a-fA-F][\\da-fA-F])");
-    private static final Pattern DATA =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}.*?((?:[\\da-fA-F]{2}(?!$\\s*))*)");
-    private static final Pattern CHECKSUM =
-            Pattern.compile("^:[\\da-fA-F]{2}[\\da-fA-F]{4}[\\da-fA-F]{2}(?:[\\da-fA-F]{2})*([\\da-fA-F]{2})\\s*$");
+    private static final Pattern HEX_EOF = Pattern.compile("^:(00000001)FF\\s*$");
+    private static final Pattern HEX_START_CODE = Pattern.compile("^(:)");
+    private static final Pattern HEX_DATA_BYTE_COUNT = Pattern.compile("^:([\\da-f]{2})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_ADDRESS = Pattern.compile("^:..([\\da-f]{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_VALID_RECORD_TYPE = Pattern.compile("^:.{6}(0[0-5])");
+    private static final Pattern HEX_DATA =Pattern.compile("^:.{8}((?:[\\da-f]{2}(?!$\\s*))*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_CHECKSUM = Pattern.compile("^:.{8}(?:..)*?([\\da-f]{2})\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_IRRELEVANT = Pattern.compile("^(.*?)\\s*$");
+    private static final Pattern HEX_ERROR = Pattern.compile("^:(.*?)\\s*$");
 
     //properties file patterns
     private static final Pattern PROP_COMMENT = Pattern.compile("([#!].*)$");
@@ -144,6 +164,53 @@ public enum SyntaxThemes {
             Pattern.compile("^\\s*(?:[\\w]|\\\\\\s)+\\s*[=:]\\s*([^\\s].*)$|^\\s*([^\\s].*)\\s*$");
     private static final Pattern PROP_END_ESCAPE = Pattern.compile("(\\\\)$");
 
+    //asm source file patterns
+    private static final Pattern ASM_COMMENT = Pattern.compile("\\s*(;.*)$");
+    private static final Pattern ASM_STRING = Pattern.compile("((?<!\\\\)\".*?(?<!\\\\)\"|(?<!\\\\)'.*?(?<!\\\\)')");
+    private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*:)";
+    private static final Pattern ASM_LABEL = Pattern.compile("^\\s*("+ASM_LABEL_STRING+")");
+    private static final String ASM_MNEMONIC_STRING =
+            "(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|" +
+            "nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\\b";
+    private static final Pattern ASM_MNEMONIC =
+            Pattern.compile("^(?:\\s*"+ASM_LABEL_STRING+")?\\s*("+ ASM_MNEMONIC_STRING +")", Pattern.CASE_INSENSITIVE);
+    private static final String ASM_MNEMONIC_PREFIX = "^(?:\\s*"+ASM_LABEL_STRING+")?\\s*"+ ASM_MNEMONIC_STRING;
+    private static final Pattern ASM_COMMAS =
+            Pattern.compile(ASM_MNEMONIC_PREFIX+"\\s+[^\\s]*?\\s*(,)\\s*[^\\s,]+(?:(,)\\s*[^\\s,]+)?",
+                    Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern ASM_NUMBER_ERROR =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b(\\d+\\w*?)[boqdh]?\\b",
+                    Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_NUMBER_RADIX =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b(?:(0x)\\w*?|\\d+\\w*?([boqdh])?)\\b",
+                    Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_NUMBER_BINARY =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b([01]+b)\\b",
+                    Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_NUMBER_OCTAL =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b([0-7]+[oq])\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_NUMBER_DECIMAL =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b(\\d+d?)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_NUMBER_HEX =
+            Pattern.compile("(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b(0x[\\da-f]*|\\d+[\\da-f]*h)\\b",
+                    Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern ASM_SYMBOL_RESERVED =
+            Pattern.compile("(?<=[\\w,])\\s*(?:/?\\b(a(?:cc)?|c)|\\b(ab|dptr|r[0-7]))\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_SYMBOL_RESERVED_ERROR =
+            Pattern.compile("(?<=[\\w,])\\s*([#+-]\\b(?:a(?:cc)?|c)|(?:[/#+-]\\bab|dptr|r[0-7]))\\b",
+                    Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_SYMBOL_RESERVED_INDIRECT =
+            Pattern.compile("(?<=[\\w,])\\s*(@(?:a\\s*\\+\\s*dptr|a\\s*\\+\\s*pc|dptr|r[01]))\\b",
+                    Pattern.CASE_INSENSITIVE);
+    private static final String ASM_SYMBOL_STRING = "(?:(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b([\\w&&[\\D]]\\w*)\\b)";
+    private static final Pattern ASM_SYMBOL = Pattern.compile(ASM_SYMBOL_STRING);
+
+    private static final Pattern ASM_DOT_OPERATOR = Pattern.compile("\\w(\\.)\\w");
+    private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<!\\.)([/#+-])[\\w\"'\\(]+");
+
+    private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 
     SyntaxThemes(String name,
                  Color base00, // the colors are set in the constructor, because they are final and
@@ -224,11 +291,13 @@ public enum SyntaxThemes {
     }
 
     /** creates the light intel hex theme */
-    private static List<Pair<Pattern, AttributeSet>> createIntelHexTheme(Color startCodeColor,
+    private static List<Pair<Pattern, AttributeSet>> createIntelHexTheme(
+                                                                  Color irrelevantColor,
+                                                                  Color errorColor,
+                                                                  Color startCodeColor,
                                                                   Color dataByteCountColor,
                                                                   Color addressColor,
                                                                   Color validRecordTypeColor,
-                                                                  Color invalidRecordTypeColor,
                                                                   Color dataColor,
                                                                   Color checksumForegroundColor,
                                                                   Color checksumBackgroundColor,
@@ -236,25 +305,84 @@ public enum SyntaxThemes {
                                                                   Color eofBackgroundColor
                                                                  ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(START_CODE, create(StyleConstants.Foreground, startCodeColor)));
-        tmp.add(new Pair<>(DATA_BYTE_COUNT, create(StyleConstants.Foreground, dataByteCountColor)));
-        tmp.add(new Pair<>(ADDRESS, create(StyleConstants.Foreground, addressColor)));
-        tmp.add(new Pair<>(VALID_RECORD_TYPE, create(StyleConstants.Foreground, validRecordTypeColor)));
-        tmp.add(new Pair<>(INVALID_RECORD_TYPE, create(StyleConstants.StrikeThrough, true,
-                StyleConstants.Foreground, invalidRecordTypeColor)));
-        tmp.add(new Pair<>(DATA, create(StyleConstants.Foreground, dataColor)));
-        tmp.add(new Pair<>(CHECKSUM, create(StyleConstants.Foreground, checksumForegroundColor,
-                StyleConstants.Background, checksumBackgroundColor)));
-        tmp.add(new Pair<>(EOF, create(StyleConstants.Foreground, eofForegroundColor,
-                StyleConstants.Background, eofBackgroundColor)));
+        tmp.add(new Pair<>(HEX_IRRELEVANT, create(StyleConstants.Foreground, irrelevantColor)));
+        tmp.add(new Pair<>(HEX_ERROR, create(StyleConstants.Foreground, errorColor,
+                StyleConstants.StrikeThrough, true)));
+        tmp.add(new Pair<>(HEX_START_CODE, create(StyleConstants.Foreground, startCodeColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(StyleConstants.Foreground, dataByteCountColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_ADDRESS, create(StyleConstants.Foreground, addressColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(StyleConstants.Foreground, validRecordTypeColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_DATA, create(StyleConstants.Foreground, dataColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_CHECKSUM, create(StyleConstants.Foreground, checksumForegroundColor,
+                StyleConstants.Background, checksumBackgroundColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_EOF, create(StyleConstants.Foreground, eofForegroundColor,
+                StyleConstants.Background, eofBackgroundColor,
+                StyleConstants.StrikeThrough, false)));
         return tmp;
     }
 
     private static List<Pair<Pattern, AttributeSet>> createAsmSourceFileTheme(Color commentColor,
                                                                               Color stringColor,
                                                                               Color labelColor,
-                                                                              Color mnemonic) {
+                                                                              Color mnemonicColor,
+                                                                              Color commaColor,
+                                                                              Color numberRadixColor,
+                                                                              Color numberDecimalColor,
+                                                                              Color numberBinaryColor,
+                                                                              Color numberOctalColor,
+                                                                              Color numberHexadecimalColor,
+                                                                              Color numberErrorColor,
+                                                                              Color symbolReservedIndirectColor,
+                                                                              Color symbolReservedColor,
+                                                                              Color symbolReservedErrorColor,
+                                                                              Color typePrefixColor,
+                                                                              Color symbolColor,
+                                                                              Color dotColor,
+                                                                              Color errorColor
+                                                                             ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
+        tmp.add(new Pair<>(ASM_ERRORS, create(StyleConstants.Foreground, errorColor,
+                StyleConstants.StrikeThrough, true)));
+        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(StyleConstants.Foreground, dotColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL, create(StyleConstants.Foreground, symbolColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(StyleConstants.Foreground, typePrefixColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(StyleConstants.Foreground, symbolReservedErrorColor,
+                StyleConstants.StrikeThrough, true)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(StyleConstants.Foreground, symbolReservedColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(StyleConstants.Foreground, symbolReservedIndirectColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(StyleConstants.Foreground, numberErrorColor,
+                StyleConstants.Italic, true)));
+        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(StyleConstants.Foreground, numberHexadecimalColor,
+                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(StyleConstants.Foreground, numberOctalColor,
+                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(StyleConstants.Foreground, numberBinaryColor,
+                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(StyleConstants.Foreground, numberDecimalColor,
+                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(StyleConstants.Foreground, numberRadixColor,
+                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
+        tmp.add(new Pair<>(ASM_COMMAS, create(StyleConstants.Foreground, commaColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_MNEMONIC, create(StyleConstants.Foreground, mnemonicColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_LABEL,create(StyleConstants.Foreground, labelColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_STRING, create(StyleConstants.Foreground, stringColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_COMMENT, create(StyleConstants.Foreground, commentColor,
+                StyleConstants.StrikeThrough, false)));
         return tmp;
     }
 
