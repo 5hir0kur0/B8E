@@ -56,7 +56,6 @@ public class MC8051 implements Emulator {
      */
     MC8051(State8051 state) {
         this.state = Objects.requireNonNull(state, "trying to initialize MC8051 with empty state");
-        this.state.setRRegisters(generateRRegisters());
         this.state.prevP3_2 = this.state.sfrs.P3.getBit(2);
         this.state.prevP3_3 = this.state.sfrs.P3.getBit(3);
         this.state.runningInterruptPriority = -1;
@@ -368,7 +367,8 @@ public class MC8051 implements Emulator {
                 case (byte)0xFE: retValue = mov_r_immediate(6, this.state.sfrs.A.getValue()); break;
                 case (byte)0xFF: retValue = mov_r_immediate(7, this.state.sfrs.A.getValue()); break;
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException|IllegalStateException|IndexOutOfBoundsException
+                |UnsupportedOperationException e) { // "expected" exceptions
              //TODO: Log exception
              throw new EmulatorException(e);
         } finally {
@@ -378,7 +378,7 @@ public class MC8051 implements Emulator {
             //The value of the R registers can be changed through memory.
             //In order to ensure that the GUI displays the correct values, the setter in each R register is called every
             //time, so that it fires property-change-events
-            for (int i = 0; i < 8; ++i) this.state.getR(i).setValue(this.state.getR(i).getValue());
+            for (int i = 0; i < 8; ++i) this.state.getR(i).firePropertyChangeIfUpdated();
         }
         return retValue;
     }
@@ -412,17 +412,16 @@ public class MC8051 implements Emulator {
     }
 
     @Override
-    public void loadStateFrom(Path path) throws IOException {
+    public final void loadStateFrom(Path path) throws IOException {
         try (Reader in = Files.newBufferedReader(path)) {
             this.state = JAXB.unmarshal(in, State8051.class);
             this.state.sfrs.updateSfrMap();
-            this.state.setRRegisters(this.generateRRegisters());
-        }
-    }
-
-    private static State8051 readState(Path path) throws IOException {
-        try (Reader in = Files.newBufferedReader(path)) {
-            return JAXB.unmarshal(in, State8051.class);
+            // fire property changes for all registers; this is especially important for R registers where
+            // getValue() reads from RAM and setValue() updates RAM and the internal attribute
+            for (Register r : this.state.getRegisters()) {
+                final ByteRegister br = (ByteRegister)r;
+                br.setValue(br.getValue());
+            }
         }
     }
 
@@ -442,23 +441,6 @@ public class MC8051 implements Emulator {
     }
 
     /**
-     * Get the current address of a R register.
-     * @param ordinal
-     *     the returned register will be R&lt;ordinal&gt;; 0 <= ordinal <= 7
-     * @return
-     *     the register's address
-     * @throws IllegalArgumentException
-     *     when given an invalid ordinal
-     */
-    private int getRAddress(int ordinal) throws IllegalArgumentException {
-        if (ordinal < 0 || ordinal > 7)
-            throw new IllegalArgumentException("Invalid R register ordinal: "+ordinal);
-        //PSW: C | AC | F0 | RS1 | RS0 | OV | UD | P
-        //==> RS1 and RS0 control the register bank and are conveniently already located at the correct position
-        return this.state.sfrs.PSW.getValue() & 0b00011000 | ordinal;
-    }
-
-    /**
      * Get the value of an R register.<br>
      * @param ordinal
      *     the R register to be used (E.g. '5' implies R5)
@@ -468,7 +450,7 @@ public class MC8051 implements Emulator {
      *     when given an illegal ordinal
      */
     private byte getR(int ordinal) {
-        return this.state.internalRAM.get(getRAddress(ordinal));
+        return this.state.internalRAM.get(this.state.getRAddress(ordinal));
     }
 
     /**
@@ -485,26 +467,6 @@ public class MC8051 implements Emulator {
         this.state.sfrs.PSW.setBit(parity, 0);
     }
 
-    private ByteRegister[] generateRRegisters() {
-        ByteRegister[] rRegisters = new ByteRegister[8];
-        for (int i = 0; i < rRegisters.length; ++i) {
-            final int tmpOrdinal = i;
-            rRegisters[i] = new ByteRegister("R"+i, MC8051.this.state.internalRAM.get(getRAddress(i))) {
-
-                @Override public void setValue(byte newValue) {
-                    MC8051.this.state.internalRAM.set(getRAddress(tmpOrdinal), newValue);
-                    super.setValue(newValue); //super.setValue() is being called here to fire a property change
-                }
-
-                @Override public byte getValue() {
-                    //the byte from the internal RAM needs to be returned here as the R registers may also be modified
-                    //through it
-                    return MC8051.this.state.internalRAM.get(getRAddress(tmpOrdinal));
-                }
-            };
-        }
-        return rRegisters;
-    }
 
     /**
      * Update the values of the SFR TH0, TL0, TH1, TL1.
@@ -1962,7 +1924,7 @@ public class MC8051 implements Emulator {
      *     the number of cycles (1)
      */
     private int mov_r_immediate(int ordinal, byte immediateValue) {
-        this.state.internalRAM.set(getRAddress(ordinal), immediateValue);
+        this.state.internalRAM.set(this.state.getRAddress(ordinal), immediateValue);
         return 1;
     }
 
@@ -2319,7 +2281,7 @@ public class MC8051 implements Emulator {
      *     the number of cycles (1)
      */
     private int xch_a_r(int ordinal) {
-        return xch_a_indirect((byte)getRAddress(ordinal));
+        return xch_a_indirect((byte) this.state.getRAddress(ordinal));
     }
 
     /**
@@ -2409,7 +2371,7 @@ public class MC8051 implements Emulator {
      *     the number of cycles (2)
      */
     private int djnz_r(int ordinal, byte offset) {
-        return djnz((byte)getRAddress(ordinal), offset);
+        return djnz((byte) this.state.getRAddress(ordinal), offset);
     }
 
     /**

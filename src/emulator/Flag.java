@@ -24,7 +24,7 @@ public class Flag {
     }
 
     Flag(String name, int index) {
-        if (Objects.requireNonNull("flag name must not be null").trim().isEmpty())
+        if (Objects.requireNonNull(name, "flag name must not be null").trim().isEmpty())
             throw new IllegalArgumentException("flag name must not be empty");
         if (index < 0)
             throw new IllegalArgumentException("flag index must not be smaller than 0");
