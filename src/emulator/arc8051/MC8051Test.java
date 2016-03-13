@@ -593,6 +593,7 @@ public class MC8051Test {
         ram.set(directAddr, (byte) 0xFF);
         A.setValue((byte) 0xFF);
         PSW.setBit(false, 7);
+        //TODO: This failed a test; FIX
         testOpcode(SUBB_A_ind0, 0, 1, () -> A.getValue() == 0 && !PSW.getBit(7) && !PSW.getBit(6) && !PSW.getBit(2));
         testController.state.R1.setValue(directAddr);
         ram.set(directAddr, (byte) 0xFF);
