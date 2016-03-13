@@ -60,6 +60,23 @@ public class State8051 {
     }
 
     /**
+     * Get the current address of a R register.
+     * @param ordinal
+     *     the returned register will be R&lt;ordinal&gt;; 0 <= ordinal <= 7
+     * @return
+     *     the register's address
+     * @throws IllegalArgumentException
+     *     when given an invalid ordinal
+     */
+    int getRAddress(int ordinal) throws IllegalArgumentException {
+        if (ordinal < 0 || ordinal > 7)
+            throw new IllegalArgumentException("Invalid R register ordinal: "+ordinal);
+        //PSW: C | AC | F0 | RS1 | RS0 | OV | UD | P
+        //==> RS1 and RS0 control the register bank and are conveniently already located at the correct position
+        return this.sfrs.PSW.getValue() & 0b00011000 | ordinal;
+    }
+
+    /**
      * This class represents the SFR area of the 8051 micro controller.
      * There are two references to each register as every register is an attribute of the class, but is also
      * contained in an internal hash map (the hash map is needed to quickly get the register corresponding to a
@@ -74,7 +91,7 @@ public class State8051 {
 
         //TODO add flag names for other flag registers
 
-        private HashMap<Byte, ByteRegister> specialFunctionRegisters;
+        @XmlTransient private HashMap<Byte, ByteRegister> specialFunctionRegisters;
 
         final BitAddressableByteRegister B = new BitAddressableByteRegister("B");
         final BitAddressableByteRegister A = new BitAddressableByteRegister("A");
@@ -279,7 +296,7 @@ public class State8051 {
 
     ByteRegister PCH, PCL;
 
-    @XmlTransient ByteRegister R7, R6, R5, R4, R3, R2, R1, R0;
+    @XmlTransient RRegister R7, R6, R5, R4, R3, R2, R1, R0;
 
     @SuppressWarnings("unused")
     private State8051() { // no-arg constructor for JAXB
@@ -287,10 +304,15 @@ public class State8051 {
         this.ignoreExceptions = false;
         this.ignoreUndefined = false;
         this.ignoreUndefinedSfrs = false;
-        this.internalRAM = null;
+        // prevent NullPointerException during deserialization caused by the implementation in RRegister
+        // which extends ByteRegister whose constructor calls setValue() which results in an attempt to modify the
+        // internal RAM that would not be initialized until later if the following statements weren't there
+        this.internalRAM = new RAM(32);
+        this.sfrs = new SpecialFunctionRegisters(false);
         this.externalRAM = null;
         this.codeMemory = null;
-    };
+        this.setRRegisters(this.generateRRegisters());
+    }
 
     /**
      * @param codeMemory
@@ -322,6 +344,7 @@ public class State8051 {
         this.externalRAM = externalRAM;
         this.PCH = new ByteRegister("PCH");
         this.PCL = new ByteRegister("PCL");
+        this.setRRegisters(this.generateRRegisters());
     }
 
     @Override
@@ -350,7 +373,7 @@ public class State8051 {
      * @throws IllegalArgumentException
      *     when given an illegal ordinal
      */
-    ByteRegister getR(int ordinal) throws IllegalArgumentException {
+    RRegister getR(int ordinal) throws IllegalArgumentException {
         switch (ordinal) {
             case 7: return this.R7;
             case 6: return this.R6;
@@ -381,7 +404,7 @@ public class State8051 {
         return ret;
     }
 
-    void setRRegisters(ByteRegister[] rRegisters) {
+    private void setRRegisters(RRegister[] rRegisters) {
         this.R7 = Objects.requireNonNull(rRegisters[7]);
         this.R6 = Objects.requireNonNull(rRegisters[6]);
         this.R5 = Objects.requireNonNull(rRegisters[5]);
@@ -390,5 +413,40 @@ public class State8051 {
         this.R2 = Objects.requireNonNull(rRegisters[2]);
         this.R1 = Objects.requireNonNull(rRegisters[1]);
         this.R0 = Objects.requireNonNull(rRegisters[0]);
+    }
+
+    class RRegister extends ByteRegister {
+        final int ordinal;
+
+        RRegister(int ordinal) {
+            super("R"+ordinal, (byte)0);
+            this.ordinal = ordinal;
+        }
+
+        void firePropertyChangeIfUpdated() {
+            // super.getValue() reads from the attribute and this.getValue() reads from RAM
+            // if they are not equal, the attribute in the super class needs to be updated in order for it to fire
+            // a property change event to the GUI
+            if (this.getValue() != super.getValue()) this.setValue(this.getValue());
+        }
+
+        @Override
+        public void setValue(byte newValue) {
+            State8051.this.internalRAM.set(State8051.this.getRAddress(this.ordinal), newValue);
+            super.setValue(newValue); //super.setValue() is being called here to fire a property change
+        }
+
+        @Override
+        public byte getValue() {
+            //the byte from the internal RAM needs to be returned here as the R registers may also be modified
+            //through it
+            return State8051.this.internalRAM.get(State8051.this.getRAddress(this.ordinal));
+        }
+    }
+
+    private RRegister[] generateRRegisters() {
+        RRegister[] rRegisters = new RRegister[8];
+        for (int i = 0; i < rRegisters.length; ++i) rRegisters[i] = new RRegister(i);
+        return rRegisters;
     }
 }
