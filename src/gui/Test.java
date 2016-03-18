@@ -10,7 +10,7 @@ import java.util.HashMap;
 public class Test {
     public static void main(String[] args) throws InterruptedException, IOException {
         JFrame leWindow = new JFrame("Le testWindow");
-        LineNumberSyntaxPane lnsp = new LineNumberSyntaxPane("hex");
+        LineNumberSyntaxPane lnsp = new LineNumberSyntaxPane("asm");
         JScrollPane jsp = new JScrollPane(lnsp);
         leWindow.add(jsp);
         leWindow.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);

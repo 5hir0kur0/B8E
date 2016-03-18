@@ -65,6 +65,8 @@ public enum SyntaxThemes {
                                         DEFAULT.base0B, // type prefix
                                         DEFAULT.base0C, // symbols (in general)
                                         DEFAULT.base09, // dot operator
+                                        DEFAULT.base05, // directive background
+                                        DEFAULT.base09, // directive color
                                         DEFAULT.base08  // errors
                                 );
                                 return asmTheme;
@@ -208,7 +210,14 @@ public enum SyntaxThemes {
     private static final Pattern ASM_SYMBOL = Pattern.compile(ASM_SYMBOL_STRING);
 
     private static final Pattern ASM_DOT_OPERATOR = Pattern.compile("\\w(\\.)\\w");
-    private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<!\\.)([/#+-])[\\w\"'\\(]+");
+    private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<=[\\w,])\\s*+([/#+-])[\\w\"'\\(]+");
+
+    private static final Pattern ASM_DIRECTIVE_LINE =
+            Pattern.compile("^(\\s*(?:[$#\\.].*?|[$#\\.]?(?:if|elif|else|regex|end|file|line|org|end|d[bws])\\s+.*?|" +
+                    "\\S*\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_DIRECTIVE = Pattern.compile(
+            "^\\s*(?:((?:[$#\\.]?org|end|d[bws]|if|elif|else|regex|end|file|line|equ|set|bit|code|[ix]?data))" +
+                    "|\\S*\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 
@@ -344,11 +353,16 @@ public enum SyntaxThemes {
                                                                               Color typePrefixColor,
                                                                               Color symbolColor,
                                                                               Color dotColor,
+                                                                              Color directiveBackgroundColor,
+                                                                              Color directiveColor,
                                                                               Color errorColor
                                                                              ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
         tmp.add(new Pair<>(ASM_ERRORS, create(StyleConstants.Foreground, errorColor,
                 StyleConstants.StrikeThrough, true)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(StyleConstants.Background, directiveBackgroundColor)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE, create(StyleConstants.Foreground, directiveColor,
+                StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(StyleConstants.Foreground, dotColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_SYMBOL, create(StyleConstants.Foreground, symbolColor,
