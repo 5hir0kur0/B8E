@@ -50,74 +50,61 @@ public class Tokenizer8051 implements Tokenizer {
      * </ul>
      */
     private final Directive[] directives = {
-            new Directive("file", true) {
+            new Directive("file", 1, 2, true) {
                 @Override
                 public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new TokenizingProblem("Expected at least one argument for 'file' directive!",
-                                Problem.Type.ERROR, file, line, null));
+                    final String fileString = args[0];
+                    try {
+                        Path newPath = Paths.get(fileString);
+                        line = 0;
+
+                        if (args.length > 1)
+                            directives[1].perform(args[1], new TokenizingProblem("?", Problem.Type.ERROR, file, line,
+                                    null), problems);
+
+                        file = newPath;
+                        return true;
+                    } catch (InvalidPathException e) {
+                        problems.add(new TokenizingProblem("Invalid Path!", Problem.Type.ERROR,
+                                file, line, fileString));
                         return false;
-                    } else {
-                        final String fileString = args[0];
-                        try {
-                            Path newPath = Paths.get(fileString);
-                            line = 0;
-
-                            if (args.length > 1)
-                                directives[1].perform(args[1]);
-
-                            file = newPath;
-                            return true;
-                        } catch (InvalidPathException e) {
-                            problems.add(new TokenizingProblem("Invalid Path!", Problem.Type.ERROR,
-                                    file, line, fileString));
-                            return false;
                         }
-                    }
                 }
             },
 
             new Directive("line") {
                 @Override
                 public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new TokenizingProblem("Expected at least one argument for 'line' directive!",
-                                Problem.Type.ERROR, file, line, null));
-                        return false;
-                    } else {
-                        String number = args[0];
-                        try {
+                    String number = args[0];
+                    try {
 
-                            final boolean relative = number.startsWith("~");
+                        final boolean relative = number.charAt(0) == '+' || number.charAt(0) == '-';
 
-                            if (relative) number = number.substring(1);
+                        int newLine = Integer.parseInt(number);
 
-                            int newLine = Integer.parseInt(number);
-
-                            if (relative) {
-                                if (line - newLine < 1) {
-                                    line = 0;
-                                    problems.add(new TokenizingProblem("Resulting line number cannot be smaller than 1!",
-                                            Problem.Type.ERROR, file, line, number));
-                                    return false;
-                                } else
-                                    line += --newLine;
-                            } else {
-                                if (newLine < 1) {
-                                    problems.add(new TokenizingProblem("New line number cannot be smaller than 1!",
-                                            Problem.Type.ERROR, file, line, number));
-                                    return false;
-                                } else
-                                    line = --newLine;
-                            }
-
-                            return true;
-
-                        } catch (NumberFormatException e) {
-                            problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
-                                    file, line, number));
-                            return false;
+                        if (relative) {
+                            if (line - newLine < 1) {
+                                line = 0;
+                                problems.add(new TokenizingProblem("Resulting line number cannot be smaller than 1!",
+                                        Problem.Type.ERROR, file, line, number));
+                                return false;
+                            } else
+                                line += --newLine;
+                        } else {
+                            if (newLine < 1) {
+                                problems.add(new TokenizingProblem("New line number cannot be smaller than 1!",
+                                        Problem.Type.ERROR, file, line, number));
+                                return false;
+                            } else
+                                line = --newLine;
                         }
+
+                        return true;
+
+                    } catch (NumberFormatException e) {
+                        problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
+                                file, line, number));
+                        return false;
                     }
                 }
             }
@@ -142,13 +129,15 @@ public class Tokenizer8051 implements Tokenizer {
                 if (m.matches()){
                     String name = m.group(1);
 
-                    String[] args = m.group(2) == null ? null : Directive.extractArguments(m.group(2));
+                    String args = m.group(2) == null ? "" : m.group(2);
 
                     for (Directive d : directives) {
                         if (d.getName().equalsIgnoreCase(name)) {
                             boolean directiveResult;
-                            if (args == null) directiveResult = d.perform();
-                            else directiveResult = d.perform(args);
+                            if (args == null) directiveResult = d.perform("", new TokenizingProblem("?",
+                                    Problem.Type.ERROR, file, line, null), problems);
+                            else directiveResult = d.perform(args, new TokenizingProblem("?",
+                                    Problem.Type.ERROR, file, line, null), problems);
 
                             if (directiveResult && d.isFallthrough())
                                 if (d.getName().equalsIgnoreCase("file"))
