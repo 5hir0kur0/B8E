@@ -874,11 +874,11 @@ public class Regex {
      * @return
      *      the lowercased pattern.
      */
-    public static String patternToLowercase(final String pattern) {
+    private static String patternToLowercase(final String pattern) {
         StringBuilder sb = new StringBuilder(pattern.length());
         int last = 0, beforeLast = 0;
         boolean escape = false;
-        for (int cp : pattern.chars().toArray()) {
+        for (int cp : pattern.codePoints().toArray()) {
             if (beforeLast == '\\' && last == 'p') // POSIX character class names
                 escape = true;                     // are case sensitive so they
             else if (escape && cp == '}')          // have to stay untouched.

@@ -36,121 +36,92 @@ public class Preprocessor8051 implements Preprocessor {
     private List<String> output;
     private int outputIndex;
 
-    private byte endState; // 1: Running, 0: End Reached, -1: End Problem created
+    private byte endState;         // 0: Running, 1: End Reached, 2: End Problem created
+    private byte conditionalState; // 0: Normal, 1: in If-block, 2: in Else-block
 
     private final Directive[] directives = {
-            new Directive("file", true) {
+            new Directive("file", 1, 2, true) {
                 @Override
-                public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new PreprocessingProblem("Expected at least one argument for 'file' directive!",
-                                Problem.Type.ERROR, currentFile, line, null));
+                public boolean perform(String[] args) {
+                    final String fileString = args[0];
+                    try {
+                        Path newPath = Paths.get(fileString);
+                        line = 0;
+
+
+                        if (args.length > 1)
+                            directives[1].perform(args[1], new PreprocessingProblem(currentFile, line, ""), problems);
+
+                        currentFile = newPath;
+                        return true;
+                    } catch (InvalidPathException e) {
+                        problems.add(new PreprocessingProblem("Invalid Path!: " + e.getMessage(), Problem.Type.ERROR,
+                                currentFile, line, fileString));
                         return false;
-                    } else {
-                        final String fileString = args[0];
-                        try {
-                            Path newPath = Paths.get(fileString);
-                            line = 0;
-
-                            if (args.length > 2)
-                                problems.add(new PreprocessingProblem("Too many arguments for 'file' directive!",
-                                        Problem.Type.WARNING, currentFile, line,
-                                        Arrays.toString(Arrays.copyOfRange(args, 2, args.length))));
-
-                            if (args.length > 1)
-                                directives[1].perform(args[1]);
-
-                            currentFile = newPath;
-                            return true;
-                        } catch (InvalidPathException e) {
-                            problems.add(new PreprocessingProblem("Invalid Path!: " + e.getMessage(), Problem.Type.ERROR,
-                                    currentFile, line, fileString));
-                            return false;
-                        }
                     }
                 }
             },
 
             new Directive("line", true) {
                 @Override
-                public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new PreprocessingProblem("Expected at least one argument for 'line' directive!",
-                                Problem.Type.ERROR, currentFile, line, null));
-                        return false;
-                    } else {
-                        String number = args[0];
-                        try {
+                public boolean perform(String[] args) {
 
-                            final boolean relative = number.startsWith("~");
+                    String number = args[0];
+                    try {
 
-                            if (relative) number = number.substring(1);
+                        final boolean relative = number.charAt(0) == '+' || number.charAt(0) == '-';
 
-                            int newLine = Integer.parseInt(number);
+                        int newLine = Integer.parseInt(number);
 
-                            if (relative) {
-                                if (line - newLine < 1) {
-                                    line = 0;
-                                    problems.add(new PreprocessingProblem("Resulting line number cannot be smaller than 1!",
-                                            Problem.Type.ERROR, currentFile, line, number));
-                                    return false;
-                                } else
-                                    line += --newLine;
-                            } else {
-                                if (newLine < 1) {
-                                    problems.add(new PreprocessingProblem("New line number cannot be smaller than 1!",
-                                            Problem.Type.ERROR, currentFile, line, number));
-                                    return false;
-                                } else
-                                    line = --newLine;
-                            }
-                            if (args.length > 1)
-                                problems.add(new PreprocessingProblem("Too many arguments for 'line' directive!",
-                                        Problem.Type.WARNING, currentFile, line,
-                                        Arrays.toString(Arrays.copyOfRange(args, 1, args.length))));
-                            return true;
-
-                        } catch (NumberFormatException e) {
-                            problems.add(new PreprocessingProblem("Illegal number format!", Problem.Type.ERROR,
-                                    currentFile, line, number));
-                            return false;
+                        if (relative) {
+                            if (line - newLine < 1) {
+                                line = 0;
+                                problems.add(new PreprocessingProblem("Resulting line number cannot be smaller than 1!",
+                                        Problem.Type.ERROR, currentFile, line, number));
+                                return false;
+                            } else
+                                line += --newLine;
+                        } else {
+                            if (newLine < 1) {
+                                problems.add(new PreprocessingProblem("New line number cannot be smaller than 1!",
+                                        Problem.Type.ERROR, currentFile, line, number));
+                                return false;
+                            } else
+                                line = --newLine;
                         }
-                    }
-                }
-            },
 
-            new Directive("end") {
-                @Override
-                public boolean perform(String... args) {
-                    if (endState > 0)
-                        endState = 0;
-                    if (args.length > 0)
-                        problems.add(new PreprocessingProblem("Too many arguments for 'end' directive!",
-                                Problem.Type.WARNING, currentFile, line,
-                                Arrays.toString(args)));
+                    } catch (NumberFormatException e) {
+                        problems.add(new PreprocessingProblem("Illegal number format!", Problem.Type.ERROR,
+                                currentFile, line, number));
+                        return false;
+                    }
                     return true;
                 }
             },
 
-            new Directive("include") {
+            new Directive("end", 0, 0) {
                 @Override
-                public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new PreprocessingProblem("Expected at least one argument for 'include' directive!",
-                                Problem.Type.ERROR, currentFile, line, null));
-                        return false;
-                    }
+                public boolean perform(String[] args) {
+                    if (endState == 0)
+                        endState = 1;
+                    return true;
+                }
+            },
 
+            new Directive("include", 1, 1, new String[]{"x\"\"", "x''", "i<>"}, false) {
+                @Override
+                public boolean perform(String[] args) {
                     final String targetFile = args[0];
                     try {
                         Path target = null;
                         if (targetFile.codePointAt(1) == '<' && targetFile.codePointAt(targetFile.length()-1) == '>') {
                             String[] dirs = Settings.INSTANCE.getProperty(AssemblerSettings.INCLUDE_PATH)
-                                    .split("(?<!\\\\);");
+                                    .split("(?<!(?<!\\\\)\\\\);");
                             boolean recursiveSearch = Settings.INSTANCE.getBoolProperty(
                                     AssemblerSettings.INCLUDE_RECURSIVE_SEARCH);
                             for (String dir : dirs) {
-                                dir = dir.replaceAll("\\\\;", ";");
+
+                                dir = dir.replaceAll("\\\\\\\\", "\\").replaceAll("\\\\;", ";");
 
                                 if (recursiveSearch) {
                                     Path dirPath = Paths.get(dir);
@@ -211,11 +182,6 @@ public class Preprocessor8051 implements Preprocessor {
                             output.add(outputIndex+=fileContent.size()+1, null);
                             output.add(outputIndex+=fileContent.size()+2, "$file \"" + target.toString() + "\" " + line+1);
 
-
-                            if (args.length > 1)
-                                problems.add(new PreprocessingProblem("Too many arguments for 'include' directive!",
-                                        Problem.Type.WARNING, currentFile, line,
-                                        Arrays.toString(Arrays.copyOfRange(args, 1, args.length))));
                             return true;
                         }
                     } catch (InvalidPathException e) {
@@ -229,11 +195,6 @@ public class Preprocessor8051 implements Preprocessor {
             new Directive("org", true) {
                 @Override
                 public boolean perform(String... args) {
-                    if (args.length < 1) {
-                        problems.add(new PreprocessingProblem("Expected at least 1 argument for 'org' directive!",
-                                Problem.Type.ERROR, currentFile, line, Arrays.toString(args)));
-                        return false;
-                    }
 
                     if (!MC8051Library.NUMBER_PATTERN.matcher(args[1]).matches()) {
                         problems.add(new PreprocessingProblem("First argument of 'org' is not a valid number!",
@@ -255,15 +216,11 @@ public class Preprocessor8051 implements Preprocessor {
                         }
                     }
 
-                    if (args.length > 1)
-                        problems.add(new PreprocessingProblem("Too many arguments for 'org' directive!",
-                                Problem.Type.WARNING, currentFile, line,
-                                Arrays.toString(Arrays.copyOfRange(args, 1, args.length))));
                     return true;
                 }
             },
 
-            new Directive("code") {
+            new Directive("code", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     // Implemented for compatibility with Asem-51's MCU files
@@ -272,7 +229,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("xdata") {
+            new Directive("xdata", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     // Implemented for compatibility with Asem-51's MCU files
@@ -281,7 +238,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("bit") {
+            new Directive("bit", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     // Implemented for compatibility with Asem-51's MCU files
@@ -290,7 +247,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("data") {
+            new Directive("data", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     // Implemented for compatibility with Asem-51's MCU files
@@ -299,7 +256,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("idata") {
+            new Directive("idata", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     // Implemented for compatibility with Asem-51's MCU files
@@ -308,15 +265,10 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("equ") {
+            new Directive("equ", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     boolean result = true;
-                    if (args.length < 2) {
-                        problems.add(new PreprocessingProblem("Expected at least 2 arguments for 'equ' directive!",
-                                Problem.Type.ERROR, currentFile, line, Arrays.toString(args)));
-                        return false;
-                    }
 
                     if (!MC8051Library.SYMBOL_PATTERN.matcher(args[0]).matches()) {
                         problems.add(new PreprocessingProblem("First argument of 'equ' is not a valid symbol!",
@@ -333,8 +285,7 @@ public class Preprocessor8051 implements Preprocessor {
 
                     if (!result) return false;
 
-                    if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(),
-                            false, true)) return false;
+                    if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(), false, true)) return false;
                     return true;
                 }
             },
@@ -343,11 +294,6 @@ public class Preprocessor8051 implements Preprocessor {
                 @Override
                 public boolean perform(String... args) {
                     boolean result = true;
-                    if (args.length < 2) {
-                        problems.add(new PreprocessingProblem("Expected at least 2 arguments for 'set' directive!",
-                                Problem.Type.ERROR, currentFile, line, Arrays.toString(args)));
-                        return false;
-                    }
 
                     if (!MC8051Library.SYMBOL_PATTERN.matcher(args[0]).matches()) {
                         problems.add(new PreprocessingProblem("First argument of 'set' is not a valid symbol!",
@@ -364,8 +310,7 @@ public class Preprocessor8051 implements Preprocessor {
 
                     if (!result) return false;
 
-                    if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(),
-                            true, true)) return false;
+                    if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(), true, true)) return false;
                     return true;
                 }
             },
@@ -395,7 +340,8 @@ public class Preprocessor8051 implements Preprocessor {
         }
 
         line = 0;
-        endState = 1;
+        endState = 0;
+        conditionalState = 0;
         includeDepth = 0;
 
         String lineString = null, original;
@@ -407,7 +353,7 @@ public class Preprocessor8051 implements Preprocessor {
 
             if (lineString == null) {
                 if (includeDepth > 0) --includeDepth;
-            } else if (endState > 0) {
+            } else if (endState == 0) {
 
                 for (Regex regex : regexes)
                     lineString = regex.perform(lineString,    // Perform all registered regular expressions
@@ -427,18 +373,18 @@ public class Preprocessor8051 implements Preprocessor {
                 // directives may be case sensitive.
 
                 output.add(lineString);
-            } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == 0) {
+            } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == 1) {
                 // If the line contains more than just comments or white space
                 // and no Problem has been created yet
                 MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                         AssemblerSettings.END_CODE_AFTER, "No code allowed after use of 'end' directive!",
                         "All code after an 'end' directive will be ignored.", problems);
-                endState = -1;
+                endState = 2;
             }
 
         }
 
-        if (endState > 0)
+        if (endState == 0)
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                     AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
                     problems);
@@ -740,11 +686,6 @@ public class Preprocessor8051 implements Preprocessor {
         // Implemented for compatibility with Asem-51's MCU files
         // Does not have a particular segment type.
         boolean result = true;
-        if (args.length < 2) {
-            problems.add(new PreprocessingProblem("Expected at least 2 arguments for '"+directiveName+"' directive!",
-                    Problem.Type.ERROR, currentFile, line, Arrays.toString(args)));
-            return false;
-        }
 
         if (!MC8051Library.SYMBOL_PATTERN.matcher(args[0]).matches()) {
             problems.add(new PreprocessingProblem("First argument of '"+directiveName+"' is not a valid symbol!",
@@ -772,13 +713,9 @@ public class Preprocessor8051 implements Preprocessor {
 
         if (!result) return false;
         else {
-            if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(),
-                    false, false)) return false;
+            if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(), false, false)) return false;
         }
-        if (args.length > 2)
-            problems.add(new PreprocessingProblem("Too many arguments for '"+directiveName+"' directive!",
-                    Problem.Type.WARNING, currentFile, line,
-                    Arrays.toString(Arrays.copyOfRange(args, 2, args.length))));
+
         return true;
 
     }
