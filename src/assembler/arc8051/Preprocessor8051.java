@@ -37,6 +37,11 @@ public class Preprocessor8051 implements Preprocessor {
     private int outputIndex;
 
     private byte endState;         // 0: Running, 1: End Reached, 2: End Problem created
+    private static final byte RUNNING = 0;
+    private static final byte END_REACHED = 1;
+    private static final byte END_PROBLEM_CREATED = 2;
+
+    private int conditionalDepth;
     private byte conditionalState; // 0: Normal, 1: in If-block, 2: in Else-block
 
     private final Directive[] directives = {
@@ -121,7 +126,7 @@ public class Preprocessor8051 implements Preprocessor {
                                     AssemblerSettings.INCLUDE_RECURSIVE_SEARCH);
                             for (String dir : dirs) {
 
-                                dir = dir.replaceAll("\\\\\\\\", "\\").replaceAll("\\\\;", ";");
+                                dir = dir.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";");
 
                                 if (recursiveSearch) {
                                     Path dirPath = Paths.get(dir);
@@ -290,7 +295,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("set") {
+            new Directive("set", 2, 2) {
                 @Override
                 public boolean perform(String... args) {
                     boolean result = true;
@@ -313,7 +318,23 @@ public class Preprocessor8051 implements Preprocessor {
                     if (!regexFromSymbol(args[0].toLowerCase(), args[1].toLowerCase(), true, true)) return false;
                     return true;
                 }
+
             },
+
+            new Directive("regex") {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    Regex r = new Regex(args[0], currentFile, line, problems);
+
+                    if (r.isValid())  {
+                        regexes.add(r);
+                        return true;
+                    } else
+                        return false;
+                }
+            },
+
     };
 
     public Preprocessor8051() {
@@ -340,7 +361,7 @@ public class Preprocessor8051 implements Preprocessor {
         }
 
         line = 0;
-        endState = 0;
+        endState = RUNNING;
         conditionalState = 0;
         includeDepth = 0;
 
@@ -353,7 +374,7 @@ public class Preprocessor8051 implements Preprocessor {
 
             if (lineString == null) {
                 if (includeDepth > 0) --includeDepth;
-            } else if (endState == 0) {
+            } else if (endState == RUNNING) {
 
                 for (Regex regex : regexes)
                     lineString = regex.perform(lineString,    // Perform all registered regular expressions
@@ -363,28 +384,28 @@ public class Preprocessor8051 implements Preprocessor {
 
                 lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
 
-                // TODO: Evaluate mathematical expressions with SimpleMath
+                lineString  = evaluate(lineString);           // Evaluate all mathematical expressions
 
                 if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
                     lineString = handleDirective(lineString); // Line is a directive: handle it
                 else
                     lineString = lowerCase(lineString);       // Only convert lines to lowercase if they
-                // are not a directive because fallthrough
-                // directives may be case sensitive.
+                                                              // are not a directive because fallthrough
+                                                              // directives may be case sensitive.
 
                 output.add(lineString);
-            } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == 1) {
+            } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == END_REACHED) {
                 // If the line contains more than just comments or white space
                 // and no Problem has been created yet
                 MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                         AssemblerSettings.END_CODE_AFTER, "No code allowed after use of 'end' directive!",
                         "All code after an 'end' directive will be ignored.", problems);
-                endState = 2;
+                endState = END_PROBLEM_CREATED;
             }
 
         }
 
-        if (endState == 0)
+        if (endState == RUNNING)
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                     AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
                     problems);
@@ -399,7 +420,17 @@ public class Preprocessor8051 implements Preprocessor {
     private String handleDirective(final String line) {
         Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(line);
         if (m.matches()) {
-
+            String name = m.group(1).toLowerCase();
+            for (Directive d : directives)
+                if (d.getName().equals(name)) {
+                    boolean result = d.perform(m.group(2),
+                            new PreprocessingProblem(currentFile, this.line, line), problems);
+                    if (result && d.isFallthrough())
+                        return output.get(outputIndex); // Return the line of the directive in the output
+                                                        // if the directive modified its own line.
+                    else
+                        return "";                      // else clear line.
+                }
             return "";
         } else
             return line;
@@ -487,9 +518,46 @@ public class Preprocessor8051 implements Preprocessor {
     }
 
 
-    private String evaluate() {
-        SimpleMath.evaluate("");
-        return null;
+    private String evaluate(final String line) {
+        // Find possible mathematical expressions
+        // TODO: Only evaluate outside of Strings
+        int parenthesisCount = 0;
+        StringBuilder sb = new StringBuilder(line);
+        StringBuilder result = new StringBuilder(line.length());
+        StringBuilder expression = new StringBuilder();
+        for (int cp : sb.codePoints().toArray()) {
+            if (parenthesisCount == 0 && cp != '(')
+                result.appendCodePoint(cp);
+            else if (cp == '(') {
+                ++parenthesisCount;
+                if (parenthesisCount > 0)
+                    expression.appendCodePoint(cp);
+            } else if (parenthesisCount > 0 && cp == ')') {
+                if (0 == --parenthesisCount) {
+                    try {
+
+                        result.append(SimpleMath.evaluate(expression.toString()));
+
+                    } catch (NumberFormatException e) {
+                        problems.add(new PreprocessingProblem("Number format invalid: " + e.getMessage(),
+                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                        result.append("0");
+                    } catch (IllegalArgumentException e) {
+                        problems.add(new PreprocessingProblem("Mathematical expression invalid: " + e.getMessage(),
+                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                        result.append("0");
+                    } catch (RuntimeException e) {
+                        problems.add(new PreprocessingProblem(e.toString(),
+                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                        result.append("0");
+                    }
+                    expression.setLength(0);
+                } else
+                    expression.appendCodePoint(cp);
+            }
+        }
+
+        return result.toString();
     }
 
     /**
@@ -507,16 +575,18 @@ public class Preprocessor8051 implements Preprocessor {
     private String convertNumbers(final String source) {
         StringBuffer sb = new StringBuffer(source.length());
 
-        Matcher m = MC8051Library.NUMBER_PATTERN.matcher(source);
+        // TODO: Only covert outside of Strings
+
+        Matcher n = MC8051Library.NUMBER_PATTERN.matcher(source);
 
         // Variation of 'replaceAll()' in Matcher
         boolean found;
-        if (found = m.find()) {
+        if (found = n.find()) {
             do {
-                final String number = getNumber(m.group());
-                m.appendReplacement(sb, getNumber(number == null ? "0" : number));
-            } while (found = m.find());
-            return m.appendTail(sb).toString();
+                final String number = getNumber(n.group());
+                n.appendReplacement(sb, getNumber(number == null ? "0" : number));
+            } while (found = n.find());
+            return n.appendTail(sb).toString();
         }
 
         return source;
