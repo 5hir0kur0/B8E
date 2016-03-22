@@ -145,6 +145,21 @@ public abstract class Directive {
     }
 
     /**
+     * Constructs a new Directive that does not fall
+     * through to the next assembling level.<br>
+     * It can cope wih any number of arguments as long
+     * as the minimum number of arguments is given.
+     *
+     * @param name
+     *      the name of the Directive.
+     * @param minArgs
+     *      the maximum number of required arguments
+     */
+    public Directive(String name, int minArgs) {
+        this(name, minArgs, Integer.MAX_VALUE, DEFAULT_QUOTE_CHARS, false);
+    }
+
+    /**
      * Returns the name of the directive.
      */
     public String getName() {
