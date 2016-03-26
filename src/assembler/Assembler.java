@@ -1,5 +1,6 @@
 package assembler;
 
+import assembler.arc8051.DirectiveTokens;
 import assembler.tokens.*;
 import assembler.util.*;
 import assembler.util.assembling.ArchitectureProvider;
@@ -14,6 +15,7 @@ import com.sun.corba.se.impl.io.TypeMismatchException;
 import misc.Settings;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -85,10 +87,9 @@ public class Assembler {
             return problems;
         }
 
-        try (BufferedReader input = Files.newBufferedReader(srcFile)){
-
+        try {
             List<String> inputOutput = new LinkedList<>();
-            problems.addAll(preprocessor.preprocess(input, inputOutput));
+            problems.addAll(preprocessor.preprocess(srcFile, inputOutput));
 
 
             List<Token> tokens = tokenizer.tokenize(inputOutput, problems);
@@ -102,7 +103,7 @@ public class Assembler {
 
             Collections.sort(problems);
         } catch (IOException e) {
-            problems.add(new ExceptionProblem("Could not read properly from File!", Problem.Type.ERROR, e));
+            problems.add(new ExceptionProblem("Error while writing in output file!", Problem.Type.ERROR, e));
         }
         return problems;
     }
@@ -199,8 +200,12 @@ public class Assembler {
                     break;
                 }
                 case DIRECTIVE: {
-                    if (t instanceof FileChangeToken) {
-                        provider.setAssembledFile(srcFile = ((FileChangeToken) t).getFile());
+                    if (t instanceof DirectiveTokens.FileChangeToken) {
+                        provider.setAssembledFile(srcFile = ((DirectiveTokens.FileChangeToken) t).getFile());
+                    } else if (t instanceof DirectiveTokens.DataToken) {
+                        DirectiveTokens.DataToken d = (DirectiveTokens.DataToken) t;
+                        assembled.add(new Assembled(false, false, Collections.singletonList(t), codePoint, d.getData(),
+                                d.getData().length, null));
                     } else
                         problems.add(new TokenProblem("Unknown directive token!", Problem.Type.ERROR, srcFile, t));
                 }
