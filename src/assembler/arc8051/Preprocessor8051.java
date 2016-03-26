@@ -335,6 +335,135 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
+            new Directive("db", 1, Integer.MAX_VALUE, new String[]{"i\"\"", "i''"}, true) {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    StringBuilder replacement = new StringBuilder(output.get(outputIndex).length());
+                    replacement.append("$db");
+
+                    for (String arg : args)
+                        if (MC8051Library.NUMBER_PATTERN.matcher(arg).matches())
+                            try {
+                                final int value = Integer.parseInt(arg);
+                                if (value > 0xFF)
+                                    problems.add(new PreprocessingProblem("Value of number is bigger than a byte!",
+                                            Problem.Type.ERROR, currentFile, line, arg));
+                                else
+                                    replacement.append(" ").append(arg);
+                            } catch (NumberFormatException e) {
+                                problems.add(new PreprocessingProblem("Illegal number!", Problem.Type.ERROR,
+                                        currentFile, line, arg));
+                            }
+                        else if (arg.charAt(0) == '"' && arg.charAt(arg.length()-1) == '"' ||
+                                arg.charAt(0) == '\'' && arg.charAt(arg.length()-1) == '\'') {
+                            for (int cp : arg.substring(1, arg.length()-1).codePoints().toArray()) {
+                                StringBuilder numbers = new StringBuilder();
+                                for (int i = 0; (cp >> i & 0xFF) != 0 && i < Integer.SIZE; i+=8)
+                                    numbers.insert(0, cp >> i & 0xFF).insert(0, " ");
+                                replacement.append(numbers);
+                            }
+                        } else
+                            problems.add(new PreprocessingProblem("Whether a valid number nor a valid string.",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                    output.set(outputIndex, replacement.toString());
+                    return replacement.length() > 3; // Always return 'true', errors will be cut out
+                                                     // only return 'false' if all arguments were invalid
+                }
+            },
+
+            new Directive("dw", 1, Integer.MAX_VALUE, new String[]{"i\"\"", "i''"}, false) {
+                @Override
+                protected boolean perform(String[] args) {
+                    StringBuilder replacement = new StringBuilder(output.get(outputIndex).length());
+                    replacement.append("$db"); // Also use 'db'
+
+                    for (String arg : args)
+                        if (MC8051Library.NUMBER_PATTERN.matcher(arg).matches())
+                            try {
+                                final int value = Integer.parseInt(arg);
+                                if (value > 0xFFFF)
+                                    problems.add(new PreprocessingProblem("Value of number is bigger than a byte word (2 bytes)!",
+                                            Problem.Type.ERROR, currentFile, line, arg));
+                                else
+                                    replacement.append(" ").append(value >> 8 & 0xFF).append(" ").append(value & 0xFF);
+                            } catch (NumberFormatException e) {
+                                problems.add(new PreprocessingProblem("Illegal number!", Problem.Type.ERROR,
+                                        currentFile, line, arg));
+                            }
+                        else if (arg.charAt(0) == '"' && arg.charAt(arg.length()-1) == '"' ||
+                                arg.charAt(0) == '\'' && arg.charAt(arg.length()-1) == '\'') {
+                            for (int cp : arg.substring(1, arg.length()-1).codePoints().toArray()) {
+                                StringBuilder numbers = new StringBuilder();
+                                for (int i = 0; (cp >> i & 0xFFFF) != 0 && i < Integer.SIZE; i+=16)
+                                    numbers.insert(0, cp >> i & 0xFF).insert(0, " ")
+                                            .insert(0, cp >> i + 8 & 0xFF).insert(0, " ");
+                                replacement.append(numbers);
+                            }
+                        } else
+                            problems.add(new PreprocessingProblem("Whether a valid number nor a valid string.",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                    output.set(outputIndex, replacement.toString());
+                    return replacement.length() > 3; // Always return 'true', errors will be cut out
+                                                     // only return 'false' if all arguments were invalid
+                }
+            },
+
+            new Directive("ds", 1, 2, new String[]{"i\"\"", "i''"}, false) {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    StringBuilder replacement = new StringBuilder();
+                    replacement.append("$db");
+
+                    int factor = 1;
+                    StringBuilder repeat = new StringBuilder("0"); // Default to 0
+                    try {
+                        factor = Integer.parseInt(args[0]);
+                    } catch (NumberFormatException e) {
+                        problems.add(new PreprocessingProblem("Illegal number format for 'ds' multiplier!",
+                                Problem.Type.ERROR, currentFile, line, args[0]));
+                        return false;
+                    }
+                    if (args.length > 1) {
+                        if (MC8051Library.NUMBER_PATTERN.matcher(args[1]).matches())
+                            try {
+                                final int value = Integer.parseInt(args[1]);
+                                if (value > 0xFF)
+                                    problems.add(new PreprocessingProblem("Value of number is bigger than a byte!",
+                                            Problem.Type.ERROR, currentFile, line, args[1]));
+                                else {
+                                    repeat = new StringBuilder(" ");
+                                    repeat.append(value & 0xFF);
+                                }
+                            } catch (NumberFormatException e) {
+                                problems.add(new PreprocessingProblem("Illegal number!", Problem.Type.ERROR,
+                                        currentFile, line, args[1]));
+                            }
+                        else if (args[1].charAt(0) == '"' && args[1].charAt(args[1].length()-1) == '"' ||
+                                args[1].charAt(0) == '\'' && args[1].charAt(args[1].length()-1) == '\'') {
+                            for (int cp : args[1].substring(1, args[1].length()-1).codePoints().toArray()) {
+                                StringBuilder numbers = new StringBuilder();
+                                for (int i = 0; (cp >> i & 0xFF) != 0 && i < Integer.SIZE; i+=8)
+                                    numbers.insert(0, cp >> i & 0xFF).insert(0, " ");
+                                repeat = new StringBuilder(numbers);
+                            }
+                        } else
+                            problems.add(new PreprocessingProblem("Whether a valid number nor a valid string.",
+                                    Problem.Type.ERROR, currentFile, line, args[1]));
+                    }
+
+                    if (repeat.toString().trim().isEmpty())
+                        return false;
+                    else
+                        for (int i = factor; i > 0; --i)
+                            replacement.append(repeat);
+
+                    output.set(outputIndex, replacement.toString());
+                    return replacement.length() > 3;
+                }
+            },
+
     };
 
     public Preprocessor8051() {
@@ -384,7 +513,9 @@ public class Preprocessor8051 implements Preprocessor {
 
                 lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
 
-                lineString  = evaluate(lineString);           // Evaluate all mathematical expressions
+                lineString = evaluate(lineString);            // Evaluate all mathematical expressions
+
+                lineString = validateLabels(lineString);      // Test for name duplicates in labels and reserve symbol
 
                 if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
                     lineString = handleDirective(lineString); // Line is a directive: handle it
@@ -431,6 +562,7 @@ public class Preprocessor8051 implements Preprocessor {
                     else
                         return "";                      // else clear line.
                 }
+            problems.add(new PreprocessingProblem("Unknown directive!", Problem.Type.ERROR, currentFile, this.line, name));
             return "";
         } else
             return line;
@@ -458,6 +590,45 @@ public class Preprocessor8051 implements Preprocessor {
                     currentFile == null ? -1 : line, e));
             return null;
         }
+    }
+
+
+    private String validateLabels(String lineString) {
+        final Matcher l = MC8051Library.LABEL_PATTERN.matcher(lineString);
+        StringBuilder result = new StringBuilder(lineString);
+
+        if (l.find()) {
+            final String name = l.group(1);
+
+            Regex regex = new Regex(new StringBuilder("/(?<!^)(\\s*)\\b").append(name).append("\\b(!:)/")
+
+                    .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.UNMODIFIABLE_FLAG).toString(),
+
+                    currentFile, line, problems);
+
+            for (String reserved : MC8051Library.RESERVED_NAMES)
+                if (name.equalsIgnoreCase(reserved)) {
+                    problems.add(new PreprocessingProblem("Label name is a reserved name!",
+                            Problem.Type.ERROR, currentFile, line, name));
+
+                    return  result.delete(0, l.end()).toString();
+                }
+
+
+            for (Regex r : regexes)
+                if (regex.equals(r)) {
+                    problems.add(new PreprocessingProblem("Symbol already defined!",
+                            Problem.Type.ERROR, currentFile, line, name));
+
+                    return result.delete(0, l.end()).toString();
+                }
+
+            regexes.add(regex);
+
+        }
+
+        return lineString;
+
     }
 
     /**
@@ -793,7 +964,8 @@ public class Preprocessor8051 implements Preprocessor {
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
-        Regex regex = new Regex(new StringBuilder("s/\\b").append(symbol).append("\\b/").append(replacement).append("/")
+        Regex regex = new Regex(new StringBuilder("s/(?<!^)(\\s*)\\b").append(symbol).append("\\b(!:)/").append("$1")
+                .append(replacement).append("/")
 
                 .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.WHOLE_LINE_FLAG)
                 .append(Regex.DO_NOT_REPLACE_IN_STRING_FLAG)

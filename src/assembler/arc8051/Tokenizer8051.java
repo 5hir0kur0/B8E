@@ -1,7 +1,6 @@
 package assembler.arc8051;
 
 import assembler.Tokenizer;
-import assembler.tokens.FileChangeToken;
 import assembler.tokens.LabelToken;
 import assembler.tokens.Token;
 import assembler.tokens.Tokens;
@@ -12,7 +11,6 @@ import assembler.util.problems.TokenizingProblem;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -29,6 +27,7 @@ public class Tokenizer8051 implements Tokenizer {
     /** The current line in the current file. */
     private int line;
 
+    private List<Token> tokens;
     /** A list of Problems that occurred while tokenizing. */
     private List<Problem> problems;
 
@@ -63,12 +62,16 @@ public class Tokenizer8051 implements Tokenizer {
                                     null), problems);
 
                         file = newPath;
+
+                        tokens.add(new DirectiveTokens.FileChangeToken(file, line)); // Tell assembler to change the
+                                                                                     // file as well
+
                         return true;
                     } catch (InvalidPathException e) {
                         problems.add(new TokenizingProblem("Invalid Path!", Problem.Type.ERROR,
                                 file, line, fileString));
                         return false;
-                        }
+                    }
                 }
             },
 
@@ -107,13 +110,50 @@ public class Tokenizer8051 implements Tokenizer {
                         return false;
                     }
                 }
+            },
+
+            new Directive("db", 1, Integer.MAX_VALUE, Directive.DEFAULT_QUOTE_CHARS, true) {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    byte[] data = new byte[args.length];
+
+                    for (int i = 0; i < args.length; ++i)
+                        try {
+                            data[i] = Byte.parseByte(args[i]);
+                        } catch (NumberFormatException e) {
+                            problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
+                                    file, line, args[i]));
+                            data[i] = 0;
+                        }
+
+                    tokens.add(new DirectiveTokens.DataToken(data, line));
+
+                    return true;
+                }
+            },
+
+            new Directive("org", true) {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    try {
+                        tokens.add(new DirectiveTokens.OrganisationToken(Long.parseLong(args[0]), line));
+                    } catch (NumberFormatException e) {
+                        problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
+                                file, line, args[1]));
+                        return false;
+                    }
+
+                    return true;
+                }
             }
     };
 
 
     @Override
     public List<Token> tokenize(List<String> input, List<Problem> problems) {
-        List<Token> result = new LinkedList<>();
+        tokens = new LinkedList<>();
         this.problems.clear();
 
         file = null;
@@ -133,15 +173,8 @@ public class Tokenizer8051 implements Tokenizer {
 
                     for (Directive d : directives) {
                         if (d.getName().equalsIgnoreCase(name)) {
-                            boolean directiveResult;
-                            if (args == null) directiveResult = d.perform("", new TokenizingProblem("?",
-                                    Problem.Type.ERROR, file, line, null), problems);
-                            else directiveResult = d.perform(args, new TokenizingProblem("?",
-                                    Problem.Type.ERROR, file, line, null), problems);
+                            d.perform(args, new TokenizingProblem("?", Problem.Type.ERROR, file, line, null), problems);
 
-                            if (directiveResult && d.isFallthrough())
-                                if (d.getName().equalsIgnoreCase("file"))
-                                    result.add(new FileChangeToken(file));
                             break;
                         }
                     }
@@ -152,7 +185,7 @@ public class Tokenizer8051 implements Tokenizer {
             Matcher m = MC8051Library.LABEL_PATTERN.matcher(lineString);
 
             if (m.find()) {
-                result.add(new LabelToken(m.group(1), line));
+                tokens.add(new LabelToken(m.group(1), line));
                 lineString = lineString.substring(m.end());
             }
 
@@ -160,7 +193,7 @@ public class Tokenizer8051 implements Tokenizer {
                 continue;
 
             if ((m = MC8051Library.MNEMONIC_NAME_PATTERN.matcher(lineString)).find()) {
-                result.add(new Tokens.MnemonicNameToken(m.group(1), line));
+                tokens.add(new Tokens.MnemonicNameToken(m.group(1), line));
                 lineString = lineString.substring(m.end());
                 if (lineString.trim().isEmpty())
                     continue;
@@ -172,13 +205,13 @@ public class Tokenizer8051 implements Tokenizer {
 
             final String[] split = lineString.split(",");
             for (String aSplit : split) {
-                addToken(aSplit, result);
+                addToken(aSplit, tokens);
             }
 
         }
 
         problems.addAll(this.problems);
-        return result;
+        return tokens;
     }
 
     /**
