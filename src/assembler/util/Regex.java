@@ -241,7 +241,7 @@ public class Regex {
         modifier = new StringBuffer();
         substitution = null;
 
-        String[] segments = format.split("(?<!\\\\)/");
+        String[] segments = format.split("(?<!(?<!\\\\)\\\\)/");
         for (int i = 0; i < segments.length; i++)
             segments[i] = segments[i].replaceAll("\\\\/", "/");
         compile(segments);

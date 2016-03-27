@@ -15,6 +15,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -691,41 +692,55 @@ public class Preprocessor8051 implements Preprocessor {
 
     private String evaluate(final String line) {
         // Find possible mathematical expressions
-        // TODO: Only evaluate outside of Strings
-        int parenthesisCount = 0;
-        StringBuilder sb = new StringBuilder(line);
+        final Pattern p = MC8051Library.STRING_PATTERN;
+        final Matcher m = p.matcher(line);
+        String[] outside = p.split(line);
         StringBuilder result = new StringBuilder(line.length());
-        StringBuilder expression = new StringBuilder();
-        for (int cp : sb.codePoints().toArray()) {
-            if (parenthesisCount == 0 && cp != '(')
-                result.appendCodePoint(cp);
-            else if (cp == '(') {
-                ++parenthesisCount;
-                if (parenthesisCount > 0)
-                    expression.appendCodePoint(cp);
-            } else if (parenthesisCount > 0 && cp == ')') {
-                if (0 == --parenthesisCount) {
-                    try {
 
-                        result.append(SimpleMath.evaluate(expression.toString()));
+        for (final String os : outside) {
+            int parenthesisCount = 0;
+            StringBuilder expression = new StringBuilder();
+            for (int cp : os.codePoints().toArray()) {
+                if (parenthesisCount == 0 && cp != '(')
+                    result.appendCodePoint(cp);
+                else if (cp == '(') {
+                    ++parenthesisCount;
+                    if (parenthesisCount > 0)
+                        expression.appendCodePoint(cp);
+                } else if (parenthesisCount > 0 && cp == ')') {
+                    if (0 == --parenthesisCount) {
+                        try {
 
-                    } catch (NumberFormatException e) {
-                        problems.add(new PreprocessingProblem("Number format invalid: " + e.getMessage(),
-                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
-                        result.append("0");
-                    } catch (IllegalArgumentException e) {
-                        problems.add(new PreprocessingProblem("Mathematical expression invalid: " + e.getMessage(),
-                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
-                        result.append("0");
-                    } catch (RuntimeException e) {
-                        problems.add(new PreprocessingProblem(e.toString(),
-                                Problem.Type.ERROR, currentFile, this.line, expression.toString()));
-                        result.append("0");
-                    }
-                    expression.setLength(0);
-                } else
+                            result.append(SimpleMath.evaluate(expression.toString()));
+
+                        } catch (NumberFormatException e) {
+                            problems.add(new PreprocessingProblem("Number format invalid: " + e.getMessage(),
+                                    Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                            result.append("0");
+                        } catch (IllegalArgumentException e) {
+                            problems.add(new PreprocessingProblem("Mathematical expression invalid: " + e.getMessage(),
+                                    Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                            result.append("0");
+                        } catch (RuntimeException e) {
+                            problems.add(new PreprocessingProblem(e.toString(),
+                                    Problem.Type.ERROR, currentFile, this.line, expression.toString()));
+                            result.append("0");
+                        }
+                        expression.setLength(0);
+                    } else
+                        expression.appendCodePoint(cp);
+                } else if (parenthesisCount > 0)
                     expression.appendCodePoint(cp);
             }
+
+            if (parenthesisCount > 0) {
+                problems.add(new PreprocessingProblem("Unbalanced brackets!", Problem.Type.ERROR, currentFile, this.line,
+                        expression.toString()));
+                result.append("0");
+            }
+
+            if (m.find())
+                result.append(m.group());
         }
 
         return result.toString();
@@ -744,20 +759,31 @@ public class Preprocessor8051 implements Preprocessor {
      * @see #getNumber(String)
      */
     private String convertNumbers(final String source) {
-        StringBuffer sb = new StringBuffer(source.length());
+        final Pattern p = MC8051Library.STRING_PATTERN;
+        final Matcher m = p.matcher(source);
+        String[] outside = p.split(source);
 
-        // TODO: Only covert outside of Strings
+        StringBuilder result = new StringBuilder(source.length());
 
-        Matcher n = MC8051Library.NUMBER_PATTERN.matcher(source);
+        for (final String os : outside) {
+            Matcher n = MC8051Library.NUMBER_PATTERN.matcher(os);
+            StringBuffer temp = new StringBuffer(os.length());
 
-        // Variation of 'replaceAll()' in Matcher
-        boolean found;
-        if (found = n.find()) {
-            do {
-                final String number = getNumber(n.group());
-                n.appendReplacement(sb, getNumber(number == null ? "0" : number));
-            } while (found = n.find());
-            return n.appendTail(sb).toString();
+            // Variation of 'replaceAll()' in Matcher
+            while (m.find()) {
+                boolean found;
+                if (found = n.find()) {
+                    do {
+                        final String number = getNumber(n.group());
+                        n.appendReplacement(temp, number == null ? "0" : number);
+                    } while (found = n.find());
+                    return n.appendTail(temp).toString();
+                }
+            }
+
+            result.append(temp);
+            if (m.find())
+                result.append(m.group());
         }
 
         return source;
