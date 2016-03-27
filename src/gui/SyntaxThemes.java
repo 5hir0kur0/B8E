@@ -48,6 +48,8 @@ public enum SyntaxThemes {
                             case "asm":
                             case "asm51":
                                 if (null == asmTheme) asmTheme = SyntaxThemes.createAsmSourceFileTheme(
+                                        DEFAULT.base0A, // to do foreground
+                                        DEFAULT.base06, // to do background
                                         DEFAULT.base05, // comments
                                         DEFAULT.base0D, // strings
                                         DEFAULT.base0A, // labels
@@ -168,6 +170,7 @@ public enum SyntaxThemes {
 
     //asm source file patterns
     private static final Pattern ASM_COMMENT = Pattern.compile("\\s*(;.*)$");
+    private static final Pattern ASM_TODO = Pattern.compile("\\s*;\\s*(TODO\\b.*)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_STRING = Pattern.compile("((?<!\\\\)\".*?(?<!\\\\)\"|(?<!\\\\)'.*?(?<!\\\\)')");
     private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*:)";
     private static final Pattern ASM_LABEL = Pattern.compile("^\\s*("+ASM_LABEL_STRING+")");
@@ -214,10 +217,12 @@ public enum SyntaxThemes {
 
     private static final Pattern ASM_DIRECTIVE_LINE =
             Pattern.compile("^(\\s*(?:[$#\\.].*?|[$#\\.]?(?:if|elif|else|regex|end|file|line|org|end|d[bws])\\s+.*?|" +
-                    "\\S*\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
+                    "\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE = Pattern.compile(
-            "^\\s*(?:((?:[$#\\.]?org|end|d[bws]|if|elif|else|regex|end|file|line|equ|set|bit|code|[ix]?data))" +
-                    "|\\S*\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
+            "^\\s*(?:([$#\\.]?org|end|d[bws]|if|elif|else|regex|end|file|line|equ|set|bit|code|[ix]?data)" +
+                    "|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_DIRECTIVE_SYMBOL = Pattern.compile(
+            "^\\s*\\b([\\w&&[\\D]]\\w*)\\b\\s*(?:equ|set|bit|code|[ix]?data)\\s*", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 
@@ -336,7 +341,9 @@ public enum SyntaxThemes {
         return tmp;
     }
 
-    private static List<Pair<Pattern, AttributeSet>> createAsmSourceFileTheme(Color commentColor,
+    private static List<Pair<Pattern, AttributeSet>> createAsmSourceFileTheme(Color todoForegroundColor,
+                                                                              Color todoBackgroundColor,
+                                                                              Color commentColor,
                                                                               Color stringColor,
                                                                               Color labelColor,
                                                                               Color mnemonicColor,
@@ -360,9 +367,6 @@ public enum SyntaxThemes {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
         tmp.add(new Pair<>(ASM_ERRORS, create(StyleConstants.Foreground, errorColor,
                 StyleConstants.StrikeThrough, true)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(StyleConstants.Background, directiveBackgroundColor)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE, create(StyleConstants.Foreground, directiveColor,
-                StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(StyleConstants.Foreground, dotColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_SYMBOL, create(StyleConstants.Foreground, symbolColor,
@@ -374,6 +378,12 @@ public enum SyntaxThemes {
         tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(StyleConstants.Foreground, symbolReservedColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(StyleConstants.Foreground, symbolReservedIndirectColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(StyleConstants.Background, directiveBackgroundColor)));
+                // Do not disable error strike through because errors still could occur in the directive
+        tmp.add(new Pair<>(ASM_DIRECTIVE, create(StyleConstants.Foreground, directiveColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(StyleConstants.Foreground, symbolColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(StyleConstants.Foreground, numberErrorColor,
                 StyleConstants.Italic, true)));
@@ -397,6 +407,8 @@ public enum SyntaxThemes {
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_COMMENT, create(StyleConstants.Foreground, commentColor,
                 StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_TODO, create( StyleConstants.StrikeThrough, false, StyleConstants.Italic, true,
+                StyleConstants.Foreground, todoForegroundColor, StyleConstants.Background, todoBackgroundColor)));
         return tmp;
     }
 
