@@ -20,6 +20,8 @@ import java.util.regex.PatternSyntaxException;
  * @author Jannik
  */
 public class Regex {
+    /** The String that is used to compile the Regex.*/
+    private final String format;
     /** The internal Pattern.*/
     private Pattern match;
     /** The String a match will be replaced. Supports groups.*/
@@ -240,6 +242,7 @@ public class Regex {
         setProblemReport(problemFile, problemFileLine, problemList);
         modifier = new StringBuffer();
         substitution = null;
+        this.format = format;
 
         String[] segments = format.split("(?<!(?<!\\\\)\\\\)/");
         for (int i = 0; i < segments.length; i++)
@@ -637,11 +640,11 @@ public class Regex {
                 if (substitution != null)
                     if (global)
                         substrings[i] = m.replaceAll(replaceGroups(m, substitution)
-                                .replaceAll("\\$", "\\\\$")).replaceAll("\\\\$", "\\$");
+                                .replaceAll("\\$", "\\\\\\$")).replaceAll("\\\\\\$", "\\$");
                                 // Prevent native group replacement of Matcher
                     else if (!matched)
                         substrings[i] = m.replaceFirst(replaceGroups(m, substitution)
-                                .replaceAll("\\$", "\\\\$")).replaceAll("\\\\$", "\\$");
+                                .replaceAll("\\$", "\\\\\\$")).replaceAll("\\\\\\$", "\\$");
 
                 matched = true;
             }
@@ -796,7 +799,7 @@ public class Regex {
         boolean found = m.find();
         if (found) {
             int group;
-            final Iterator<String> betw = Arrays.asList(p.split(string)).listIterator();
+            final Iterator<String> between = Arrays.asList(p.split(string)).listIterator();
 
             do {
                 if (m.group(1) != null)
@@ -807,15 +810,15 @@ public class Regex {
                     problems.add(new PreprocessingProblem("Value of desired group bigger than group count! " +
                             "(" + group + " > " + matcher.groupCount() + ")", Problem.Type.ERROR, problemFile,
                             problemFileLine, m.group()));
-                    result.append(betw.next());
+                    result.append(between.next());
                     // m.appendReplacement(result, "");
-                } else
-                    result.append(betw.next()).append(matcher.group(group));
+                } else if (between.hasNext())
+                    result.append(between.next()).append(matcher.group(group));
                     // m.appendReplacement(result, matcher.group(group));
                 found = m.find();
             } while (found);
-            if (betw.hasNext())
-                result.append(betw.next());
+            if (between.hasNext())
+                result.append(between.next());
             // m.appendTail(result);
         } else
             result.append(string);
@@ -863,6 +866,15 @@ public class Regex {
             return lowerCased.equals(other.lowerCased);
             // If one or both of them are case insensitive
             // they will cover the same cases
+    }
+
+    /**
+     * @return
+     *      the format that was used to compile the Regex.
+     */
+    @Override
+    public String toString() {
+        return format;
     }
 
     /**

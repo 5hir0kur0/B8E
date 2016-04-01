@@ -10,13 +10,16 @@ import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
 import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
+import assembler.util.AssemblerSettings;
 import assembler.util.Regex;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.Problem;
+import misc.Settings;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -42,6 +45,7 @@ public class AssemblerTest {
 
     @Before
     public void setUp() throws Exception {
+        AssemblerSettings.init();
         prepr = new Preprocessor8051();
         tokenizer = new Tokenizer8051();
         testAssem = new Assembler(MC8051Library.PROVIDER, prepr, tokenizer);
@@ -65,7 +69,7 @@ public class AssemblerTest {
 
             for (String test : map.keySet()) {
                 System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
-                assertEquals(map.get(test), m.invoke(prepr, test, new ArrayList<Problem>()));
+                assertEquals(map.get(test), m.invoke(prepr, test));
                 System.out.println("Passed.");
             }
 
@@ -77,13 +81,15 @@ public class AssemblerTest {
     }
 
     @Test
-    public void testTokenizer_GetNumber() {
+    public void testPreprocessor_GetNumber() {
         System.out.println("____________Testing Tokenizer8051.getNumber()");
         try {
-            Method m = tokenizer.getClass().getDeclaredMethod("getNumber", Matcher.class, List.class);
+            Method m = prepr.getClass().getDeclaredMethod("getNumber", String.class);
             m.setAccessible(true);
+            Field f = prepr.getClass().getDeclaredField("problems");
+            f.setAccessible(true);
 
-            Pattern pattern = MC8051Library.ADDRESS_PATTERN;
+            List<Problem> list = (List<Problem>) f.get(prepr);
 
             HashMap<String, String> map = new HashMap<>();
             int rand;
@@ -100,21 +106,49 @@ public class AssemblerTest {
 
             for (String test : map.keySet()) {
                 System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
-                Matcher matcher = pattern.matcher(test);
-                List<Problem> list = new ArrayList<>();
-                if (matcher.matches()) {
-                    list.clear();
-                    String tested = (String) m.invoke(tokenizer, matcher, list);
-                    for (Problem p : list)
-                        System.out.println("\n"+ p);
-                    assertEquals(map.get(test), tested);
-                    System.out.println("Passed.");
-                } else
-                    fail("Matcher did'nt match!");
+                String tested = (String) m.invoke(prepr, test);
+                for (Problem p : list)
+                    System.out.println("\n"+ p);
+                assertEquals(map.get(test), tested);
+                System.out.println("Passed.");
             }
 
             m.setAccessible(false);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            f.setAccessible(false);
+        } catch (NoSuchMethodException | NoSuchFieldException | InvocationTargetException | IllegalAccessException e) {
+            e.printStackTrace();
+            fail("Unexpected Exception.");
+        }
+    }
+
+    @Test
+    public void test_preprocess() {
+        System.out.println("____________Testing Preprocessor8051.preprocess()");
+        try {
+
+            final Path dir = Paths.get("src/assembler/test/arc8051/");
+            Settings.INSTANCE.setProperty(AssemblerSettings.INCLUDE_PATH, "src/assembler/include");
+
+            List<String> output = new LinkedList<>();
+            List<Problem> problems;
+
+            problems = prepr.preprocess(dir, Paths.get(dir.toString(), "preprocess_test.asm"), output);
+
+            System.out.println("Output: ");
+            output.stream().forEach(System.out::println);
+            System.out.println(":Output end");
+            System.out.println();
+
+            for (Problem p : problems)
+                if (p instanceof ExceptionProblem) {
+                    System.out.println(p);
+                    ((ExceptionProblem) p).getCause().printStackTrace();
+                } else
+                    System.out.println(p);
+            System.out.println("Total Problems: " + problems.size());
+            if (problems.stream().anyMatch(Problem::isError))
+                fail("Some problems occurred.");
+        } catch (Exception e) {
             e.printStackTrace();
             fail("Unexpected Exception.");
         }

@@ -120,7 +120,7 @@ public class MC8051Library {
      * the directive and no further mnemonics etc. can be written.<br>
      * Regex: <code>"^\s*\$(\w*)\s*([\S].*)?$"</code>
      */
-    public static final Pattern DIRECTIVE_PATTERN       = Pattern.compile("^\\s*\\[$\\.](\\w*)\\s*([\\S].*)?$");
+    public static final Pattern DIRECTIVE_PATTERN       = Pattern.compile("^\\s*[\\$\\.](\\w*)\\s*(.*?)?\\s*$");
     /**
      * Pattern to capture a String.<br>
      * A String is any set of characters surrounded by <code>'"'</code> or
