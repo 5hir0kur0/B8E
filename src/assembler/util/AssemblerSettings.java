@@ -162,6 +162,34 @@ public class AssemblerSettings {
      */
     public static final String INCLUDE_RECURSIVE_SEARCH = "assembler.directives.include.path.recursive-search";
 
+    /**
+     * If this value is set to <code>true</code> the default include file <code>'default.asm'</code>
+     * will be included automatically on each run of the assembler.<br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
+    public static final String INCLUDE_DEFAULT_FILE = "assembler.include-default-file";
+
+    /**
+     * If this value is set to <code>true</code>, the preprocessor will be skipped
+     * (by stripping it down to a basic file reader).<br>
+     * Without the preprocessor features like
+     * <ul>
+     *     <li>directives</li>
+     *     <li>removal of comments</li>
+     *     <li>automatic lower casing</li>
+     *     <li>obvious operands</li>
+     *     <li>etc …</li>
+     * </ul>
+     * are not possible.<br>
+     * <br>
+     * A possible gain of deactivating the preprocessor is a potential gain of
+     * disabling the potential gain of speed.<br>
+     * Valid values: true, false<br>
+     * Defaults to: false
+     */
+    public static final String SKIP_PREPROCESSING = "assembler.skip-preprocessing";
+
 
     /**
      * Initialize all settings that are used by the assembler.
@@ -187,7 +215,16 @@ public class AssemblerSettings {
         s.setDefault(INCLUDE_DEPTH, "256");
         s.setDefault(INCLUDE_PATH, "includes");
         s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
+
+        s.setDefault(INCLUDE_DEFAULT_FILE, "true");
+        s.setDefault(SKIP_PREPROCESSING, "false");
     }
+
+    /**
+     * Initializes the Settings by ensuring that the static block
+     * is initialized before the defaults or settings are accessed.
+     */
+    public static void init() {}
 
     /**
      * Whether a String is a valid error setting that only can have the values "error", "warn" or "ignore".

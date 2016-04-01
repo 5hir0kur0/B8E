@@ -30,7 +30,7 @@ public abstract class Directive {
     private final String[] quoteChars;
 
     /** The characters that are used for quoting if not specified otherwise. */
-    protected static final String[] DEFAULT_QUOTE_CHARS = {"x\"\"", "x''"};
+    public static final String[] DEFAULT_QUOTE_CHARS = {"x\"\"", "x''"};
 
     /**
      * Constructs a new Directive.
