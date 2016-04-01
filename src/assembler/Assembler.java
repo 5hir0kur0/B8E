@@ -89,7 +89,7 @@ public class Assembler {
 
         try {
             List<String> inputOutput = new LinkedList<>();
-            problems.addAll(preprocessor.preprocess(srcFile, inputOutput));
+            problems.addAll(preprocessor.preprocess(directory, srcFile, inputOutput));
 
 
             List<Token> tokens = tokenizer.tokenize(inputOutput, problems);

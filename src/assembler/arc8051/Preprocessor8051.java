@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 public class Preprocessor8051 implements Preprocessor {
 
     private List<Problem> problems;
+    private Path directory;
 
     private Path currentFile;
     private int line;
@@ -117,10 +118,11 @@ public class Preprocessor8051 implements Preprocessor {
             new Directive("include", 1, 1, new String[]{"x\"\"", "x''", "i<>"}, false) {
                 @Override
                 public boolean perform(String[] args) {
-                    final String targetFile = args[0];
+                    String targetFile = args[0];
                     try {
                         Path target = null;
-                        if (targetFile.codePointAt(1) == '<' && targetFile.codePointAt(targetFile.length()-1) == '>') {
+                        if (targetFile.charAt(0) == '<' && targetFile.charAt(targetFile.length()-1) == '>') {
+                            targetFile = targetFile.substring(1, targetFile.length()-1);
                             String[] dirs = Settings.INSTANCE.getProperty(AssemblerSettings.INCLUDE_PATH)
                                     .split("(?<!(?<!\\\\)\\\\);");
                             boolean recursiveSearch = Settings.INSTANCE.getBoolProperty(
@@ -143,13 +145,14 @@ public class Preprocessor8051 implements Preprocessor {
                                 } else
                                     target = Paths.get(dir, targetFile);
                             }
-                            if (target == null || Files.exists(target)) {
+                            if (target == null || !Files.exists(target)) {
                                 problems.add(new PreprocessingProblem("No matching file found!", Problem.Type.ERROR,
                                         currentFile, line, targetFile));
                                 return false;
                             }
                         } else {
-                            target = Paths.get(args[0]);
+                            target = Paths.get(directory.toString(), args[0]);
+                            System.err.println(target);
                             if (!Files.exists(target)) {
                                 problems.add(new PreprocessingProblem("File to include does not exist!",
                                         Problem.Type.ERROR, currentFile, line, target.toString()));
@@ -183,10 +186,10 @@ public class Preprocessor8051 implements Preprocessor {
                                 problems.add(new PreprocessingProblem("Included file is empty.", Problem.Type.WARNING,
                                         currentFile, line, target.toString()));
 
-                            output.add(++outputIndex, "$file \"" + target.toString() + "\"");
-                            output.addAll(++outputIndex, fileContent);
-                            output.add(outputIndex+=fileContent.size()+1, null);
-                            output.add(outputIndex+=fileContent.size()+2, "$file \"" + target.toString() + "\" " + line+1);
+                            output.add(outputIndex + 1, "$file \"" + target.toString() + "\"");
+                            output.addAll(outputIndex+2, fileContent);
+                            output.add(outputIndex+fileContent.size()+2, null);
+                            output.add(outputIndex+fileContent.size()+3, "$file \"" + currentFile.toString() + "\" " + (line+1));
 
                             return true;
                         }
@@ -373,7 +376,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("dw", 1, Integer.MAX_VALUE, new String[]{"i\"\"", "i''"}, false) {
+            new Directive("dw", 1, Integer.MAX_VALUE, new String[]{"i\"\"", "i''"}, true) {
                 @Override
                 protected boolean perform(String[] args) {
                     StringBuilder replacement = new StringBuilder(output.get(outputIndex).length());
@@ -410,7 +413,7 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("ds", 1, 2, new String[]{"i\"\"", "i''"}, false) {
+            new Directive("ds", 1, 2, new String[]{"i\"\"", "i''"}, true) {
                 @Override
                 protected boolean perform(String[] args) {
 
@@ -418,7 +421,7 @@ public class Preprocessor8051 implements Preprocessor {
                     replacement.append("$db");
 
                     int factor = 1;
-                    StringBuilder repeat = new StringBuilder("0"); // Default to 0
+                    StringBuilder repeat = new StringBuilder(" 0"); // Default to 0
                     try {
                         factor = Integer.parseInt(args[0]);
                     } catch (NumberFormatException e) {
@@ -427,27 +430,29 @@ public class Preprocessor8051 implements Preprocessor {
                         return false;
                     }
                     if (args.length > 1) {
-                        if (MC8051Library.NUMBER_PATTERN.matcher(args[1]).matches())
+                        final String toRepeat = args[1];
+                        if (MC8051Library.NUMBER_PATTERN.matcher(toRepeat).matches())
                             try {
-                                final int value = Integer.parseInt(args[1]);
+                                final int value = Integer.parseInt(toRepeat);
                                 if (value > 0xFF)
                                     problems.add(new PreprocessingProblem("Value of number is bigger than a byte!",
-                                            Problem.Type.ERROR, currentFile, line, args[1]));
+                                            Problem.Type.ERROR, currentFile, line, toRepeat));
                                 else {
                                     repeat = new StringBuilder(" ");
                                     repeat.append(value & 0xFF);
                                 }
                             } catch (NumberFormatException e) {
                                 problems.add(new PreprocessingProblem("Illegal number!", Problem.Type.ERROR,
-                                        currentFile, line, args[1]));
+                                        currentFile, line, toRepeat));
                             }
-                        else if (args[1].charAt(0) == '"' && args[1].charAt(args[1].length()-1) == '"' ||
-                                args[1].charAt(0) == '\'' && args[1].charAt(args[1].length()-1) == '\'') {
-                            for (int cp : args[1].substring(1, args[1].length()-1).codePoints().toArray()) {
+                        else if (toRepeat.charAt(0) == '"' && toRepeat.charAt(toRepeat.length()-1) == '"' ||
+                                toRepeat.charAt(0) == '\'' && toRepeat.charAt(toRepeat.length()-1) == '\'') {
+                            repeat = new StringBuilder((toRepeat.length()-2)*2);
+                            for (int cp : toRepeat.substring(1, toRepeat.length() - 1).codePoints().toArray()) {
                                 StringBuilder numbers = new StringBuilder();
                                 for (int i = 0; (cp >> i & 0xFF) != 0 && i < Integer.SIZE; i+=8)
                                     numbers.insert(0, cp >> i & 0xFF).insert(0, " ");
-                                repeat = new StringBuilder(numbers);
+                                repeat.append(numbers);
                             }
                         } else
                             problems.add(new PreprocessingProblem("Whether a valid number nor a valid string.",
@@ -474,10 +479,11 @@ public class Preprocessor8051 implements Preprocessor {
     }
 
     @Override
-    public List<? extends Problem> preprocess(Path file, List<String> output) {
+    public List<Problem> preprocess(Path workingDirectory, Path file, List<String> output) {
         problems.clear();
         regexes.clear();
         this.output.clear();
+        directory = workingDirectory;
         currentFile = null;
 
         {
@@ -490,21 +496,34 @@ public class Preprocessor8051 implements Preprocessor {
             }
         }
 
-        line = 0;
+        if (Settings.INSTANCE.getBoolProperty(AssemblerSettings.SKIP_PREPROCESSING)) {
+
+            output.addAll(this.output);
+            this.output.clear();
+
+            return problems;
+        }
+
+        line = -1;
         endState = RUNNING;
         conditionalState = 0;
         includeDepth = 0;
 
-        String lineString = null, original;
-        output.add("$file \"" + currentFile.toString() + "\""); // Add directive for main source file
-        // for Tokenizer and Assembler
-        for (outputIndex = 1; outputIndex < output.size(); ++outputIndex) {
-            this.line++;
-            lineString = original = output.get(outputIndex);
+        String lineString = null;
+        this.output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
+                                                                        // for Tokenizer and Assembler
+        if (Settings.INSTANCE.getBoolProperty(AssemblerSettings.INCLUDE_DEFAULT_FILE))
+            this.output.add(1, "$include <default.asm>");
+        else
+            this.output.add(1, "$line 1");
+
+        for (outputIndex = 1; outputIndex < this.output.size(); ++outputIndex) {
+            lineString = this.output.get(outputIndex);
 
             if (lineString == null) {
                 if (includeDepth > 0) --includeDepth;
             } else if (endState == RUNNING) {
+                this.line++;
 
                 for (Regex regex : regexes)
                     lineString = regex.perform(lineString,    // Perform all registered regular expressions
@@ -527,6 +546,7 @@ public class Preprocessor8051 implements Preprocessor {
 
                 output.add(lineString);
             } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == END_REACHED) {
+                this.line++;
                 // If the line contains more than just comments or white space
                 // and no Problem has been created yet
                 MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
@@ -543,7 +563,7 @@ public class Preprocessor8051 implements Preprocessor {
                     problems);
 
 
-        output.addAll(this.output);
+        // output.addAll(this.output);
         this.output.clear();
 
         return problems;
@@ -555,7 +575,7 @@ public class Preprocessor8051 implements Preprocessor {
             String name = m.group(1).toLowerCase();
             for (Directive d : directives)
                 if (d.getName().equals(name)) {
-                    boolean result = d.perform(m.group(2),
+                    boolean result = d.perform(m.group(2) == null ? "" : m.group(2),
                             new PreprocessingProblem(currentFile, this.line, line), problems);
                     if (result && d.isFallthrough())
                         return output.get(outputIndex); // Return the line of the directive in the output
@@ -573,19 +593,26 @@ public class Preprocessor8051 implements Preprocessor {
     private List<String> readFile(Path file) {
         Objects.requireNonNull(file, "'file' cannot be 'null'!");
 
-        if (Files.isRegularFile(file)) {
+        if (!Files.exists(file)) {
+            problems.add(new PreprocessingProblem("Given Path does not exist!", Problem.Type.ERROR, currentFile,
+                    currentFile == null ? -1 : line, file.toString()));
+            return null;
+        }
+        if (!Files.isRegularFile(file)) {
            problems.add(new PreprocessingProblem("Given Path is not a regular file.", Problem.Type.ERROR, currentFile,
                    currentFile == null ? -1 : line, file.toString()));
             return null;
         }
-        if (Files.isReadable(file)) {
+        if (!Files.isReadable(file)) {
             problems.add(new PreprocessingProblem("File is not readable.", Problem.Type.ERROR, currentFile,
                     currentFile == null ? -1 : line, file.toString()));
             return null;
         }
 
         try (Stream<String> stream = Files.lines(file)){
-            return Arrays.asList((String[]) stream.toArray());
+            List<String> result = new ArrayList<>(50);
+            stream.forEach(result::add);
+            return result;
         } catch (IOException e) {
             problems.add(new ExceptionProblem("Unable to read file: \"" + file + "\"", Problem.Type.ERROR, currentFile,
                     currentFile == null ? -1 : line, e));
@@ -704,14 +731,28 @@ public class Preprocessor8051 implements Preprocessor {
                 if (parenthesisCount == 0 && cp != '(')
                     result.appendCodePoint(cp);
                 else if (cp == '(') {
-                    ++parenthesisCount;
                     if (parenthesisCount > 0)
                         expression.appendCodePoint(cp);
+                    ++parenthesisCount;
                 } else if (parenthesisCount > 0 && cp == ')') {
                     if (0 == --parenthesisCount) {
                         try {
 
-                            result.append(SimpleMath.evaluate(expression.toString()));
+                            final double number = SimpleMath.evaluate(expression.toString());
+
+                            if (number < 0) {
+                                problems.add(new PreprocessingProblem("Number cannot be negative!",
+                                        Problem.Type.ERROR, currentFile, this.line,
+                                        expression.toString() + " = " + number));
+                                result.append("0");
+                            } else {
+                                if ((int) number != number)
+                                    problems.add(new PreprocessingProblem("Any decimal places will be cut off!",
+                                            Problem.Type.WARNING, currentFile, this.line,
+                                            expression.toString() + " = " + number));
+
+                                result.append((int) number);
+                            }
 
                         } catch (NumberFormatException e) {
                             problems.add(new PreprocessingProblem("Number format invalid: " + e.getMessage(),
@@ -770,23 +811,23 @@ public class Preprocessor8051 implements Preprocessor {
             StringBuffer temp = new StringBuffer(os.length());
 
             // Variation of 'replaceAll()' in Matcher
-            while (m.find()) {
-                boolean found;
-                if (found = n.find()) {
-                    do {
-                        final String number = getNumber(n.group());
-                        n.appendReplacement(temp, number == null ? "0" : number);
-                    } while (found = n.find());
-                    return n.appendTail(temp).toString();
-                }
-            }
+            boolean found;
+            if (found = n.find()) {
+                do {
+                    final String number = getNumber(n.group());
+                    n.appendReplacement(temp, number == null ? "0" : number);
+                } while (found = n.find());
+                n.appendTail(temp);
+            } else
+                temp.append(os);
 
             result.append(temp);
+
             if (m.find())
                 result.append(m.group());
         }
 
-        return source;
+        return result.toString();
     }
 
     /**
@@ -990,7 +1031,7 @@ public class Preprocessor8051 implements Preprocessor {
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
-        Regex regex = new Regex(new StringBuilder("s/(?<!^)(\\s*)\\b").append(symbol).append("\\b(!:)/").append("$1")
+        Regex regex = new Regex(new StringBuilder("s/(?<=[\\w,\\(])(\\s*)\\b").append(symbol).append("\\b/").append("${1}")
                 .append(replacement).append("/")
 
                 .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.WHOLE_LINE_FLAG)
