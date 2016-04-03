@@ -4,6 +4,7 @@ import assembler.Preprocessor;
 import assembler.util.AssemblerSettings;
 import assembler.util.Regex;
 import assembler.util.assembling.Directive;
+import assembler.util.assembling.Mnemonic;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.PreprocessingProblem;
 import assembler.util.problems.Problem;
@@ -1031,8 +1032,8 @@ public class Preprocessor8051 implements Preprocessor {
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
-        Regex regex = new Regex(new StringBuilder("cs/^(?!\\T{directive}).*?$/(?<=[\\w,\\(])(\\s*)\\b").append(symbol)
-                .append("\\b/").append("${1}").append(replacement).append("/")
+        Regex regex = new Regex(new StringBuilder("cs/(?<=[\\w,\\(])(\\s*)\\b").append(symbol)
+                .append("\\b/^(?!\\T{directive}).*?$/${1}").append(replacement).append("/")
 
                 .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.WHOLE_LINE_FLAG)
                 .append(Regex.DO_NOT_REPLACE_IN_STRING_FLAG)
@@ -1045,6 +1046,18 @@ public class Preprocessor8051 implements Preprocessor {
         for (String reserved : MC8051Library.RESERVED_NAMES)
             if (symbol.equalsIgnoreCase(reserved)) {
                 problems.add(new PreprocessingProblem("Symbol is a reserved name!",
+                        Problem.Type.ERROR, currentFile, line, symbol));
+                return false;
+            }
+        for (Mnemonic reserved : MC8051Library.mnemonics)
+            if (symbol.equalsIgnoreCase(reserved.getName())) {
+                problems.add(new PreprocessingProblem("Symbol is a mnemonic name!",
+                        Problem.Type.ERROR, currentFile, line, symbol));
+                return false;
+            }
+        for (Directive reserved : this.directives)
+            if (symbol.equalsIgnoreCase(reserved.getName())) {
+                problems.add(new PreprocessingProblem("Symbol is a directive name!",
                         Problem.Type.ERROR, currentFile, line, symbol));
                 return false;
             }
