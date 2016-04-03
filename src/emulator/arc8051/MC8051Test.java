@@ -583,12 +583,13 @@ public class MC8051Test {
             return A.getValue() == (byte)0x01 && PSW.getBit(7) && !PSW.getBit(6)
                     && !PSW.getBit(2);
         });
-        final byte directAddr = (byte)r.nextInt(0x80);
+        byte directAddr = (byte)r.nextInt(0x80);
         ram.set(directAddr, (byte) 0x84);
         A.setValue((byte) 0x22);
         PSW.setBit(false, 7);
         testOpcode(SUBB_A_dir, 0, new byte[]{directAddr}, 1, () -> A.getValue() == (byte)0x9E && PSW.getBit(7)
                 && PSW.getBit(6) && PSW.getBit(2) && PSW.getBit(0));
+        directAddr = directAddr == 0 ? 42 : directAddr;
         testController.state.R0.setValue(directAddr);
         ram.set(directAddr, (byte) 0xFF);
         A.setValue((byte) 0xFF);
