@@ -655,7 +655,7 @@ public class Regex {
 
         for (int i = 0; i < substrings.length; ++i) {
             Matcher m = this.match.matcher(substrings[i]);
-            if (m.lookingAt()) {
+            if (m.find()) {
                 if (global || !global && !matched) {
                     final int[] cps = this.modifier.codePoints().toArray();
                     for (int j = 0; j < cps.length; ++j)
@@ -884,6 +884,9 @@ public class Regex {
         Objects.requireNonNull(matcher, "'Matcher' cannot be 'null'!");
         Objects.requireNonNull(string, "'String' cannot be 'null'!");
         matcher.reset();
+
+        if (!matcher.find())
+            return string;
 
         final Pattern p = Pattern.compile("(?<!\\\\)(?:\\$|\\\\g?)(?:(\\d+)|\\{(\\d+)})");
         final Matcher m = p.matcher(string);
