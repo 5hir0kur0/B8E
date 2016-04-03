@@ -258,11 +258,21 @@ public class AssemblerTest {
         System.out.println("____________Testing Regex()");
         List<Problem> problems = new ArrayList<>();
         try {
+            Path file = Paths.get("src/assembler/test/arc8051/imaginary.asm");
             //TODO: Finish!
-            String regex = "ws/(\\d+)/Oh noes!/~/g";
-            Regex r = new Regex(regex, Paths.get("src/assembler/test/arc8051/imaginary.asm"), 42, problems);
+            Regex regex1 = new Regex("ws/(\\d+)/Oh noes!/~/g", file, 42, problems);
+            Regex regex2 = new Regex("cs/(\\d+)/5/~/g", file, 43, problems);
+            Regex regex3 = new Regex("cs/(\\d+)/4/~/g", file, 43, problems);
+            Regex regex4 = new Regex("cs/(\\d+)/^(?!\\T{directive}).*?$/~/g", file, 44, problems);
 
-            System.out.println("Result: " + r.perform("4 + 2 == 42"));
+
+            System.out.println("Result1("+regex1+"): " + regex1.perform("4 + 2 == 42"));
+            System.out.println("Result2("+regex2+": " + regex2.perform("4 + 2 == 42"));
+            System.out.println("Result3("+regex3+": " + regex3.perform("4 + 2 == 42"));
+            System.out.println("Result4.1("+regex4+": " +
+                    regex4.perform("$test 4 + 2 == 42"));
+            System.out.println("Result4.2("+regex4+": " +
+                    regex4.perform("/test 4 + 2 == 42"));
 
 
             System.out.println("Problems:");
