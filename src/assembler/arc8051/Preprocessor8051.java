@@ -1031,8 +1031,8 @@ public class Preprocessor8051 implements Preprocessor {
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
-        Regex regex = new Regex(new StringBuilder("s/(?<=[\\w,\\(])(\\s*)\\b").append(symbol).append("\\b/").append("${1}")
-                .append(replacement).append("/")
+        Regex regex = new Regex(new StringBuilder("cs/^(?!\\T{directive}).*?$/(?<=[\\w,\\(])(\\s*)\\b").append(symbol)
+                .append("\\b/").append("${1}").append(replacement).append("/")
 
                 .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.WHOLE_LINE_FLAG)
                 .append(Regex.DO_NOT_REPLACE_IN_STRING_FLAG)

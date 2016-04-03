@@ -21,7 +21,7 @@ import java.util.regex.PatternSyntaxException;
  */
 public class Regex {
     /** The String that is used to compile the Regex.*/
-    private final String format;
+    private String format;
     /** The internal Pattern.*/
     private Pattern match;
     /** The String a match will be replaced. Supports groups.*/
@@ -30,8 +30,10 @@ public class Regex {
     private StringBuffer modifier;
     /** The segments (all Strings that are separated by '/'. */
     private String[] segments;
+    /** The conditions that must be true before the Regex will be applied. */
+    private List<Pattern> conditions;
     /**
-     * A lowercased representation of the Regex's Pattern.<br>
+     * A lower cased representation of the Regex's Pattern.<br>
      * Used for equality purposes if the Regex is case insensitive.
      */
     private String lowerCased;
@@ -69,6 +71,8 @@ public class Regex {
     public static final char INFO_ON_MATCH_MODIFIER       = 'i';
     /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern mismatches. */
     public static final char INFO_ON_MISMATCH_MODIFIER    = 'I';
+
+    public static final char CONDITION_MODIFIER = 'c';
 
     //Valid flags
     /** Makes a <code>Regex</code> replace all occurrences of the pattern with the substitution. */
@@ -146,6 +150,13 @@ public class Regex {
      *         The same as 'e and E' but with <code>INFORMATION</code> as type of the
      *         <code>Problem</code>.
      *     </td></tr>
+     *     <tr><td><code>c</code></td><td>Condition</td><td>
+     *         A condition in form of a pattern, will be checked against the target String.<br>
+     *         All special sequences that can be used on the main pattern can also be used by the
+     *         condition.<br>
+     *         If only one of the specified conditions does not match (<code>lookingAt()</code>)
+     *         the {@link #perform(String)} method will be canceled.
+     *     </td></tr>
      * </table>
      * Note #1: The order of the modifier characters specifies how a segment is interpreted.<br> So
      *          the corresponding segment can be calculated by adding <code>2</code> to index
@@ -162,15 +173,17 @@ public class Regex {
      *      <tr><td>number</td><td>NUMBER_PATTERN</td></tr>
      *      <tr><td>address</td><td>ADDRESS_PATTERN</td></tr>
      *      <tr><td>constant</td><td>CONSTANT_PATTERN</td></tr>
-     *      <tr>negated_address</td><td>NEGATED_ADDRESS_PATTERN</td></tr>
-     *      <tr>address_offset</td><td>ADDRESS_OFFSET_PATTERN</td></tr>
-     *      <tr>bit_addressing</td><td>BIT_ADDRESSING_PATTERN</td></tr>
-     *      <tr>symbol</td><td>SYMBOL_PATTERN</td></tr>
-     *      <tr>label</td><td>LABEL_PATTERN</td></tr>
-     *      <tr>name</td><td>SYMBOL_PATTERN</td></tr>
-     *      <tr>mnemonic_name</td><td>MNEMONIC_NAME_PATTERN</td></tr>
-     *      <tr>indirect_name</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
-     *      <tr>indirect_symbol</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>negated_address</td><td>NEGATED_ADDRESS_PATTERN</td></tr>
+     *      <tr><td>address_offset</td><td>ADDRESS_OFFSET_PATTERN</td></tr>
+     *      <tr><td>bit_addressing</td><td>BIT_ADDRESSING_PATTERN</td></tr>
+     *      <tr><td>symbol</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr><td>label</td><td>LABEL_PATTERN</td></tr>
+     *      <tr><td>name</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr><td>mnemonic_name</td><td>MNEMONIC_NAME_PATTERN</td></tr>
+     *      <tr><td>indirect_name</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>indirect_symbol</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>directive</td><td>DIRECTIVE_PATTERN</td></tr>
+     *      <tr><td>string</td><td>STRING_PATTERN</td></tr>
      * </table>
      * Note: Like the modifier-segment the second segment will always be interpreted as the pattern of the
      *       <code>Regex</code> and is required for it to work properly.
@@ -188,7 +201,7 @@ public class Regex {
      * Any prefix can be escaped with a backslash (<code>'\\'</code>) like <code>'\\$10'</code> also the number
      * can be separated from a literal number by surrounding it with curly brackets (<code>${1}2</code>).
      *
-     * <h1>4 Flags</h1>
+     * <h1>4 Flags:</h1>
      * The optional segment after the last modifier segment will be interpreted as the flag segment. This
      * segments may contain flag characters. A uppercase letter always is the negation of a lowercase one
      * (<code>'I'</code> is the negation of <code>'i'</code>). The last flag character is always the one
@@ -241,8 +254,8 @@ public class Regex {
         Objects.requireNonNull(format, "'format' cannot be 'null'!");
         setProblemReport(problemFile, problemFileLine, problemList);
         modifier = new StringBuffer();
+        conditions = new LinkedList<>();
         substitution = null;
-        this.format = format;
 
         String[] segments = format.split("(?<!(?<!\\\\)\\\\)/");
         for (int i = 0; i < segments.length; i++)
@@ -291,7 +304,7 @@ public class Regex {
      * @return Whether all prepare-methods returned <code>true</code>.
      *
      * @see #compileModifiers(String)
-     * @see #compilePattern(String)
+     * @see #compilePattern(String, boolean)
      * @see #compileRemainingSegments(String[])
      * @see #compileFlags(String)
      */
@@ -310,12 +323,20 @@ public class Regex {
         if (length >= 2 + modifier.length()) {
             flags = true;
             if (!compileFlags(unprepared[2 + modifier.length()])) result = false;
-        } if (!compilePattern(unprepared[1])) result = false;
+        } if ((this.match = compilePattern(unprepared[1], true)) == null) result = false;
         if (length > 2 + (flags ? 1 : 0) + modifier.length())
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(problemFile, problemFileLine,
                             Arrays.toString(Arrays.copyOfRange(unprepared, 2 + (flags ? 1 : 0) + modifier.length(),
                             unprepared.length))),
                     AssemblerSettings.UNNECESSARY_SEGMENTS, "Too many segments!", "Unnecessary segments.", problems);
+
+        StringBuilder temp = new StringBuilder(modifier).append('/').append(match);
+        for (String s : segments) temp.append('/').append(s);
+        this.format = temp.append('/')
+                .append(global ? WHOLE_LINE_FLAG : ONLY_FIRST_FLAG)
+                .append(caseSensitive ? CASE_SENSITIVE_FLAG : CASE_INSENSITIVE_FLAG)
+                .append(replaceString ? REPLACE_IN_STRING_FLAG : DO_NOT_REPLACE_IN_STRING_FLAG)
+                .append(modifiable ? MODIFIABLE_FLAG : UNMODIFIABLE_FLAG).toString();
 
         return result;
     }
@@ -354,7 +375,7 @@ public class Regex {
         boolean substitution = false;
 
         int validModsCount = 0;
-        final String validMods = "seEwWiI";
+        final String validMods = "sceEwWiI";
 
         for (int cp : mods.codePoints().toArray()) {
             if (validMods.indexOf(cp) == -1) {
@@ -373,7 +394,8 @@ public class Regex {
             if (!substitution && cp == SUBSTITUTE_MODIFIER)
                 substitution = true;
 
-            if (cp != SUBSTITUTE_MODIFIER) { // Must be a Problem modifier
+
+            if (cp != SUBSTITUTE_MODIFIER && cp != CONDITION_MODIFIER) { // Must be a Problem modifier
                 if (Character.isUpperCase(cp)) {
                     if (++negativeMsgMod > 1) {
                         MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(problemFile, problemFileLine,
@@ -419,15 +441,17 @@ public class Regex {
      *      <tr><td>number</td><td>NUMBER_PATTERN</td></tr>
      *      <tr><td>address</td><td>ADDRESS_PATTERN</td></tr>
      *      <tr><td>constant</td><td>CONSTANT_PATTERN</td></tr>
-     *      <tr>negated_address</td><td>NEGATED_ADDRESS_PATTERN</td></tr>
-     *      <tr>address_offset</td><td>ADDRESS_OFFSET_PATTERN</td></tr>
-     *      <tr>bit_addressing</td><td>BIT_ADDRESSING_PATTERN</td></tr>
-     *      <tr>symbol</td><td>SYMBOL_PATTERN</td></tr>
-     *      <tr>label</td><td>LABEL_PATTERN</td></tr>
-     *      <tr>name</td><td>SYMBOL_PATTERN</td></tr>
-     *      <tr>mnemonic_name</td><td>MNEMONIC_NAME_PATTERN</td></tr>
-     *      <tr>indirect_name</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
-     *      <tr>indirect_symbol</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>negated_address</td><td>NEGATED_ADDRESS_PATTERN</td></tr>
+     *      <tr><td>address_offset</td><td>ADDRESS_OFFSET_PATTERN</td></tr>
+     *      <tr><td>bit_addressing</td><td>BIT_ADDRESSING_PATTERN</td></tr>
+     *      <tr><td>symbol</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr><td>label</td><td>LABEL_PATTERN</td></tr>
+     *      <tr><td>name</td><td>SYMBOL_PATTERN</td></tr>
+     *      <tr><td>mnemonic_name</td><td>MNEMONIC_NAME_PATTERN</td></tr>
+     *      <tr><td>indirect_name</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>indirect_symbol</td><td>SYMBOL_INDIRECT_PATTERN</td></tr>
+     *      <tr><td>directive</td><td>DIRECTIVE_PATTERN</td></tr>
+     *      <tr><td>string</td><td>STRING_PATTERN</td></tr>
      * </table>
      * <br>
      * After the substitution the resulting pattern String will be used to
@@ -440,41 +464,42 @@ public class Regex {
      * </ul>
      *
      * @param pattern the pattern that should be used.
+     * @param setLowerCased whether the <code>lowerCased</code> field should be set.
      *
-     * @return whether the preparation was successful.
+     * @return the compiled pattern, <code>null</code> if the pattern was invalid.
      */
-    private boolean compilePattern(final String pattern) {
-        String result = pattern;
+    private  Pattern compilePattern(String pattern, final boolean setLowerCased) {
 
         try {
-            result =
-                    result.replaceAll("\\\\T\\{number}", MC8051Library.NUMBER_PATTERN.toString())
-                            .replaceAll("\\\\T\\{address}", MC8051Library.ADDRESS_PATTERN.toString())
-                            .replaceAll("\\\\T\\{constant}", MC8051Library.CONSTANT_PATTERN.toString())
-                            .replaceAll("\\\\T\\{negated_address}", MC8051Library.NEGATED_ADDRESS_PATTERN.toString())
-                            .replaceAll("\\\\T\\{address_offset}", MC8051Library.ADDRESS_OFFSET_PATTERN.toString())
-                            .replaceAll("\\\\T\\{bit_addressing}", MC8051Library.BIT_ADDRESSING_PATTERN.toString())
-                            .replaceAll("\\\\T\\{symbol}", MC8051Library.SYMBOL_PATTERN.toString())
-                            .replaceAll("\\\\T\\{label}", MC8051Library.LABEL_PATTERN.toString())
-                            .replaceAll("\\\\T\\{name}", MC8051Library.SYMBOL_PATTERN.toString())
-                            .replaceAll("\\\\T\\{mnemonic_name}", MC8051Library.MNEMONIC_NAME_PATTERN.toString())
-                            .replaceAll("\\\\T\\{indirect_name}", MC8051Library.SYMBOL_INDIRECT_PATTERN.toString())
-                            .replaceAll("\\\\T\\{indirect_symbol}", MC8051Library.SYMBOL_INDIRECT_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{number}").matcher(pattern), pattern, MC8051Library.NUMBER_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{address}").matcher(pattern), pattern, MC8051Library.ADDRESS_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{constant}").matcher(pattern), pattern, MC8051Library.CONSTANT_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{negated_address}").matcher(pattern), pattern, MC8051Library.NEGATED_ADDRESS_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{address_offset}").matcher(pattern), pattern, MC8051Library.ADDRESS_OFFSET_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{bit_addressing}").matcher(pattern), pattern, MC8051Library.BIT_ADDRESSING_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{symbol}").matcher(pattern), pattern, MC8051Library.SYMBOL_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{label}").matcher(pattern), pattern, MC8051Library.LABEL_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{name}").matcher(pattern), pattern, MC8051Library.SYMBOL_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{mnemonic_name}").matcher(pattern), pattern, MC8051Library.MNEMONIC_NAME_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{indirect_name}").matcher(pattern), pattern, MC8051Library.SYMBOL_INDIRECT_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{indirect_symbol}").matcher(pattern), pattern, MC8051Library.SYMBOL_INDIRECT_PATTERN.toString());
 
-            Matcher m = Pattern.compile("\\\\T\\{(.*)}").matcher(result);
+            pattern = replaceAll(Pattern.compile("\\\\T\\{directive}").matcher(pattern), pattern, MC8051Library.DIRECTIVE_PATTERN.toString());
+            pattern = replaceAll(Pattern.compile("\\\\T\\{string}").matcher(pattern), pattern, MC8051Library.STRING_PATTERN.toString());
+
+            Matcher m = Pattern.compile("\\\\T\\{(.*)}").matcher(pattern);
             while (m.find())
                 problems.add(new PreprocessingProblem(m.group(1).trim().isEmpty() ? "No type name!" :
                         "Unknown type name!", Problem.Type.ERROR, problemFile, problemFileLine, m.group(1)));
 
-            this.match = Pattern.compile(result, caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
-            this.lowerCased = Regex.patternToLowercase(result);
-            return true;
+            if (setLowerCased) this.lowerCased = Regex.patternToLowercase(pattern);
+            return Pattern.compile(pattern, caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
 
         } catch (PatternSyntaxException e) {
             problems.add(new PreprocessingProblem("Wrong regular expression syntax: " + e.getMessage(),
-                    Problem.Type.ERROR, problemFile, problemFileLine, result));
+                    Problem.Type.ERROR, problemFile, problemFileLine, pattern));
         }
-        return false;
+        return null;
     }
 
     /**
@@ -576,6 +601,10 @@ public class Regex {
             if (mods[i] == SUBSTITUTE_MODIFIER) {
                 substitution = segments[2 + i];
                 segs.add("");
+            } else if (mods[i] == CONDITION_MODIFIER) {
+                Pattern pattern = compilePattern(segments[2 + i], false);
+                if (pattern != null) conditions.add(pattern);
+                segs.add("");
             } else
                 segs.add(segments[2 + i]);
         }
@@ -615,13 +644,18 @@ public class Regex {
         if (match == null) return target;
 
         Objects.requireNonNull(target, "'Target' String cannot be 'null'!");
+
+        for (Pattern cond : conditions)
+            if (!cond.matcher(target).lookingAt())
+                return target;
+
         Pattern p = MC8051Library.STRING_PATTERN;
         boolean matched = false;
         String[] substrings = replaceString ? new String[]{target} : p.split(target);
 
         for (int i = 0; i < substrings.length; ++i) {
             Matcher m = this.match.matcher(substrings[i]);
-            if (m.find()) {
+            if (m.lookingAt()) {
                 if (global || !global && !matched) {
                     final int[] cps = this.modifier.codePoints().toArray();
                     for (int j = 0; j < cps.length; ++j)
@@ -639,12 +673,9 @@ public class Regex {
                 }
                 if (substitution != null)
                     if (global)
-                        substrings[i] = m.replaceAll(replaceGroups(m, substitution)
-                                .replaceAll("\\$", "\\\\\\$")).replaceAll("\\\\\\$", "\\$");
-                                // Prevent native group replacement of Matcher
+                        substrings[i] = this.replaceAll(m, substrings[i], replaceGroups(m, substitution));
                     else if (!matched)
-                        substrings[i] = m.replaceFirst(replaceGroups(m, substitution)
-                                .replaceAll("\\$", "\\\\\\$")).replaceAll("\\\\\\$", "\\$");
+                        substrings[i] = this.replaceN(m, substrings[i], 1, replaceGroups(m, substitution));
 
                 matched = true;
             }
@@ -742,8 +773,7 @@ public class Regex {
      *
      * @see #replaceGroups(Matcher, String)
      */
-    private void createProblem(Matcher matcher, final Problem.Type type, final String message, final
-    String line) {
+    private void createProblem(Matcher matcher, final Problem.Type type, final String message, final String line) {
         String result;
         if (matcher == null)
             result = message;
@@ -751,7 +781,70 @@ public class Regex {
             result = replaceGroups(matcher, message);
 
         problems.add(new PreprocessingProblem(result, type, problemFile, this.problemFileLine,
-                matcher != null ? matcher.group() : line));
+                matcher != null && matcher.find() ? matcher.group() : line));
+    }
+
+
+    /**
+     * Replaces a specified number of occurrences of a pattern with a substitution string
+     * <i>without</i> processing group references like {@link Matcher#replaceAll(String)}.
+     *
+     * @param matcher
+     *      the Matcher that should be used to determine the occurrences of the pattern in the
+     *      target String.
+     * @param target
+     *      the String witch was used to generate the Matcher ({@link Pattern#matcher(CharSequence)})
+     * @param times
+     *      the maximum number of replacements.
+     * @param replacement
+     *      the String the matches should be replaced with. (Group references are not supported.)
+     *
+     * @return
+     *      the modified <code>target</code> String.
+     */
+    private String replaceN(final Matcher matcher, final String target, int times, final String replacement) {
+        if (times < 0) throw new IllegalArgumentException("'times' cannot be negative.");
+
+        matcher.reset();
+        StringBuilder sb = new StringBuilder();
+        int end = 0;
+
+        for (;matcher.find() && times > 0; end = matcher.end(), --times)
+            sb.append(target.substring(end, matcher.start()))
+              .append(replacement);
+
+        sb.append(target.substring(end, target.length()));
+
+        return sb.toString();
+    }
+
+    /**
+     * Replaces all occurrences of a pattern with a substitution string <i>without</i> processing
+     * group references like {@link Matcher#replaceAll(String)}.
+     *
+     * @param matcher
+     *      the Matcher that should be used to determine the occurrences of the pattern in the
+     *      target String.
+     * @param target
+     *      the String witch was used to generate the Matcher ({@link Pattern#matcher(CharSequence)})
+     * @param replacement
+     *      the String the matches should be replaced with. (Group references are not supported.)
+     *
+     * @return
+     *      the modified <code>target</code> String.
+     */
+    private String replaceAll(final Matcher matcher, final String target, final String replacement) {
+        matcher.reset();
+        StringBuilder sb = new StringBuilder();
+        int end = 0;
+
+        for (;matcher.find(); end = matcher.end())
+            sb.append(target.substring(end, matcher.start()))
+                    .append(replacement);
+
+        sb.append(target.substring(end, target.length()));
+
+        return sb.toString();
     }
 
     /**
@@ -790,6 +883,7 @@ public class Regex {
     private String replaceGroups(Matcher matcher, String string) {
         Objects.requireNonNull(matcher, "'Matcher' cannot be 'null'!");
         Objects.requireNonNull(string, "'String' cannot be 'null'!");
+        matcher.reset();
 
         final Pattern p = Pattern.compile("(?<!\\\\)(?:\\$|\\\\g?)(?:(\\d+)|\\{(\\d+)})");
         final Matcher m = p.matcher(string);
