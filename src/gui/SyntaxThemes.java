@@ -170,7 +170,7 @@ public enum SyntaxThemes {
 
     //asm source file patterns
     private static final Pattern ASM_COMMENT = Pattern.compile("\\s*(;.*)$");
-    private static final Pattern ASM_TODO = Pattern.compile("\\s*;\\s*(TODO\\b.*)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_TODO = Pattern.compile("\\s*;.*?\\b(TODO\\b.*)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_STRING = Pattern.compile("((?<!\\\\)\".*?(?<!\\\\)\"|(?<!\\\\)'.*?(?<!\\\\)')");
     private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*:)";
     private static final Pattern ASM_LABEL = Pattern.compile("^\\s*("+ASM_LABEL_STRING+")");
