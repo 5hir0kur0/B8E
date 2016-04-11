@@ -110,8 +110,7 @@ public class Preprocessor8051 implements Preprocessor {
             new Directive("end", 0, 0) {
                 @Override
                 public boolean perform(String[] args) {
-                    if (endState == 0)
-                        endState = 1;
+                    endState = END_REACHED;
                     return true;
                 }
             },
@@ -330,10 +329,24 @@ public class Preprocessor8051 implements Preprocessor {
                 @Override
                 protected boolean perform(String[] args) {
 
-                    Regex r = new Regex(args[0], currentFile, line, problems);
+                    Regex regex = new Regex(args[0], currentFile, line, problems);
 
-                    if (r.isValid())  {
-                        regexes.add(r);
+                    if (regex.isValid())  {
+                        for (int i = 0; i < regexes.size(); ++i) {
+                            Regex r = regexes.get(i);
+                            if (r.equals(regex)) {
+                                if (r.isModifiable()) {
+                                    regexes.set(i, regex);
+                                    return true;
+                                } else {
+                                    problems.add(new PreprocessingProblem(
+                                            "A similar regex that isn't modifiable already defined!",
+                                            Problem.Type.ERROR, currentFile, line, args[0]));
+                                    return false;
+                                }
+                            }
+                        }
+                        regexes.add(regex);
                         return true;
                     } else
                         return false;
@@ -476,7 +489,7 @@ public class Preprocessor8051 implements Preprocessor {
     public Preprocessor8051() {
         problems = new LinkedList<>();
         output = new ArrayList<>(50);
-        regexes = new LinkedList<>();
+        regexes = new ArrayList<>(50);
     }
 
     @Override
@@ -749,7 +762,7 @@ public class Preprocessor8051 implements Preprocessor {
                             } else {
                                 if ((int) number != number)
                                     problems.add(new PreprocessingProblem("Any decimal places will be cut off!",
-                                            Problem.Type.WARNING, currentFile, this.line,
+                                            Problem.Type.INFORMATION, currentFile, this.line,
                                             expression.toString() + " = " + number));
 
                                 result.append((int) number);
@@ -1032,12 +1045,11 @@ public class Preprocessor8051 implements Preprocessor {
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
-        Regex regex = new Regex(new StringBuilder("cs/(?<=[\\w,\\(])(\\s*)\\b").append(symbol)
-                .append("\\b/^(?!\\T{directive}).*?$/${1}").append(replacement).append("/")
+        Regex regex = new Regex("cs/(?<=[\\w,\\(])(\\s*)\\b"+symbol+"\\b/^(?!\\T{directive}).*?$/${1}"+replacement+"/"
 
-                .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.WHOLE_LINE_FLAG)
-                .append(Regex.DO_NOT_REPLACE_IN_STRING_FLAG)
-                .append(modifiable ? Regex.MODIFIABLE_FLAG : Regex.UNMODIFIABLE_FLAG).toString(),
+                +Regex.CASE_INSENSITIVE_FLAG+Regex.WHOLE_LINE_FLAG
+                +Regex.DO_NOT_REPLACE_IN_STRING_FLAG
+                +(modifiable ? Regex.MODIFIABLE_FLAG : Regex.UNMODIFIABLE_FLAG),
 
                 currentFile, line, problems);
         if (!regex.isValid())
@@ -1070,9 +1082,8 @@ public class Preprocessor8051 implements Preprocessor {
                     return false;
                 }
         } else {
-            Regex[] regexArray = regexes.toArray(new Regex[regexes.size()]);
-            for (int i = 0; i < regexArray.length; ++i) {
-                Regex r = regexArray[i];
+            for (int i = 0; i < regexes.size(); ++i) {
+                Regex r = regexes.get(i);
                 if (r.equals(regex)) {
                     if (r.isModifiable()) {
                         regexes.set(i, regex);
