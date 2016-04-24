@@ -282,7 +282,7 @@ public class MC8051Library {
                     if (type2 == OperandType8051.ADDRESS || type2 == OperandType8051.CONSTANT) {
                         value = Integer.parseInt(op2.getValue());
                         if (value <= 0xff) {
-                            if (type1 == OperandType8051.NAME || type1 == OperandType8051.INDIRECT_NAME) {
+                            if (type1 == OperandType8051.NAME || type1 == OperandType8051.INDIRECT) {
                                 if (op1.getValue().equals("a"))
                                     result = new byte[]{(byte) (type2 == OperandType8051.CONSTANT ? 0xB4 : 0xB5),
                                             (byte) value, offset == null ? -3 : offset};
@@ -450,7 +450,7 @@ public class MC8051Library {
                     boolean firstIgnored = true;
                     if (operands.length > 0) {
                         firstIgnored = false;
-                        if (!(operands[0].getOperandType() == OperandType8051.INDIRECT_NAME &&
+                        if (!(operands[0].getOperandType() == OperandType8051.INDIRECT &&
                               operands[0].getValue().equals("a+dptr")))
                             problems.add(new TokenProblem("Incompatible operand! " +
                                     "(Expected \"@a+dptr\")", Type.WARNING, file, operands[0]));
@@ -537,7 +537,7 @@ public class MC8051Library {
 
                     for (int i = 0; i < 2; ++i) {
                         OperandToken8051 op = operands[i];  OperandType8051 type = op.getOperandType();
-                        if ((type == OperandType8051.NAME || type == OperandType8051.INDIRECT_NAME) &&
+                        if ((type == OperandType8051.NAME || type == OperandType8051.INDIRECT) &&
                                 op.getValue().startsWith("r")) {
                             int ordinal = Integer.parseInt(op.getValue().substring(1));
 
@@ -576,7 +576,7 @@ public class MC8051Library {
                                             result = new byte[]{(byte) 0x75, (byte) dest, (byte) val}; //address, #constant
                                         break;
                                     }
-                                    case INDIRECT_NAME:
+                                    case INDIRECT:
                                     case NAME: {
                                         final String val = op2.getValue();
                                         if (val.equals("a")) {
@@ -598,7 +598,7 @@ public class MC8051Library {
                                 }
                             break;
                         }
-                        case INDIRECT_NAME:
+                        case INDIRECT:
                         case NAME: {
                             String val = op1.getValue();
                             if (val.equals("c")) {
@@ -635,7 +635,7 @@ public class MC8051Library {
                                             0x74), (byte) val2};                              // a, #constant
                                         break;
                                     }
-                                    case INDIRECT_NAME:
+                                    case INDIRECT:
                                     case NAME: {
                                         if (op2.getValue().startsWith("r") && ord2 != -1) {
                                             result = new byte[]{(byte) (ord2
@@ -708,7 +708,7 @@ public class MC8051Library {
 
                     if (operands.length > (firstA ? 1 : 0)) {
                         OperandToken8051 op = operands[firstA ? 1 : 0];
-                        if (op.getOperandType() == OperandType8051.INDIRECT_NAME &&
+                        if (op.getOperandType() == OperandType8051.INDIRECT &&
                                 (op.getValue().equals("a+dptr") || op.getValue().equals("a+pc")))
                             if (op.getValue().equals("a+dptr"))
                                 result = new byte[]{(byte)0x93};
@@ -737,7 +737,7 @@ public class MC8051Library {
                     OperandType8051 type1 = op1.getOperandType();
 
                     switch (type1) {
-                        case INDIRECT_NAME: {
+                        case INDIRECT: {
                             if (op2.getOperandType() != OperandType8051.NAME || !op2.getValue().equals("a"))
                                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
 
@@ -934,7 +934,7 @@ public class MC8051Library {
                                     result = new byte[]{(byte)0xC5, (byte) val};
                                 break;
                             }
-                            case INDIRECT_NAME:
+                            case INDIRECT:
                             case NAME: {
                                 if (i == 0)
                                     firstIgnored = true;
@@ -982,7 +982,7 @@ public class MC8051Library {
                         if (op.getOperandType() == OperandType8051.NAME && op.getValue().equals("a")) {
                           if (i == 0) continue;
                           else problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
-                        } if (op.getOperandType() == OperandType8051.INDIRECT_NAME && op.getValue().startsWith("r")) {
+                        } if (op.getOperandType() == OperandType8051.INDIRECT && op.getValue().startsWith("r")) {
                             if (i == 0) firstIgnored = true;
                                 int ordinal = Integer.parseInt(op.getValue().substring(1));
                                 if (ordinal > 1)
@@ -1056,7 +1056,7 @@ public class MC8051Library {
                     result = new byte[]{(type == OperandType8051.ADDRESS ? opc3 : opc1), (byte) value};
                 break;
             }
-            case INDIRECT_NAME:
+            case INDIRECT:
             case NAME:
                 if (op.getValue().startsWith("r")) {
                     int ordinal = Integer.parseInt(op.getValue().substring(1));
@@ -1191,7 +1191,7 @@ public class MC8051Library {
                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, operands[0]));
                     break;
                 }
-                case INDIRECT_NAME:
+                case INDIRECT:
                 case NAME:
                     if (op.getValue().startsWith("r")) {
                         tried = true;
@@ -1396,7 +1396,7 @@ public class MC8051Library {
                     return new byte[] {opc4, (byte) value};
                 break;
             }
-            case INDIRECT_NAME:
+            case INDIRECT:
             case NAME:
                 if (op.getValue().equals("a")) {
                     result = new byte[]{opc1};

@@ -526,10 +526,7 @@ public class Preprocessor8051 implements Preprocessor {
         String lineString = null;
         this.output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
                                                                         // for Tokenizer and Assembler
-        if (Settings.INSTANCE.getBoolProperty(AssemblerSettings.INCLUDE_DEFAULT_FILE))
-            this.output.add(1, "$include <default.asm>");
-        else
-            this.output.add(1, "$line 1");
+        this.output.add(includeDefaults()+1, "$line 1");
 
         for (outputIndex = 1; outputIndex < this.output.size(); ++outputIndex) {
             lineString = this.output.get(outputIndex);
@@ -544,6 +541,9 @@ public class Preprocessor8051 implements Preprocessor {
                             currentFile, line, problems);     // on the current line.
 
                 lineString = cutComment(lineString);          // Cut comments
+
+                if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
+                    lineString = resolveStrings(lineString);  // Convert any String into numbers.
 
                 lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
 
@@ -642,9 +642,8 @@ public class Preprocessor8051 implements Preprocessor {
         if (l.find()) {
             final String name = l.group(1);
 
-            Regex regex = new Regex(new StringBuilder("/(?<!^)(\\s*)\\b").append(name).append("\\b(!:)/")
-
-                    .append(Regex.CASE_INSENSITIVE_FLAG).append(Regex.UNMODIFIABLE_FLAG).toString(),
+            Regex regex = new Regex("/(?<!^)(\\s*)\\b"+name+"\\b(!:)/"+
+                    Regex.CASE_INSENSITIVE_FLAG+Regex.UNMODIFIABLE_FLAG,
 
                     currentFile, line, problems);
 
@@ -797,6 +796,57 @@ public class Preprocessor8051 implements Preprocessor {
             if (m.find())
                 result.append(m.group());
         }
+
+        return result.toString();
+    }
+
+    private String resolveStrings(final String source) {
+        final Pattern p = MC8051Library.STRING_PATTERN;
+        final Matcher m = p.matcher(source);
+        String[] outside = p.split(source);
+
+        StringBuilder result = new StringBuilder(source.length());
+
+        for (final String os : outside) {
+            result.append(os);
+            if (m.find()) {
+                String str = m.group(1) == null ? m.group(2) : m.group(1);
+
+                StringBuilder temp = new StringBuilder(str.length());
+
+                int lastChar = '\0';
+                for (int cp : str.codePoints().toArray()) {
+                    if (lastChar != '\\' && cp == '\\') {
+                        lastChar = cp;
+                        continue;
+                    }
+                    temp.append(Integer.toString(cp));
+                    lastChar = cp;
+                }
+
+                result.append(temp);
+            }
+        }
+
+        if (m.find()) {
+            String str = m.group(1) == null ? m.group(2) : m.group(1);
+
+            StringBuilder temp = new StringBuilder(str.length());
+
+            int lastChar = '\0';
+            for (int cp : str.codePoints().toArray()) {
+                if (lastChar != '\\' && cp == '\\') {
+                    lastChar = cp;
+                    continue;
+                }
+                temp.append(Integer.toString(cp));
+                lastChar = cp;
+            }
+
+            result.append(temp);
+        }
+
+
 
         return result.toString();
     }
@@ -1004,6 +1054,18 @@ public class Preprocessor8051 implements Preprocessor {
         return result.toString();
     }
 
+    private int includeDefaults() {
+        int included = 0;
+        final Settings settings = Settings.INSTANCE;
+
+        if (settings.getBoolProperty(AssemblerSettings.INCLUDE_DEFAULT_FILE))
+            this.output.add(++included, "$include <default.asm>");
+
+        this.output.add(++included, "$include <util.obvious-operands."+
+                settings.getProperty(AssemblerSettings.OBVIOUS_OPERANDS, AssemblerSettings.VALID_ERROR)+".asm>");
+        return included;
+    }
+
     private boolean mcuCompatibilityDirective(final String[] args, final String directiveName, final int maxValue) {
         // Implemented for compatibility with Asem-51's MCU files
         // Does not have a particular segment type.
@@ -1047,8 +1109,7 @@ public class Preprocessor8051 implements Preprocessor {
 
         Regex regex = new Regex("cs/(?<=[\\w,\\(])(\\s*)\\b"+symbol+"\\b/^(?!\\T{directive}).*?$/${1}"+replacement+"/"
 
-                +Regex.CASE_INSENSITIVE_FLAG+Regex.WHOLE_LINE_FLAG
-                +Regex.DO_NOT_REPLACE_IN_STRING_FLAG
+                +Regex.CASE_INSENSITIVE_FLAG+Regex.WHOLE_LINE_FLAG+Regex.DO_NOT_REPLACE_IN_STRING_FLAG
                 +(modifiable ? Regex.MODIFIABLE_FLAG : Regex.UNMODIFIABLE_FLAG),
 
                 currentFile, line, problems);
