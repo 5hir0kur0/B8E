@@ -3,6 +3,7 @@ package assembler.arc8051;
 import assembler.Tokenizer;
 import assembler.tokens.LabelToken;
 import assembler.tokens.Token;
+import static assembler.arc8051.OperandToken8051.OperandType8051;
 import assembler.tokens.Tokens;
 import assembler.util.assembling.Directive;
 import assembler.util.problems.Problem;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 
 /**
@@ -159,59 +161,149 @@ public class Tokenizer8051 implements Tokenizer {
         file = null;
         line = 0;
 
-        String lineString, unModLine;
-
         // Handle directives
         for (String s : input) {
             line++;
-            {
-                Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(s);
-                if (m.matches()){
-                    String name = m.group(1);
+            Scanner scanner = new Scanner(s);
+            while (scanner.hasNextLine()) {
+                StringBuilder lineString = new StringBuilder(scanner.nextLine());
+                {
+                    Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(lineString);
+                    if (m.matches()) {
+                        String name = m.group(1);
 
-                    String args = m.group(2) == null ? "" : m.group(2);
+                        String args = m.group(2) == null ? "" : m.group(2);
 
-                    for (Directive d : directives) {
-                        if (d.getName().equalsIgnoreCase(name)) {
-                            d.perform(args, new TokenizingProblem("?", Problem.Type.ERROR, file, line, null), problems);
+                        for (Directive d : directives) {
+                            if (d.getName().equalsIgnoreCase(name)) {
+                                d.perform(args, new TokenizingProblem("?", Problem.Type.ERROR, file, line, null), problems);
 
-                            break;
+                                break;
+                            }
                         }
+                        continue;
                     }
-                    continue;
                 }
-            }
-            lineString = unModLine = s;
-            Matcher m = MC8051Library.LABEL_PATTERN.matcher(lineString);
 
-            if (m.find()) {
-                tokens.add(new LabelToken(m.group(1), line));
-                lineString = lineString.substring(m.end());
-            }
+                Token token;
 
-            if (lineString.trim().isEmpty())
-                continue;
-
-            if ((m = MC8051Library.MNEMONIC_NAME_PATTERN.matcher(lineString)).find()) {
-                tokens.add(new Tokens.MnemonicNameToken(m.group(1), line));
-                lineString = lineString.substring(m.end());
-                if (lineString.trim().isEmpty())
-                    continue;
-            } else {
-                this.problems.add(new TokenizingProblem("Expected mnemonic or comment!", Problem.Type.ERROR,
-                        file, line, unModLine));
-                continue;
-            }
-
-            final String[] split = lineString.split(",");
-            for (String aSplit : split) {
-                addToken(aSplit, tokens);
+                while (!lineString.toString().trim().isEmpty()) {
+                    if ((token = findMnemonic(lineString)) != null) {
+                        tokens.add(token);
+                        if (token.getType() == Token.TokenType.MNEMONIC_NAME)
+                            break;
+                    }
+                }
             }
 
         }
 
         problems.addAll(this.problems);
         return tokens;
+    }
+
+    private Token findMnemonic(StringBuilder line) {
+        int length = 0;
+        Token result = null;
+        StringBuilder symbol = new StringBuilder();
+
+        final int leadingWhiteSpace  = 0;
+        final int inSymbol = 1;
+        final int findSuffix = 2;
+        final int trailingWhiteSpace = 3;
+
+        int state = leadingWhiteSpace;
+        boolean error = false;
+        boolean isLabel = false;
+
+        outer:
+        for (int cp : line.codePoints().toArray()) {
+            ++length;
+            switch (state) {
+                case leadingWhiteSpace:
+                {
+                    if (Character.isWhitespace(cp))
+                        continue;
+                    else {
+                        if (Character.isLetterOrDigit(cp)) {
+                            if (Character.isDigit(cp)) {
+                                problems.add(new TokenizingProblem("The first character of a instruction or label must" +
+                                        " not be a digit!",
+                                        Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                error = true;
+                            } else if (Character.isLetter(cp))
+                                symbol.appendCodePoint(cp);
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a valid letter as the start of a instruction " +
+                                    "or label!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            error = true;
+                        }
+                        state = inSymbol;
+                    }
+                    break;
+                }
+                case inSymbol:
+                {
+                    if (Character.isLetterOrDigit(cp))
+                        symbol.appendCodePoint(cp);
+                    else if (Character.isWhitespace(cp))
+                        state = findSuffix;
+                    else if (cp == ':') {
+                        isLabel = true;
+                        state = trailingWhiteSpace;
+                    } else {
+                        problems.add(new TokenizingProblem("Unexpected character after symbol! Expected a colon ':'.",
+                                Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                        error = true;
+                        state = trailingWhiteSpace;
+                    }
+                    break;
+                }
+                case findSuffix:
+                {
+                    if (Character.isWhitespace(cp))
+                        continue;
+                    else if (cp == ':') {
+                        isLabel = true;
+                        state = trailingWhiteSpace;
+                    } else
+                        break outer;
+                    break;
+                }
+                case trailingWhiteSpace:
+                {
+                    if (!Character.isWhitespace(cp))
+                        break outer;
+                }
+                default:
+                    throw new IllegalStateException("'findMnemonic()' is in an illegal state: "+state)
+            }
+        }
+
+        if (!error)
+            if (isLabel)
+                result = new LabelToken(symbol.toString(), this.line);
+            else
+                result = new Tokens.MnemonicNameToken(symbol.toString(), this.line);
+        line.delete(0, length);
+        return result;
+    }
+
+
+    private String findToken(final String input, Token.TokenType ... espected) {
+        StringBuilder buffer = new StringBuilder(input.length());
+        OperandType8051 type = null;
+
+
+        for (int cp : input.codePoints().toArray()) {
+            if (Character.isWhitespace(cp))
+                continue;
+            else if (true /* */)
+
+
+
+        }
     }
 
     /**
@@ -301,7 +393,7 @@ public class Tokenizer8051 implements Tokenizer {
             add.add(new Tokens.SymbolToken(val, line));
             return true;
         } else if ((m = MC8051Library.SYMBOL_INDIRECT_PATTERN.matcher(string)).matches()) {
-            add.add(new OperandToken8051(OperandToken8051.OperandType8051.INDIRECT_NAME,
+            add.add(new OperandToken8051(OperandToken8051.OperandType8051.INDIRECT,
                     m.group(1).replaceAll("\\s", ""), line));
             return true;
         } else

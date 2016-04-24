@@ -13,17 +13,28 @@ public class OperandToken8051 extends OperandToken {
     /**
      * Constructs a new OperandToken.
      *
-     * @param type  the operandType of the OperandToken.<br>
+     * @param type  the operandType of the OperandToken.
+     * @param representation the operandRepresentation of the OperandToken.
      * @param value the value of the token as a string.
      * @param line the line of the token.
      */
-    public OperandToken8051(OperandType8051 type, String value, int line) {
-        super(type, value, line);
+    public OperandToken8051(OperandType8051 type, OperandRepresentation8051 representation, String value, int line) {
+        super(type, representation, value, line);
+
+        if (type.isName() || type.isIndirectName())
+            if (!representation.isSymbol())
+                throw new IllegalArgumentException("Type-representation mismatch! '" + type +
+                        "' cannot be represented as a '" + type + "'!");
     }
 
     @Override
     public OperandType8051 getOperandType() {
         return (OperandType8051) operandType;
+    }
+
+    @Override
+    public OperandRepresentation8051 getOperandRepresentation() {
+        return (OperandRepresentation8051) operandRepresentation;
     }
 
     /**
@@ -93,7 +104,7 @@ public class OperandToken8051 extends OperandToken {
          * An indirect addressed name has '@' prefix.<br>
          * Only R0 and R1 can be used to address indirect.
          */
-        INDIRECT_NAME;
+        INDIRECT;
 
         /** Whether the type is a <code>CONSTANT</code>. */
         public boolean isConstant() { return this == CONSTANT; }
@@ -105,7 +116,28 @@ public class OperandToken8051 extends OperandToken {
         public boolean isAddressOffset() { return this == ADDRESS_OFFSET; }
         /** Whether the type is a <code>NAME</code>. */
         public boolean isName() { return this == NAME; }
-        /** Whether the type is a <code>INDIRECT_NAME</code>. */
-        public boolean isIndirectName() {return  this == INDIRECT_NAME; }
+        /** Whether the type is a <code>INDIRECT</code>. */
+        public boolean isIndirectName() {return  this == INDIRECT; }
+    }
+
+    /**
+     * Defines the representation of an operand.
+     */
+    public enum OperandRepresentation8051 {
+        /**
+         * The Operand is represented as a symbol, e.g.:
+         * <code>'#Data'</code> or <code>'/Data'</code>.
+         */
+        SYMBOL,
+        /**
+         * The operator is represented as a address, e.g.:
+         * <code>'#4242h'</code> or <code>'/4242'</code>.
+         */
+        NUMBER;
+
+        /** Whether the representation is a <code>SYMBOL</code>. */
+        public boolean isSymbol() { return this == SYMBOL; }
+        /** Whether the representation is a <code>NUMBER</code>. */
+        public boolean isNumber() { return this == NUMBER; }
     }
 }
