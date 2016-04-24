@@ -230,7 +230,7 @@ public class AssemblerTest {
             map.put("-42",       "OperandToken8051(42)[OPERAND, ADDRESS_OFFSET, -42]");
             map.put("forty_two", "SymbolToken(42)[SYMBOL, forty_two]");
             map.put("a",         "OperandToken8051(42)[OPERAND, NAME, a]");
-            map.put("@r0",       "OperandToken8051(42)[OPERAND, INDIRECT_NAME, r0]");
+            map.put("@r0",       "OperandToken8051(42)[OPERAND, INDIRECT, r0]");
 
             for (String test : map.keySet()) {
                 System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
