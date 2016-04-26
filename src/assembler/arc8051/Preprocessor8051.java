@@ -812,41 +812,67 @@ public class Preprocessor8051 implements Preprocessor {
             if (m.find()) {
                 String str = m.group(1) == null ? m.group(2) : m.group(1);
 
-                StringBuilder temp = new StringBuilder(str.length());
-
+                List<Byte> bytes = new ArrayList<>(2);
                 int lastChar = '\0';
                 for (int cp : str.codePoints().toArray()) {
                     if (lastChar != '\\' && cp == '\\') {
                         lastChar = cp;
                         continue;
                     }
-                    temp.append(Integer.toString(cp));
+                    for (int i = 0; (cp >> i & 0xFF) != 0 && i < Integer.SIZE; i+=8)
+                        bytes.add((byte)(cp >> i & 0xFF));
+                    if (bytes.size() > 1)
+                        break;
                     lastChar = cp;
                 }
 
-                result.append(temp);
+                if (bytes.size() == 0) {
+                    problems.add(new PreprocessingProblem("A empty String does not contain any data to process!",
+                            Problem.Type.ERROR, currentFile, line, m.group()));
+                    result.append("0");
+                } else {
+                    for (int i = 0; i < 2 && i < bytes.size(); ++i)
+                        result.append(String.format("%02x", (byte) bytes.get(i)));
+                    result.append("h");
+
+                    if (bytes.size() > 2)
+                        problems.add(new PreprocessingProblem("Resolved value of the String is too big!",
+                                Problem.Type.ERROR, currentFile, line, m.group()));
+                }
             }
         }
 
         if (m.find()) {
             String str = m.group(1) == null ? m.group(2) : m.group(1);
 
-            StringBuilder temp = new StringBuilder(str.length());
-
+            List<Byte> bytes = new ArrayList<>(2);
             int lastChar = '\0';
             for (int cp : str.codePoints().toArray()) {
                 if (lastChar != '\\' && cp == '\\') {
                     lastChar = cp;
                     continue;
                 }
-                temp.append(Integer.toString(cp));
+                for (int i = 0; (cp >> i & 0xFF) != 0 && i < Integer.SIZE; i+=8)
+                    bytes.add((byte)(cp >> i & 0xFF));
+                if (bytes.size() > 1)
+                    break;
                 lastChar = cp;
             }
 
-            result.append(temp);
+            if (bytes.size() == 0) {
+                problems.add(new PreprocessingProblem("A empty String does not contain any data to process!",
+                        Problem.Type.ERROR, currentFile, line, m.group()));
+                result.append("0");
+            } else {
+                for (int i = 0; i < 2 && i < bytes.size(); ++i)
+                    result.append(String.format("%02x", (byte) bytes.get(i)));
+                result.append("h");
+
+                if (bytes.size() > 2)
+                    problems.add(new PreprocessingProblem("Resolved value of the String is too big!",
+                            Problem.Type.ERROR, currentFile, line, m.group()));
+            }
         }
-
-
 
         return result.toString();
     }
