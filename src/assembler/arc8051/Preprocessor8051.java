@@ -325,28 +325,32 @@ public class Preprocessor8051 implements Preprocessor {
 
             },
 
-            new Directive("regex") {
+            new Directive("regex", 1, 2) {
                 @Override
                 protected boolean perform(String[] args) {
 
                     Regex regex = new Regex(args[0], currentFile, line, problems);
 
                     if (regex.isValid())  {
-                        for (int i = 0; i < regexes.size(); ++i) {
-                            Regex r = regexes.get(i);
-                            if (r.equals(regex)) {
-                                if (r.isModifiable()) {
-                                    regexes.set(i, regex);
-                                    return true;
-                                } else {
-                                    problems.add(new PreprocessingProblem(
-                                            "A similar regex that isn't modifiable already defined!",
-                                            Problem.Type.ERROR, currentFile, line, args[0]));
-                                    return false;
+                        if (args.length > 1 && args[1].equalsIgnoreCase("force"))
+                            regexes.add(regex);
+                        else {
+                            for (int i = 0; i < regexes.size(); ++i) {
+                                Regex r = regexes.get(i);
+                                if (r.equals(regex)) {
+                                    if (r.isModifiable()) {
+                                        regexes.set(i, regex);
+                                        return true;
+                                    } else {
+                                        problems.add(new PreprocessingProblem(
+                                                "A similar regex that isn't modifiable already defined!",
+                                                Problem.Type.ERROR, currentFile, line, args[0]));
+                                        return false;
+                                    }
                                 }
                             }
+                            regexes.add(regex);
                         }
-                        regexes.add(regex);
                         return true;
                     } else
                         return false;
@@ -554,7 +558,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
                     lineString = handleDirective(lineString); // Line is a directive: handle it
                 else
-                    lineString = lowerCase(lineString);       // Only convert lines to lowercase if they
+                    lineString = lineString.toLowerCase();    // Only convert lines to lowercase if they
                                                               // are not a directive because fallthrough
                                                               // directives may be case sensitive.
 
@@ -583,6 +587,17 @@ public class Preprocessor8051 implements Preprocessor {
         return problems;
     }
 
+    /**
+     * Tries to handle a directive on a line, by searching directive
+     * by searching for a Directive with a similar name and performing it.
+     *
+     * @param line
+     *      the String to be used.
+     *
+     * @return
+     *      the (maybe modified) line if the matching Directive was a 'fallthrough' Directive,
+     *      else an empty String.
+     */
     private String handleDirective(final String line) {
         Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(line);
         if (m.matches()) {
@@ -603,7 +618,16 @@ public class Preprocessor8051 implements Preprocessor {
             return line;
     }
 
-
+    /**
+     * Reads the whole content of a file and returns it as a List by making use of the
+     * {@link Files#lines(Path)}.
+     *
+     * @param file
+     *      the file that should be read.
+     *
+     * @return
+     *      the content of the file as a List, <code>null</code> if the file could not be read.
+     */
     private List<String> readFile(Path file) {
         Objects.requireNonNull(file, "'file' cannot be 'null'!");
 
@@ -634,10 +658,19 @@ public class Preprocessor8051 implements Preprocessor {
         }
     }
 
-
-    private String validateLabels(String lineString) {
-        final Matcher l = MC8051Library.LABEL_PATTERN.matcher(lineString);
-        StringBuilder result = new StringBuilder(lineString);
+    /**
+     * Searches for labels and looks for already defined (resulting in a Problem)
+     * and makes sure that the name is defined from now one.
+     *
+     * @param source
+     *      the String to be used.
+     *
+     * @return
+     *      the modified source String.
+     */
+    private String validateLabels(String source) {
+        final Matcher l = MC8051Library.LABEL_PATTERN.matcher(source);
+        StringBuilder result = new StringBuilder(source);
 
         if (l.find()) {
             final String name = l.group(1);
@@ -668,7 +701,7 @@ public class Preprocessor8051 implements Preprocessor {
 
         }
 
-        return lineString;
+        return source;
 
     }
 
@@ -730,12 +763,28 @@ public class Preprocessor8051 implements Preprocessor {
     }
 
 
-    private String evaluate(final String line) {
+    /**
+     * Tries to evaluate every mathematical expression in the
+     * String and replaces it with the (with {@link SimpleMath})
+     * evaluated result.<br>
+     * A expression must be surrounded by parentheses in order to
+     * be detected by this algorithm and cannot consist of unresolved
+     * symbols (like labels).
+     *
+     * @param source
+     *      the String to be used.
+     *
+     * @return
+     *      the modified source String.
+     *
+     * @see SimpleMath#evaluate(String)
+     */
+    private String evaluate(final String source) {
         // Find possible mathematical expressions
         final Pattern p = MC8051Library.STRING_PATTERN;
-        final Matcher m = p.matcher(line);
-        String[] outside = p.split(line);
-        StringBuilder result = new StringBuilder(line.length());
+        final Matcher m = p.matcher(source);
+        String[] outside = p.split(source);
+        StringBuilder result = new StringBuilder(source.length());
 
         for (final String os : outside) {
             int parenthesisCount = 0;
@@ -800,6 +849,18 @@ public class Preprocessor8051 implements Preprocessor {
         return result.toString();
     }
 
+    /**
+     * Coverts any String in a given source String into numbers representing
+     * the numerical value of the String<br>
+     * Only values up to 2 bytes (<code>0xFFFF</code>) are supported. Any
+     * additional bytes will be ignored and a matching Problem will be created.
+     *
+     * @param source
+     *      the String to be used.
+     *
+     * @return
+     *      the modified source String.
+     */
     private String resolveStrings(final String source) {
         final Pattern p = MC8051Library.STRING_PATTERN;
         final Matcher m = p.matcher(source);
@@ -881,11 +942,6 @@ public class Preprocessor8051 implements Preprocessor {
      * Coverts every occurrence of a valid number in a String to
      * the decimal system.
      *
-     * @param source
-     *      the String to be used.
-     *
-     * @return
-     *      the modified source String.
      *
      * @see #getNumber(String)
      */
@@ -1011,13 +1067,24 @@ public class Preprocessor8051 implements Preprocessor {
         return result;
     }
 
-    private String cutComment(String line) {
+    /**
+     * Removes everything after a ';', except if it is inside a String
+     * or escaped with a '\\' (always possible, the backslash will be
+     * removed.
+     *
+     * @param source
+     *      the String to be used.
+     *
+     * @return
+     *      the modified source String.
+     */
+    private String cutComment(String source) {
 
-        StringBuilder result = new StringBuilder(line.length());
+        StringBuilder result = new StringBuilder(source.length());
         boolean simpQuoted = false, doubQuoted = false;
 
         int last = 0;
-        for (int cp : line.codePoints().toArray()) {
+        for (int cp : source.codePoints().toArray()) {
             if (last == '\\') {
                 if (cp == ';')
                     result.setLength(result.length()-1); // Cut '\\' else keep it
@@ -1037,49 +1104,18 @@ public class Preprocessor8051 implements Preprocessor {
         }
         return result.toString();
     }
+
     /**
-     * Turns every character into its lowercase representation if possible.<br>
-     * The character wont be lowercased ignored if it's quoted in <code>'"'</code> or
-     * <code>'\''</code>. A quoted character can be escaped with a <code>'\'</code>.<br>
-     * <br>
-     * Possible sources of Problems:<br>
+     * Adds "include" directives for all of the following default setting-sensitive
+     * files to the output:<br>
      * <ul>
-     *      <li>WARNING: a quote is not closed if the end of the line or
-     *                   a comment is reached.</li>
+     *     <li>default.asm</li>
+     *     <li>util.obvious-operands.*.asm</li>
      * </ul>
      *
-     * @param line the line that should be lowercased.
-     *
      * @return
-     *      a String that is a lowercased representation of the given one
-     *      with possible comments removed.
+     *      the number of files included.
      */
-    private String lowerCase(String line) {
-
-        StringBuilder result = new StringBuilder(line.length());
-        boolean simpQuoted = false, doubQuoted = false;
-
-        int last = 0;
-        for (int cp : line.codePoints().toArray()) {
-            if (last == '\\')
-                result.appendCodePoint(cp);
-            else if (cp != '\\') {
-                if (cp == '"' && !simpQuoted)
-                    doubQuoted = !doubQuoted;
-                else if (cp == '\'' && !doubQuoted)
-                    simpQuoted = !simpQuoted;
-
-                result.appendCodePoint(!(doubQuoted || simpQuoted) ?
-                        Character.toLowerCase(cp) : cp);
-            }
-            last = cp;
-        }
-        if (doubQuoted || simpQuoted)
-            problems.add(new PreprocessingProblem("Unclosed quote!",
-                    Problem.Type.WARNING, currentFile, this.line, line));
-        return result.toString();
-    }
-
     private int includeDefaults() {
         int included = 0;
         final Settings settings = Settings.INSTANCE;
@@ -1092,6 +1128,20 @@ public class Preprocessor8051 implements Preprocessor {
         return included;
     }
 
+    /**
+     * Creates a Regex for every MCU compatibility directives (BIT, CODE, … etc.).<br>
+     * The logic is extracted because all directives basically use the same logic.
+     *
+     * @param args
+     *      the arguments of the directive.
+     * @param directiveName
+     *      the name of the directive that called this method.
+     * @param maxValue
+     *      the maximum allowed value for this directive.
+     *
+     * @return
+     *      whether the method was successful.
+     */
     private boolean mcuCompatibilityDirective(final String[] args, final String directiveName, final int maxValue) {
         // Implemented for compatibility with Asem-51's MCU files
         // Does not have a particular segment type.
@@ -1130,6 +1180,36 @@ public class Preprocessor8051 implements Preprocessor {
 
     }
 
+    /**
+     * Generates a Regex, to replace a specified symbol with a value.<br>
+     * The resulting Regex has always the following format:
+     * <pre>
+     *     "cs/(?<=[\w,\(])(\s*)\b<i>symbol</i>\b/^(?!\T{directive}).*?$/${1}<i>replacement</i>/"
+     *
+     *      Flags:
+     *        - Case insensitive
+     *        - Whole line
+     *        - Do not replace in Strings
+     *
+     *        - Modifiable   (if 'modifiable' is true)
+     *        - Unmodifiable (else.)
+     * </pre>
+     *
+     * The Regex cannot have the name of a mnemonic, directive or reserved
+     * assembler name (like <code>'a'</code>.
+     *
+     * @param symbol
+     *      the symbol that should be replaced with the value.
+     * @param replacement
+     *      the String the symbol should be replaced with.
+     * @param modifiable
+     *      whether the resulting Regex has the modifiable flag set.
+     * @param replacing
+     *      whether the Regex should be able to replace other Regexes.
+     *
+     * @return
+     *      whether the method was successful.
+     */
     private boolean regexFromSymbol(final String symbol, final String replacement,
                                     final boolean modifiable, final boolean replacing) {
 
