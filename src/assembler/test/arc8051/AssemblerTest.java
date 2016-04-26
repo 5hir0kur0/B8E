@@ -53,34 +53,6 @@ public class AssemblerTest {
     }
 
     @Test
-    public void testPreprocessor_LowerCase() {
-        System.out.println("____________Testing Preprocessor8051.lowerCase()");
-        try {
-            Method m = prepr.getClass().getDeclaredMethod("lowerCase", String.class, List.class);
-            m.setAccessible(true);
-
-            HashMap<String, String> map = new HashMap<>(5);
-
-            map.put("TY the \"Tasmanian\" 'Tiger' 4", "ty the \"Tasmanian\" 'Tiger' 4"); // Sorry
-            map.put("Test test TE'ST'!", "test test te'ST'!");
-            map.put("The \\\"test Tester\\\" tested \"Tony's Test\". ", "the \"test tester\" tested \"Tony's Test\". ");
-            map.put("\"T'E\"S'T\"?'", "\"T'E\"s'T\"?'");
-            map.put("\\Tests For Testing \\Tests.", "ests for testing ests.");
-
-            for (String test : map.keySet()) {
-                System.out.print("Testing: \"" + test + "\", Expecting: \"" + map.get(test) + "\"...");
-                assertEquals(map.get(test), m.invoke(prepr, test));
-                System.out.println("Passed.");
-            }
-
-            m.setAccessible(false);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            e.printStackTrace();
-            fail("Unexpected Exception.");
-        }
-    }
-
-    @Test
     public void testPreprocessor_GetNumber() {
         System.out.println("____________Testing Tokenizer8051.getNumber()");
         try {
