@@ -225,13 +225,13 @@ public class Tokenizer8051 implements Tokenizer {
                     if (Character.isWhitespace(cp))
                         continue;
                     else {
-                        if (Character.isLetterOrDigit(cp)) {
+                        if (Character.isLetterOrDigit(cp) || cp == '_') {
                             if (Character.isDigit(cp)) {
                                 problems.add(new TokenizingProblem("The first character of a instruction or label must" +
                                         " not be a digit!",
                                         Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
                                 error = true;
-                            } else if (Character.isLetter(cp))
+                            } else if (Character.isLetter(cp) || cp == '_')
                                 symbol.appendCodePoint(cp);
                         } else {
                             problems.add(new TokenizingProblem("Expected a valid letter as the start of a instruction " +
@@ -245,7 +245,7 @@ public class Tokenizer8051 implements Tokenizer {
                 }
                 case inSymbol:
                 {
-                    if (Character.isLetterOrDigit(cp))
+                    if (Character.isLetterOrDigit(cp) || cp == '_')
                         symbol.appendCodePoint(cp);
                     else if (Character.isWhitespace(cp))
                         state = findSuffix;
