@@ -328,29 +328,34 @@ public class Preprocessor8051 implements Preprocessor {
             new Directive("regex", 1, 2) {
                 @Override
                 protected boolean perform(String[] args) {
-
-                    Regex regex = new Regex(args[0], currentFile, line, problems);
+                    boolean force = false;
+                    Regex regex ;
+                    if (args.length > 1) {
+                        if (args[0].equalsIgnoreCase("--force") || args[0].equals("-f"))
+                            force = true;
+                        else
+                            problems.add(new PreprocessingProblem("Unknown option of 'regex' directive.",
+                                    Problem.Type.ERROR, currentFile, line, args[0]));
+                        regex = new Regex(args[1], currentFile, line, problems);
+                    } else
+                        regex = new Regex(args[0], currentFile, line, problems);
 
                     if (regex.isValid())  {
-                        if (args.length > 1 && args[1].equalsIgnoreCase("force"))
-                            regexes.add(regex);
-                        else {
-                            for (int i = 0; i < regexes.size(); ++i) {
-                                Regex r = regexes.get(i);
-                                if (r.equals(regex)) {
-                                    if (r.isModifiable()) {
-                                        regexes.set(i, regex);
-                                        return true;
-                                    } else {
-                                        problems.add(new PreprocessingProblem(
-                                                "A similar regex that isn't modifiable already defined!",
-                                                Problem.Type.ERROR, currentFile, line, args[0]));
-                                        return false;
-                                    }
+                        for (int i = 0; i < regexes.size(); ++i) {
+                            Regex r = regexes.get(i);
+                            if (r.equals(regex)) {
+                                if (r.isModifiable() || force) {
+                                    regexes.set(i, regex);
+                                    return true;
+                                } else {
+                                    problems.add(new PreprocessingProblem(
+                                            "A similar regex that isn't modifiable already defined!",
+                                            Problem.Type.ERROR, currentFile, line, args[0]));
+                                    return false;
                                 }
                             }
-                            regexes.add(regex);
                         }
+                        regexes.add(regex);
                         return true;
                     } else
                         return false;
