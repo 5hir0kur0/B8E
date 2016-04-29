@@ -2,8 +2,8 @@ package assembler.arc8051;
 
 import assembler.Tokenizer;
 import assembler.tokens.LabelToken;
+import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
-import static assembler.arc8051.OperandToken8051.OperandType8051;
 import assembler.tokens.Tokens;
 import assembler.util.assembling.Directive;
 import assembler.util.problems.Problem;
@@ -16,6 +16,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
+
+import static assembler.arc8051.OperandToken8051.OperandRepresentation8051;
+import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 /**
  * A Tokenizer for the 8051 architecture.
@@ -188,7 +191,7 @@ public class Tokenizer8051 implements Tokenizer {
                 Token token;
 
                 while (!lineString.toString().trim().isEmpty()) {
-                    if ((token = findMnemonic(lineString)) != null) {
+                    if ((token = findLabelOrMnemonic(lineString)) != null) {
                         tokens.add(token);
                         if (token.getType() == Token.TokenType.MNEMONIC_NAME)
                             break;
@@ -202,18 +205,18 @@ public class Tokenizer8051 implements Tokenizer {
         return tokens;
     }
 
-    private Token findMnemonic(StringBuilder line) {
+    private Token findLabelOrMnemonic(StringBuilder line) {
         int length = 0;
         Token result = null;
         StringBuilder symbol = new StringBuilder();
 
         final int leadingWhiteSpace  = 0;
-        final int inSymbol = 1;
-        final int findSuffix = 2;
+        final int inSymbol           = 1;
+        final int findSuffix         = 2;
         final int trailingWhiteSpace = 3;
 
         int state = leadingWhiteSpace;
-        boolean error = false;
+        boolean fine = true;
         boolean isLabel = false;
 
         outer:
@@ -230,14 +233,14 @@ public class Tokenizer8051 implements Tokenizer {
                                 problems.add(new TokenizingProblem("The first character of a instruction or label must" +
                                         " not be a digit!",
                                         Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
-                                error = true;
+                                fine = false;
                             } else if (Character.isLetter(cp) || cp == '_')
                                 symbol.appendCodePoint(cp);
                         } else {
                             problems.add(new TokenizingProblem("Expected a valid letter as the start of a instruction " +
                                     "or label!",
                                     Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
-                            error = true;
+                            fine = false;
                         }
                         state = inSymbol;
                     }
@@ -255,7 +258,7 @@ public class Tokenizer8051 implements Tokenizer {
                     } else {
                         problems.add(new TokenizingProblem("Unexpected character after symbol! Expected a colon ':'.",
                                 Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
-                        error = true;
+                        fine = false;
                         state = trailingWhiteSpace;
                     }
                     break;
@@ -277,11 +280,11 @@ public class Tokenizer8051 implements Tokenizer {
                         break outer;
                 }
                 default:
-                    throw new IllegalStateException("'findMnemonic()' is in an illegal state: "+state)
+                    throw new IllegalStateException("'Illegal state: " + state);
             }
         }
 
-        if (!error)
+        if (fine)
             if (isLabel)
                 result = new LabelToken(symbol.toString(), this.line);
             else
@@ -290,116 +293,122 @@ public class Tokenizer8051 implements Tokenizer {
         return result;
     }
 
+    private OperandToken findOperandToken(StringBuilder line) {
+        int length = 0;
+        OperandToken result = null;
+        StringBuilder value = new StringBuilder(), bitNr = new StringBuilder();
 
-    private String findToken(final String input, Token.TokenType ... espected) {
-        StringBuilder buffer = new StringBuilder(input.length());
+        final int leadingWhiteSpace  = 0;
+        final int foundPrefix        = 1;
+        final int inValue            = 2;
+        final int findBitOperator    = 3;
+        final int findBitNumber      = 4;
+        final int inBitNumber        = 5;
+        final int findDelimiter      = 6;
+        final int trailingWhiteSpace = 7;
+
         OperandType8051 type = null;
+        OperandRepresentation8051 repr = null;
+        int state = leadingWhiteSpace;
+        boolean fine = true;
 
-
-        for (int cp : input.codePoints().toArray()) {
-            if (Character.isWhitespace(cp))
-                continue;
-            else if (true /* */)
-
-
-
+        for (int cp : line.chars().toArray()) {
+            ++length;
+            switch (state) {
+                // TODO: Implement states.
+                default:
+                    throw new IllegalStateException("Illegal state: "+ state);
+            }
         }
-    }
 
-    /**
-     * Tries to generate a valid Token from a given String.<br>
-     * Patters from {@link MC8051Library} will be used to determine the token type
-     * and then the values will be validated and a the resulting Token will be added
-     * to a given List.<br>
-     * <br>
-     * Possible sources of Problems:
-     * <ul>
-     *      <li>ERROR: the TokenType of the String could not be recognized.</li>
-     *      <li>ERROR: the format of a number is wrong (illegal digits were used).</li>
-     *      <li>ERROR: the value of a number is out of bounds (negative or bigger than
-     *                 <code>0xFF/0xFFFF</code>).</li>
-     *      <li>ERROR: a bit addressed byte is not bit addressable.</li>
-     * </ul>
-     *
-     * @param string
-     *      the String that should be analysed.
-     * @param add
-     *      the List the resulting Token will be added to.
-     *
-     * @return
-     *      <code>true</code> if this method was successful, <code>false</code> otherwise.
-     */
-    private boolean addToken(String string, List<Token> add) {
-        string = string.trim();
-        Matcher m;
-        if ((m = MC8051Library.CONSTANT_PATTERN.matcher(string)).matches()) {
-            String val = m.group();
-            if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "constant", m.group(0))) {
-                add.add(new OperandToken8051(OperandToken8051.OperandType8051.CONSTANT, val, line));
-                return true;
-            }
-        } else if ((m = MC8051Library.BIT_ADDRESSING_PATTERN.matcher(string)).matches()) {
-            Matcher byteMatcher = MC8051Library.NUMBER_PATTERN.matcher(m.group(1));
-            final int bitGroup = 1+byteMatcher.groupCount();
-            Matcher bitMatcher  = MC8051Library.NUMBER_PATTERN.matcher(m.group(bitGroup));
-            if (!(byteMatcher.matches() && bitMatcher.matches()))
-                return false;
-            String byteAddr = byteMatcher.group();
-            String bitAddr  = bitMatcher.group();
-            int result;
-            if (byteAddr != null && testBounds(0, 0xFF, Integer.parseInt(byteAddr), "bit address", m.group(1))
-                & bitAddr != null && testBounds(0, 7, Integer.parseInt(bitAddr), "bit number",
-                    m.group(bitGroup))) {
-                int intVal = Integer.parseInt(byteAddr);
-                result = intVal + Integer.parseInt(bitAddr);
-                if (intVal >= 0x20 && intVal < 0x30)
-                    result = (intVal - 0x20) * 8 + Integer.parseInt(bitAddr);
-                else if (intVal < 0x80 || (0x07 & intVal) != 0) {
-                    problems.add(new TokenizingProblem("Byte is not bit addressable!", Problem.Type.ERROR,
-                            m.group(1)));
-                    return false;
+        outer:
+        if (fine) {
+            // Bit addressing
+            if (!bitNr.toString().isEmpty()) {
+                if (type.isAddress() || type.isNegatedAddress()) { // Names do not exist at this point
+
+                    int address;
+                    int bit;
+
+                    if (repr.isSymbol())
+                        if (value.toString().equals("a"))
+                            address = MC8051Library.A;
+                        else if (value.toString().equals("c")){
+                            problems.add(new TokenizingProblem("\""+value+"\" cannot be bit addressed!",
+                                    Problem.Type.ERROR, file, this.line, value.toString()));
+                            break outer;
+                        } else {
+                            problems.add(new TokenizingProblem("Symbols cannot be bit addressed!",
+                                    Problem.Type.ERROR, file, this.line, value.toString()));
+                            break outer;
+                        }
+                    else
+                        try {
+                            address = Integer.parseInt(value.toString());
+                        } catch (NumberFormatException e) {
+                            problems.add(new TokenizingProblem(
+                                    "Illegal format for expected a valid decimal number for the address!",
+                                    Problem.Type.ERROR, file, this.line, value.toString()));
+                            break outer;
+                        }
+                    try {
+                        bit = Integer.parseInt(bitNr.toString());
+                    } catch (NumberFormatException e) {
+                        problems.add(new TokenizingProblem(
+                                "Illegal format for expected a valid decimal number for the bit number!",
+                                Problem.Type.ERROR, file, this.line, bitNr.toString()));
+                        break outer;
+                    }
+                    if (!testBounds(0, 0xFF, address, "bit address", value.toString()) ||
+                        !testBounds(0,    7,     bit, "bit number", bitNr.toString()))
+                        break outer;
+
+                    int intVal = address + bit; // Assume SFR-region by default.
+                    if (address >= 0x20 && address < 0x30) // Byte is in the bit memory
+
+                        intVal = (address - 0x20) * 8 + bit;
+
+                    else if (address <= 0x7f || (0x07 & address) != 0) {
+                        problems.add(new TokenizingProblem("Byte is not bit addressable!", Problem.Type.ERROR, file,
+                                this.line, value.toString()));
+                        break outer;
+                    }
+
+                    result = new OperandToken8051(type, repr, Integer.toString(intVal), this.line);
+
+                } else {
+                    problems.add(new TokenizingProblem("Operand type cannot be bit addressed!",
+                            Problem.Type.ERROR, file, this.line, value.toString()));
                 }
-                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS, Integer.toString(result), line));
-                return true;
-            }
-        } else if ((m = MC8051Library.ADDRESS_PATTERN.matcher(string)).matches()) {
-            String val = m.group();
-            if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", m.group(0))) {
-                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS, val, line));
-                return true;
-            }
-        } else if ((m = MC8051Library.NEGATED_ADDRESS_PATTERN.matcher(string)).matches()) {
-            String val = m.group();
-            if (val != null && testBounds(0, 0xFF, Integer.parseInt(val), "address", m.group(0))) {
-                add.add(new OperandToken8051(OperandToken8051.OperandType8051.NEGATED_ADDRESS, val, line));
-                return true;
-            }
+            } // Everything else
+            else {
+                try {
+                    String val;
+                    if (repr.isNumber())
+                        val = Integer.toString(Integer.parseInt(value.toString())); // Validate Number
+                    else {
+                        val = value.toString();
+                        if (type.isAddress())
+                            for (String name : MC8051Library.RESERVED_NAMES)
+                                if (name.equals(val)) {
+                                    type = OperandType8051.NAME;
+                                    break;
+                                }
+                    }
 
-        } else if ((m = MC8051Library.ADDRESS_OFFSET_PATTERN.matcher(string)).matches()) {
-            String val = m.group();
-            if (val != null && testBounds(0, 0xFFFF, Integer.parseInt(val), "relative offset", m.group(0))) {
-                add.add(new OperandToken8051(OperandToken8051.OperandType8051.ADDRESS_OFFSET,
-                        (m.group(0).charAt(0) == '-' ? '-' : "") + val, line));
-                return true;
-            }
+                    result = new OperandToken8051(type, repr, val, this.line);
 
-        } else if ((m = MC8051Library.SYMBOL_PATTERN.matcher(string)).matches()) {
-            String val = m.group(1).replaceAll("\\s", "");
-            for (String reserved : MC8051Library.RESERVED_NAMES)
-                if (val.equalsIgnoreCase(reserved)) {
-                    add.add(new OperandToken8051(OperandToken8051.OperandType8051.NAME, val, line));
-                    return true;
+                } catch (NumberFormatException e) {
+                    problems.add(new TokenizingProblem(
+                            "Illegal format for expected a valid decimal number!",
+                            Problem.Type.ERROR, file, this.line, bitNr.toString()));
                 }
-            add.add(new Tokens.SymbolToken(val, line));
-            return true;
-        } else if ((m = MC8051Library.SYMBOL_INDIRECT_PATTERN.matcher(string)).matches()) {
-            add.add(new OperandToken8051(OperandToken8051.OperandType8051.INDIRECT,
-                    m.group(1).replaceAll("\\s", ""), line));
-            return true;
-        } else
-            problems.add(new TokenizingProblem("Could not recognize Token Type!", Problem.Type.ERROR,
-                    file, line, string));
-        return false;
+            }
+        }
+
+        line.delete(0, length);
+        return result;
+
     }
 
 
