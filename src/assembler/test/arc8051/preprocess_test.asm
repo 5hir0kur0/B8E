@@ -1,14 +1,14 @@
 
 mov me, me
-$include <default.asm>
+$include <default.asm> ; Double inclusion to test multiple unmodifiable regexes
 $db "Hello World!"
 $dw "Extra Large!"
 $ds 3 "Multi"
-
+do:
 di equ 42
 mi data 21
 
-mov mi, di
+mi: di: mov mi, di
 
 pi set 84
 

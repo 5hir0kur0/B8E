@@ -642,6 +642,7 @@ public class Regex {
      */
     public String perform(String target) {
         if (match == null) return target;
+        if (modifier.length() == 0) return target; // Nothing will happen.
 
         Objects.requireNonNull(target, "'Target' String cannot be 'null'!");
 
