@@ -49,6 +49,7 @@ public abstract class OperandToken extends Token {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName()+"("+line+")["+type.toString()+", "+getOperandType()+", "+value+"]";
+        return this.getClass().getSimpleName()+"("+line+")["+type.toString()+", "+getOperandType()+", "+
+                getOperandRepresentation()+", "+value+"]";
     }
 }

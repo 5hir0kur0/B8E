@@ -53,10 +53,10 @@ public class MC8051Library {
     /**
      * Pattern for a valid label.<br>
      * White space followed by a valid SYMBOL followed by a <code>':'</code>.<br>
-     * Regex: <code>"^\s*([\w&&[\D]][\w]*?):"</code>
+     * Regex: <code>"\s*([\w&&[\D]][\w]*?):"</code>
      * @see #SYMBOL_PATTERN
      */
-    public static final Pattern LABEL_PATTERN           = Pattern.compile("^\\s*"+SYMBOL_PATTERN.toString()+":");
+    public static final Pattern LABEL_PATTERN           = Pattern.compile("\\s*"+SYMBOL_PATTERN.toString()+"\\s*:");
     /**
      * Pattern for a valid mnemonic name.<br>
      * Basically a SYMBOL surrounded by possible white space.<br>
@@ -203,7 +203,8 @@ public class MC8051Library {
         }
         @Override
         public OperandToken createNewJumpOperand(long address, int line) {
-            return new OperandToken8051(OperandType8051.ADDRESS, Long.toString(address), line);
+            return new OperandToken8051(OperandType8051.ADDRESS,
+                    OperandToken8051.OperandRepresentation8051.NUMBER, Long.toString(address), line);
         }
     };
 
