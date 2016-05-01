@@ -197,6 +197,11 @@ public class Tokenizer8051 implements Tokenizer {
                             break;
                     }
                 }
+                while (!lineString.toString().trim().isEmpty()) {
+                    if ((token = findOperandToken(lineString)) != null) {
+                        tokens.add(token);
+                    }
+                }
             }
 
         }
@@ -206,7 +211,7 @@ public class Tokenizer8051 implements Tokenizer {
     }
 
     private Token findLabelOrMnemonic(StringBuilder line) {
-        int length = 0;
+        int length = -1;
         Token result = null;
         StringBuilder symbol = new StringBuilder();
 
@@ -220,68 +225,70 @@ public class Tokenizer8051 implements Tokenizer {
         boolean isLabel = false;
 
         outer:
-        for (int cp : line.codePoints().toArray()) {
-            ++length;
-            switch (state) {
-                case leadingWhiteSpace:
-                {
-                    if (Character.isWhitespace(cp))
-                        continue;
-                    else {
-                        if (Character.isLetterOrDigit(cp) || cp == '_') {
-                            if (Character.isDigit(cp)) {
-                                problems.add(new TokenizingProblem("The first character of a instruction or label must" +
-                                        " not be a digit!",
+        {
+            for (int cp : line.codePoints().toArray()) {
+                ++length;
+                switch (state) {
+                    case leadingWhiteSpace: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else {
+                            if (Character.isLetterOrDigit(cp) || cp == '_') {
+                                if (Character.isDigit(cp)) {
+                                    problems.add(new TokenizingProblem("The first character of a instruction or label must" +
+                                            " not be a digit!",
+                                            Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                    fine = false;
+                                } else if (Character.isLetter(cp) || cp == '_') {
+                                    symbol.appendCodePoint(cp);
+                                }
+                                state = inSymbol;
+                            } else {
+                                problems.add(new TokenizingProblem("Expected a valid letter as the start of a instruction " +
+                                        "or label!",
                                         Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
                                 fine = false;
-                            } else if (Character.isLetter(cp) || cp == '_')
-                                symbol.appendCodePoint(cp);
+                                state = trailingWhiteSpace;
+                            }
+                        }
+                        break;
+                    }
+                    case inSymbol: {
+                        if (Character.isLetterOrDigit(cp) || cp == '_')
+                            symbol.appendCodePoint(cp);
+                        else if (Character.isWhitespace(cp))
+                            state = findSuffix;
+                        else if (cp == ':') {
+                            isLabel = true;
+                            state = trailingWhiteSpace;
                         } else {
-                            problems.add(new TokenizingProblem("Expected a valid letter as the start of a instruction " +
-                                    "or label!",
+                            problems.add(new TokenizingProblem("Unexpected character after symbol! Expected a colon ':'.",
                                     Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
                             fine = false;
+                            state = trailingWhiteSpace;
                         }
-                        state = inSymbol;
+                        break;
                     }
-                    break;
-                }
-                case inSymbol:
-                {
-                    if (Character.isLetterOrDigit(cp) || cp == '_')
-                        symbol.appendCodePoint(cp);
-                    else if (Character.isWhitespace(cp))
-                        state = findSuffix;
-                    else if (cp == ':') {
-                        isLabel = true;
-                        state = trailingWhiteSpace;
-                    } else {
-                        problems.add(new TokenizingProblem("Unexpected character after symbol! Expected a colon ':'.",
-                                Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
-                        fine = false;
-                        state = trailingWhiteSpace;
+                    case findSuffix: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (cp == ':') {
+                            isLabel = true;
+                            state = trailingWhiteSpace;
+                        } else
+                            break outer;
+                        break;
                     }
-                    break;
+                    case trailingWhiteSpace: {
+                        if (!Character.isWhitespace(cp))
+                            break outer;
+                        break;
+                    }
+                    default:
+                        throw new IllegalStateException("'Illegal state: " + state);
                 }
-                case findSuffix:
-                {
-                    if (Character.isWhitespace(cp))
-                        continue;
-                    else if (cp == ':') {
-                        isLabel = true;
-                        state = trailingWhiteSpace;
-                    } else
-                        break outer;
-                    break;
-                }
-                case trailingWhiteSpace:
-                {
-                    if (!Character.isWhitespace(cp))
-                        break outer;
-                }
-                default:
-                    throw new IllegalStateException("'Illegal state: " + state);
             }
+            ++length;
         }
 
         if (fine)
@@ -294,32 +301,271 @@ public class Tokenizer8051 implements Tokenizer {
     }
 
     private OperandToken findOperandToken(StringBuilder line) {
-        int length = 0;
+        int length = -1;
         OperandToken result = null;
         StringBuilder value = new StringBuilder(), bitNr = new StringBuilder();
 
         final int leadingWhiteSpace  = 0;
         final int foundPrefix        = 1;
         final int inValue            = 2;
-        final int findBitOperator    = 3;
-        final int findBitNumber      = 4;
-        final int inBitNumber        = 5;
-        final int findDelimiter      = 6;
-        final int trailingWhiteSpace = 7;
+        final int findPlus           = 3; // Used by indirect symbols
+        final int findBitOperator    = 4;
+        final int findBitNumber      = 5;
+        final int inBitNumber        = 6;
+        final int findDelimiter      = 7; // The delimiter is the ',' char
+        final int trailingWhiteSpace = 8;
 
         OperandType8051 type = null;
         OperandRepresentation8051 repr = null;
         int state = leadingWhiteSpace;
         boolean fine = true;
 
-        for (int cp : line.chars().toArray()) {
-            ++length;
-            switch (state) {
-                // TODO: Implement states.
-                default:
-                    throw new IllegalStateException("Illegal state: "+ state);
+        // start reading characters
+        outer:
+        {
+            for (int cp : line.chars().toArray()) {
+                ++length;
+                switch (state) {
+                    case leadingWhiteSpace: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (Character.isLetterOrDigit(cp) || cp == '_') {
+                            type = OperandType8051.ADDRESS;
+                            if (Character.isDigit(cp))
+                                if (type.isCompatible(OperandRepresentation8051.NUMBER))
+                                    repr = OperandRepresentation8051.NUMBER;
+                                else {
+                                    problems.add(new TokenizingProblem("A '" + type + "' cannot be represented by a " +
+                                            "'NUMBER'!",
+                                            Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                    fine = false;
+                                }
+                            else {
+                                if (type.isCompatible(OperandRepresentation8051.SYMBOL))
+                                    repr = OperandRepresentation8051.SYMBOL;
+                                else {
+                                    problems.add(new TokenizingProblem("A '" + type + "' cannot be represented by a " +
+                                            "'SYMBOL'!",
+                                            Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                    fine = false;
+                                }
+                            }
+                            value.appendCodePoint(cp);
+                            state = inValue;
+                        } else if (cp == ',') {
+                            problems.add(new TokenizingProblem("Unexpected end of operand!", Problem.Type.ERROR, file,
+                                    this.line, String.valueOf(',')));
+                            fine = false;
+                            state = trailingWhiteSpace;
+                        } else if (cp == '.') {
+                            problems.add(new TokenizingProblem("Expected a value before addressing a bit!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findBitNumber;
+                            fine = false;
+                        } else {
+                            switch (cp) {
+                                case '@': {
+                                    type = OperandType8051.INDIRECT;
+                                    break;
+                                }
+                                case '#': {
+                                    type = OperandType8051.CONSTANT;
+                                    break;
+                                }
+                                case '+':
+                                case '-': {
+                                    type = OperandType8051.ADDRESS_OFFSET;
+                                    break;
+                                }
+                                case '/': {
+                                    type = OperandType8051.NEGATED_ADDRESS;
+                                    break;
+                                }
+                                case '$': {
+                                    type = OperandType8051.ADDRESS;
+                                    break;
+                                }
+                                default:
+                                    problems.add(new TokenizingProblem("Unknown Type prefix!", Problem.Type.ERROR, file,
+                                            this.line, String.valueOf(Character.toChars(cp))));
+                                    type = OperandType8051.ADDRESS; // Default to ADDRESS
+                                    fine = false;
+                            }
+                            state = foundPrefix;
+                        }
+                        break;
+                    }
+                    case foundPrefix: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (Character.isLetterOrDigit(cp) || cp == '_') {
+                            if (Character.isDigit(cp))
+                                if (type.isCompatible(OperandRepresentation8051.NUMBER))
+                                    repr = OperandRepresentation8051.NUMBER;
+                                else {
+                                    problems.add(new TokenizingProblem("A '" + type + "' cannot be represented by a " +
+                                            "'NUMBER'!",
+                                            Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                    fine = false;
+                                }
+                            else {
+                                if (type.isCompatible(OperandRepresentation8051.SYMBOL))
+                                    repr = OperandRepresentation8051.SYMBOL;
+                                else {
+                                    problems.add(new TokenizingProblem("A '" + type + "' cannot be represented by a " +
+                                            "'SYMBOL'!",
+                                            Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                    fine = false;
+                                }
+                            }
+                            value.appendCodePoint(cp);
+                            state = inValue;
+                        } else if (cp == ',') {
+                            problems.add(new TokenizingProblem("Unexpected end of operand!", Problem.Type.ERROR, file,
+                                    this.line, String.valueOf(',')));
+                            fine = false;
+                            state = trailingWhiteSpace;
+                        } else if (cp == '.') {
+                            problems.add(new TokenizingProblem("Expected a value before addressing a bit!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findBitNumber;
+                            fine = false;
+                        } else if (cp == '@' || cp == '+' || cp == '-' || cp == '#' || cp == '/' || cp == '$') {
+                            problems.add(new TokenizingProblem("Type of the operand cannot be defined at this place!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            fine = false;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a letter or digit!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case inValue: {
+                        if (Character.isLetterOrDigit(cp) || cp == '_') {
+                            value.appendCodePoint(cp);
+                        } else if (cp == '+') {
+                            if (type.isIndirect()) {
+                                value.appendCodePoint(cp);
+                                state = foundPrefix; // Reuse 'FoundPrefix' to save an extra state
+                            } else {
+                                problems.add(new TokenizingProblem("'" + type + "' does not support a '+' in the value!",
+                                        Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                fine = false;
+                            }
+                        } else if (cp == '.') {
+                            state = findBitNumber;
+                        } else if (Character.isWhitespace(cp)) {
+                            if (type.isIndirect())
+                                state = findPlus;
+                            else
+                                state = findBitOperator;
+                        } else if (cp == ',') {
+                            state = trailingWhiteSpace;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a letter or digit!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case findPlus: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (cp == '+') {
+                            value.appendCodePoint(cp);
+                            state = foundPrefix;
+                        } else if (cp == ',') {
+                            state = trailingWhiteSpace;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a '+' or ',' here!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case findBitOperator: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (cp == '.') {
+                            state = findBitNumber;
+                        } else if (cp == ',') {
+                            state = trailingWhiteSpace;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a '.' or ',' here!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case findBitNumber: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (Character.isLetterOrDigit(cp)) {
+                            if (Character.isLetter(cp)) {
+                                problems.add(new TokenizingProblem("Bit number must be a valid number.",
+                                        Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                                state = findDelimiter;
+                                fine = false;
+                            } else {
+                                bitNr.appendCodePoint(cp);
+                                state = inBitNumber;
+                            }
+                        } else if (cp == ',') {
+                            problems.add(new TokenizingProblem("End of operand before specifying the bit number!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(',')));
+                            fine = false;
+                            state = trailingWhiteSpace;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a number here!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case inBitNumber: {
+                        if (Character.isLetterOrDigit(cp)) {
+                            bitNr.appendCodePoint(cp);
+                        } else if (cp == ',') {
+                            state = trailingWhiteSpace;
+                        } else {
+                            problems.add(new TokenizingProblem("Expected a number or ',' here!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            state = findDelimiter;
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case findDelimiter: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else if (cp == ',')
+                            state = trailingWhiteSpace;
+                        else if (fine) {
+                            problems.add(new TokenizingProblem("Expected a ',' here!",
+                                    Problem.Type.ERROR, file, this.line, String.valueOf(Character.toChars(cp))));
+                            fine = false;
+                        }
+                        break;
+                    }
+                    case trailingWhiteSpace: {
+                        if (Character.isWhitespace(cp))
+                            continue;
+                        else
+                            break outer;
+                    }
+                    default:
+                        throw new IllegalStateException("Illegal state: " + state);
+                }
             }
+            length++;
         }
+
 
         outer:
         if (fine) {
@@ -332,7 +578,7 @@ public class Tokenizer8051 implements Tokenizer {
 
                     if (repr.isSymbol())
                         if (value.toString().equals("a"))
-                            address = MC8051Library.A;
+                            address = MC8051Library.A & 0xFF;
                         else if (value.toString().equals("c")){
                             problems.add(new TokenizingProblem("\""+value+"\" cannot be bit addressed!",
                                     Problem.Type.ERROR, file, this.line, value.toString()));
@@ -388,12 +634,18 @@ public class Tokenizer8051 implements Tokenizer {
                         val = Integer.toString(Integer.parseInt(value.toString())); // Validate Number
                     else {
                         val = value.toString();
-                        if (type.isAddress())
+                        if (type.isAddress()) {
                             for (String name : MC8051Library.RESERVED_NAMES)
                                 if (name.equals(val)) {
                                     type = OperandType8051.NAME;
                                     break;
                                 }
+                        } else if (type.isNegatedAddress()) {
+                            if (val.equals("c")) {
+                                val = Integer.toString(MC8051Library.C & 0xFF);
+                                repr = OperandRepresentation8051.NUMBER;
+                            }
+                        }
                     }
 
                     result = new OperandToken8051(type, repr, val, this.line);

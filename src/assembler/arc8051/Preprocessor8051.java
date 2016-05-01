@@ -551,7 +551,7 @@ public class Preprocessor8051 implements Preprocessor {
 
                 lineString = cutComment(lineString);          // Cut comments
 
-                if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
+                if (!MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
                     lineString = resolveStrings(lineString);  // Convert any String into numbers.
 
                 lineString = convertNumbers(lineString);      // Convert any numbers into the decimal system
@@ -677,10 +677,15 @@ public class Preprocessor8051 implements Preprocessor {
         final Matcher l = MC8051Library.LABEL_PATTERN.matcher(source);
         StringBuilder result = new StringBuilder(source);
 
-        if (l.find()) {
+        int end = 0;
+        outer:
+        while (l.find(end)) {
+            if (!source.substring(end, l.start()).trim().isEmpty())
+                break;
+            end = l.end();
             final String name = l.group(1);
 
-            Regex regex = new Regex("/(?<!^)(\\s*)\\b"+name+"\\b(!:)/"+
+            Regex regex = new Regex("c/(?<=[\\w,\\(])(\\s*)\\b"+name+"\\b/^(?!\\T{directive}).*?$/"+
                     Regex.CASE_INSENSITIVE_FLAG+Regex.UNMODIFIABLE_FLAG,
 
                     currentFile, line, problems);
@@ -690,7 +695,8 @@ public class Preprocessor8051 implements Preprocessor {
                     problems.add(new PreprocessingProblem("Label name is a reserved name!",
                             Problem.Type.ERROR, currentFile, line, name));
 
-                    return  result.delete(0, l.end()).toString();
+                    result.delete(0, l.end());
+                    continue outer;
                 }
 
 
@@ -699,14 +705,15 @@ public class Preprocessor8051 implements Preprocessor {
                     problems.add(new PreprocessingProblem("Symbol already defined!",
                             Problem.Type.ERROR, currentFile, line, name));
 
-                    return result.delete(0, l.end()).toString();
+                    result.delete(0, l.end());
+                    continue outer;
                 }
 
             regexes.add(regex);
 
         }
 
-        return source;
+        return result.toString();
 
     }
 

@@ -21,7 +21,7 @@ public class OperandToken8051 extends OperandToken {
     public OperandToken8051(OperandType8051 type, OperandRepresentation8051 representation, String value, int line) {
         super(type, representation, value, line);
 
-        if (type.isName() || type.isIndirectName())
+        if (type.isName() || type.isIndirect())
             if (!representation.isSymbol())
                 throw new IllegalArgumentException("Type-representation mismatch! '" + type +
                         "' cannot be represented as a '" + type + "'!");
@@ -117,7 +117,23 @@ public class OperandToken8051 extends OperandToken {
         /** Whether the type is a <code>NAME</code>. */
         public boolean isName() { return this == NAME; }
         /** Whether the type is a <code>INDIRECT</code>. */
-        public boolean isIndirectName() {return  this == INDIRECT; }
+        public boolean isIndirect() {return  this == INDIRECT; }
+
+        /**
+         * Tests whether this {@link OperandType8051} can be
+         * represented by the given {@link OperandRepresentation8051}.
+         */
+        public boolean isCompatible(OperandRepresentation8051 representation) {
+            return OperandType8051.isCompatible(this, representation);
+        }
+
+        /**
+         * Tests whether the {@link OperandType8051} can be
+         * represented by the given {@link OperandRepresentation8051}.
+         */
+        public static boolean isCompatible(OperandType8051 type, OperandRepresentation8051 representation) {
+            return !(representation.isNumber() && (type.isName() || type.isIndirect()));
+        }
     }
 
     /**
@@ -139,5 +155,21 @@ public class OperandToken8051 extends OperandToken {
         public boolean isSymbol() { return this == SYMBOL; }
         /** Whether the representation is a <code>NUMBER</code>. */
         public boolean isNumber() { return this == NUMBER; }
+
+        /**
+         * Tests whether this {@link OperandRepresentation8051} can
+         * represent the given {@link OperandType8051}.
+         */
+        public boolean isCompatible(OperandType8051 type) {
+            return OperandType8051.isCompatible(type, this);
+        }
+
+        /**
+         * Tests whether the {@link OperandRepresentation8051} can
+         * represent the given {@link OperandType8051}.
+         */
+        public static boolean isCompatible(OperandType8051 type, OperandRepresentation8051 representation) {
+            return OperandType8051.isCompatible(type, representation);
+        }
     }
 }
