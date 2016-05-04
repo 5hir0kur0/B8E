@@ -1,55 +1,86 @@
 package gui;
 
-import javax.sound.sampled.Line;
+import controller.Project;
+
 import javax.swing.*;
+import javax.swing.event.TreeModelListener;
+import javax.swing.plaf.basic.BasicSplitPaneDivider;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
+import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Path;
+import java.lang.reflect.Field;
+import java.nio.file.*;
+import java.util.*;
+import java.util.List;
 
 /**
  * @author Tobias
  */
 public class MainWindow extends JFrame {
-    public static void main(String[] a) throws IOException {
-        MainWindow m = new MainWindow("FooBar FTW");
+    public static void main(String[] a) throws Exception {
+        // UIManager.setLookAndFeel("com.sun.java.swing.plaf.gtk.GTKLookAndFeel"); // Temporary. TODO: Controller manages L&F
+        MainWindow m = new MainWindow("FooBar FTW", new Project());
+        m.toggleProblems(true, true);
+        Thread.sleep(3000);
+        System.out.println("test");
+        m.toggleProblems(true, false);
         //m.reportException(new IllegalArgumentException("lkasdjflköjasdlfk"), false);
     }
 
+    private final Project project;
 
-    private JTabbedPane jTabbedPane;
-    private JSplitPane jSplitPane;
-    private JTable problemTable;
-    private JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+    private final JTabbedPane jTabbedPane;
+    private final JSplitPane jSplitPane;
+    private final JTable problemTable;
+    private final JTree fsTree;
+    private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo;
     { setUpActions(); }
 
 
-    public MainWindow(String title) {
+    public MainWindow(String title, Project project) {
         super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // TODO: Add close handler
         super.setSize(420, 420); // TODO: Use #.pack() later
         super.setLocationRelativeTo(null);
         super.setTitle(title);
+        super.setLayout(new BorderLayout());
+
 
         super.setJMenuBar(makeMenu());
 
-        problemTable = new JTable();
-        problemTable.setFillsViewportHeight(true);
+        this.project = Objects.requireNonNull(project);
+
+        this.problemTable = new JTable();
+        this.problemTable.setFillsViewportHeight(true);
 
         this.jTabbedPane = new JTabbedPane(JTabbedPane.BOTTOM, JTabbedPane.SCROLL_TAB_LAYOUT);
 
-        jSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        jSplitPane.setOneTouchExpandable(true);
-        jSplitPane.setBottomComponent(new JScrollPane(problemTable));
-        jSplitPane.setTopComponent(jTabbedPane);
+        this.jSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        this.jSplitPane.setOneTouchExpandable(true);
+        this.jSplitPane.setBottomComponent(new JScrollPane(problemTable));
+        this.jSplitPane.setTopComponent(jTabbedPane);
 
         // Default to collapsed ... sort of
         // TODO: Find a better way to do that
-        problemTable.setMinimumSize(new Dimension());
-        jSplitPane.setDividerLocation(super.getHeight());
-        super.add(this.jSplitPane);
+        this.problemTable.setMinimumSize(new Dimension());
+        this.jSplitPane.setDividerLocation(super.getHeight());
+        if (project.isPermanent() || true) {
+            JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+            jsp.setOneTouchExpandable(true);
+            this.fsTree = new JTree(makeFileSystemTree());
+            jsp.setRightComponent(new JScrollPane((this.fsTree)));
+            jsp.setLeftComponent(this.jSplitPane);
+            super.add(jsp, BorderLayout.CENTER);
+        } else {
+            this.fsTree = null;
+            super.add(this.jSplitPane, BorderLayout.CENTER);
+        }
+
         super.setVisible(true);
     }
 
@@ -255,6 +286,148 @@ public class MainWindow extends JFrame {
                     throw new UnsupportedOperationException("will stuff");
                     //TODO
                 }
+            }
+        };
+    }
+
+    /**
+     * toggleProblems JSplitPane
+     * http://stackoverflow.com/questions/4934499/how-to-set-jsplitpane-divider-collapse-expand-state/11283453#11283453
+     * @param upLeft - is it left or top component to collapse? or button or right
+     * @param collapse - true component should be collapsed
+     */
+    public void toggleProblems(boolean upLeft, boolean collapse) {
+        try {
+            JSplitPane sp = this.jSplitPane;
+            //get divider object
+            BasicSplitPaneDivider bspd = ((BasicSplitPaneUI) sp.getUI()).getDivider();
+            Field buttonField;
+
+            //get field button from divider
+
+            buttonField = BasicSplitPaneDivider.class.getDeclaredField(collapse ? "rightButton" : "leftButton");
+
+            //allow access
+            buttonField.setAccessible(true);
+            //get instance of button to click at
+            JButton button = (JButton) buttonField.get(((BasicSplitPaneUI) sp.getUI()).getDivider());
+            //click it
+            button.doClick();
+            //if you manage more dividers at same time before returning from event,
+            //you should update layout and ui, otherwise nothing happens on some dividers:
+            sp.updateUI();
+            sp.doLayout();
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static final Comparator<Path> PATH_SORTER = (x, y) -> {
+        if (Files.isDirectory(x) && Files.isDirectory(y) || !Files.isDirectory(x) && !Files.isDirectory(y))
+            return x.compareTo(y);
+        else if (Files.isDirectory(x)) return -1;
+        else return 1;
+    };
+
+    private static final List<Path> dirList = new ArrayList<>();
+
+    private static PathNode getChild(Path parent, int index) {
+        dirList.clear();
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
+                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+            ds.forEach(dirList::add);
+        } catch (IOException ignored) { ignored.printStackTrace(); }
+
+        Collections.sort(dirList, MainWindow.PATH_SORTER);
+        return new PathNode(dirList.get(index));
+    }
+
+    private static class PathNode {
+        final Path path;
+
+        private PathNode(Path path) {
+            this.path = Objects.requireNonNull(path);
+        }
+
+        @Override
+        public String toString() {
+            return this.path.getFileName().toString();
+        }
+    }
+
+    private static int getChildCount(Path parent) {
+        if (!Files.isDirectory(parent))
+            return 0;
+        int[] count = {0};
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
+                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+            ds.forEach(x -> ++count[0]);
+        } catch (IOException ignored) { ignored.printStackTrace(); }
+        return count[0];
+    }
+
+    private static int getIndex(Path parent, Path child) {
+        dirList.clear();
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
+                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+            ds.forEach(dirList::add);
+        } catch (IOException ignored) { ignored.printStackTrace(); }
+
+        Collections.sort(dirList, MainWindow.PATH_SORTER);
+        return dirList.indexOf(child);
+    }
+
+    private TreeModel makeFileSystemTree() {
+        return new TreeModel() {
+            @Override
+            public Object getRoot() {
+                System.out.println("MainWindow.getRoot");
+                return new PathNode(MainWindow.this.project.getProjectPath()) {
+                    @Override
+                    public String toString() {
+                        return this.path.toString();
+                    }
+                };
+            }
+
+            @Override
+            public Object getChild(Object parent, int index) {
+                System.out.println("MainWindow.getChild");
+                return MainWindow.getChild(((PathNode)parent).path, index);
+            }
+
+            @Override
+            public int getChildCount(Object parent) {
+                System.out.println("MainWindow.getChildCount");
+                return MainWindow.getChildCount(((PathNode) parent).path);
+            }
+
+            @Override
+            public boolean isLeaf(Object node) {
+                return Files.isRegularFile(((PathNode) node).path);
+            }
+
+            @Override
+            public void valueForPathChanged(TreePath path, Object newValue) {
+                System.out.println("MainWindow.valueForPathChanged");
+            }
+
+            @Override
+            public int getIndexOfChild(Object parent, Object child) {
+                System.out.println("MainWindow.getIndexOfChild");
+                return getIndex(((PathNode) parent).path, ((PathNode) child).path);
+            }
+
+            @Override
+            public void addTreeModelListener(TreeModelListener l) {
+                System.out.println("MainWindow.addTreeModelListener");
+            }
+
+            @Override
+            public void removeTreeModelListener(TreeModelListener l) {
+                System.out.println("MainWindow.removeTreeModelListener");
             }
         };
     }
