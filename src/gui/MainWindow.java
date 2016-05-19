@@ -22,16 +22,6 @@ import java.util.List;
  * @author Tobias
  */
 public class MainWindow extends JFrame {
-    public static void main(String[] a) throws Exception {
-        // UIManager.setLookAndFeel("com.sun.java.swing.plaf.gtk.GTKLookAndFeel"); // Temporary. TODO: Controller manages L&F
-        MainWindow m = new MainWindow("FooBar FTW", new Project());
-        m.toggleProblems(true, true);
-        Thread.sleep(3000);
-        System.out.println("test");
-        m.toggleProblems(true, false);
-        //m.reportException(new IllegalArgumentException("lkasdjflköjasdlfk"), false);
-    }
-
     private final Project project;
 
     private final JTabbedPane jTabbedPane;
@@ -69,7 +59,7 @@ public class MainWindow extends JFrame {
         // TODO: Find a better way to do that
         this.problemTable.setMinimumSize(new Dimension());
         this.jSplitPane.setDividerLocation(super.getHeight());
-        if (project.isPermanent() || true) {
+        if (project.isPermanent() || true) { //TODO: remove true or remove check
             JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
             jsp.setOneTouchExpandable(true);
             this.fsTree = new JTree(makeFileSystemTree());
@@ -80,6 +70,8 @@ public class MainWindow extends JFrame {
             this.fsTree = null;
             super.add(this.jSplitPane, BorderLayout.CENTER);
         }
+
+        this.toggleProblems(false, true);
 
         super.setVisible(true);
     }
@@ -97,6 +89,10 @@ public class MainWindow extends JFrame {
                     + " happened because you are using windows.");
         JOptionPane.showMessageDialog(this, jsp, "An Exception occurred: "+e.getClass().getSimpleName(),
                 severe ? JOptionPane.ERROR_MESSAGE : JOptionPane.WARNING_MESSAGE);
+    }
+
+    public void panic() {
+        throw new UnsupportedOperationException("oopsie"); //TODO
     }
 
     private JMenuBar makeMenu() {
@@ -317,10 +313,9 @@ public class MainWindow extends JFrame {
             //you should update layout and ui, otherwise nothing happens on some dividers:
             sp.updateUI();
             sp.doLayout();
-
-
         } catch (Exception e) {
             e.printStackTrace();
+            this.reportException(e, false);
         }
     }
 
@@ -383,7 +378,6 @@ public class MainWindow extends JFrame {
         return new TreeModel() {
             @Override
             public Object getRoot() {
-                System.out.println("MainWindow.getRoot");
                 return new PathNode(MainWindow.this.project.getProjectPath()) {
                     @Override
                     public String toString() {
@@ -394,13 +388,11 @@ public class MainWindow extends JFrame {
 
             @Override
             public Object getChild(Object parent, int index) {
-                System.out.println("MainWindow.getChild");
                 return MainWindow.getChild(((PathNode)parent).path, index);
             }
 
             @Override
             public int getChildCount(Object parent) {
-                System.out.println("MainWindow.getChildCount");
                 return MainWindow.getChildCount(((PathNode) parent).path);
             }
 
@@ -416,7 +408,6 @@ public class MainWindow extends JFrame {
 
             @Override
             public int getIndexOfChild(Object parent, Object child) {
-                System.out.println("MainWindow.getIndexOfChild");
                 return getIndex(((PathNode) parent).path, ((PathNode) child).path);
             }
 
