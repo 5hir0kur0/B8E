@@ -1,8 +1,11 @@
 package controller;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -10,29 +13,28 @@ import java.util.Optional;
  */
 public class TextFile {
     private boolean changed = false;
+    private final Path path;
 
-    TextFile(Path p) {
-        //TODO: throw if not readable
+    TextFile(Path path, boolean create) throws IOException {
+        this.path = Objects.requireNonNull(path, "path must not be null");
+        if (!Files.isReadable(path) && !create) throw new IOException("given path is not readable: " + path);
+        if (!Files.exists(path) && create) Files.createFile(path);
     }
 
-    public boolean exists() {
-        throw new UnsupportedOperationException("nope");
+    public Reader getReader() throws IOException {
+        return Files.newBufferedReader(this.path, Project.CHARSET);
     }
 
-    public Reader getReader() {
-        throw new UnsupportedOperationException("nope");
-    }
-
-    public Writer getWriter() {
-        throw new UnsupportedOperationException("nope");
+    public Writer getWriter() throws IOException {
+        return Files.newBufferedWriter(this.path, Project.CHARSET);
     }
 
     public Path getPath() {
-        throw new UnsupportedOperationException("nope");
+        return this.path;
     }
 
     public boolean isWritable() {
-        throw new UnsupportedOperationException("nope");
+        return Files.isWritable(this.path);
     }
 
     public void setChanged(boolean changed) {
