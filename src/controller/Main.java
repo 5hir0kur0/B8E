@@ -88,6 +88,9 @@ public class Main {
     public static Thread.UncaughtExceptionHandler EXCEPTION_HANDLER = (thread, throwable) -> {
         if (MAIN_WINDOW != null) try {
             MAIN_WINDOW.panic();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if (throwable instanceof Error) {
             System.err.println("An error occurred in B8E...");
         } else if (throwable instanceof Exception) {
@@ -95,9 +98,6 @@ public class Main {
             else System.err.println("An exception occurred in B8E...");
         }
         throwable.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     };
 
     public static void main(String[] args) throws IOException {

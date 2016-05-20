@@ -1,6 +1,11 @@
 package gui;
 
 import controller.Project;
+import controller.TextFile;
+import javafx.scene.control.*;
+import javafx.scene.control.TextField;
+import misc.Pair;
+import org.junit.*;
 
 import javax.swing.*;
 import javax.swing.event.TreeModelListener;
@@ -33,6 +38,11 @@ public class MainWindow extends JFrame {
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo, refreshTree;
     { setUpActions(); }
 
+    private final List<Pair<TextFile, LineNumberSyntaxPane>> openFiles;
+
+    private final static String FILE_EXTENSION_SEPARATOR = ".";
+    // used when creating a new tab without a corresponding file
+    private final static String DEFAULT_FILE_EXTENSION = "asm";
 
     public MainWindow(String title, Project project) {
         super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // TODO: Add close handler
@@ -66,6 +76,8 @@ public class MainWindow extends JFrame {
         this.mainSplit.setRightComponent(new JScrollPane((this.fsTree)));
         this.mainSplit.setLeftComponent(this.problemsSplit);
         super.add(this.mainSplit, BorderLayout.CENTER);
+
+        this.openFiles = new ArrayList<>(10);
 
         super.setVisible(true);
 
@@ -150,6 +162,80 @@ public class MainWindow extends JFrame {
         return menuBar;
     }
 
+    private static String getFileExtension(Path path) {
+        final String fileName = path.getFileName().toString();
+        final int lastIndex = fileName.lastIndexOf(FILE_EXTENSION_SEPARATOR) + 1;
+        if (lastIndex < 0 || lastIndex >= fileName.length()) return "";
+        else return fileName.substring(lastIndex);
+    }
+
+    private Pair<TextFile, LineNumberSyntaxPane> getCurrentFile() {
+        LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) this.jTabbedPane.getSelectedComponent();
+        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles) {
+            if (p.y == syntaxPane) return p;
+        }
+        return null;
+    }
+
+    private Pair<TextFile, LineNumberSyntaxPane> getFileAt(int index) {
+        LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) this.jTabbedPane.getComponentAt(index);
+        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles) {
+            if (p.y == syntaxPane) return p;
+        }
+        return null;
+    }
+
+    private void saveFile(Pair<TextFile, LineNumberSyntaxPane> file) {
+        if (file != null)
+            if (file.x != null)
+                try {
+                    file.y.store(file.x.getWriter());
+                } catch (IOException e1) {
+                    this.reportException(e1, false);
+                    e1.printStackTrace();
+                }
+            else
+                saveFileAs(file);
+    }
+
+    private void saveFileAs(Pair<TextFile, LineNumberSyntaxPane> file) {
+        if (this.fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            final Path path = this.fileChooser.getSelectedFile().toPath();
+            try {
+                file.x = this.project.requestResource(path, true);
+                file.y.store(file.x.getWriter());
+                file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
+                file.y.load(file.x.getReader());
+                for (int i = 0, stop = this.jTabbedPane.getTabCount(); i < stop; ++i) {
+                    if (file.y == this.jTabbedPane.getComponentAt(i)) {
+                        this.jTabbedPane.setTitleAt(i, file.x.getPath().getFileName().toString());
+                        return;
+                    }
+                }
+                throw new IllegalStateException("couldn't get file name of new file: " + file.x.getPath());
+            } catch (IOException e1) {
+                this.reportException(e1, false);
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    private void refreshTree() {
+        this.fsTree = new JTree(MainWindow.this.makeFileSystemTree());
+        this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
+    }
+
+    private void openTab(LineNumberSyntaxPane syntaxPane, String title) {
+        final JScrollPane scrollPane = new JScrollPane(syntaxPane);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(5);
+        if (this.jTabbedPane.getTabCount() != 0) {
+            this.jTabbedPane.add(scrollPane, this.jTabbedPane.getSelectedIndex() + 1);
+            this.jTabbedPane.setSelectedIndex(this.jTabbedPane.getSelectedIndex() + 1);
+        } else
+            this.jTabbedPane.add(scrollPane);
+        this.jTabbedPane.setTitleAt(this.jTabbedPane.getSelectedIndex(), title);
+    }
+
     private void setUpActions() {
         final String UNDO_TEXT = "Undo";
         final String REDO_TEXT = "Redo";
@@ -170,31 +256,25 @@ public class MainWindow extends JFrame {
                 if (mw.fileChooser.showOpenDialog(mw) == JFileChooser.APPROVE_OPTION) {
                     final Path file = mw.fileChooser.getSelectedFile().toPath();
                     try {
-                        final LineNumberSyntaxPane lnsp = new LineNumberSyntaxPane("asm"); //TODO: Implement file type recognition
-                        if (mw.jTabbedPane.getTabCount() != 0) {
-                            mw.jTabbedPane.add(lnsp, mw.jTabbedPane.getSelectedIndex() + 1);
-                            mw.jTabbedPane.setSelectedIndex(mw.jTabbedPane.getSelectedIndex() + 1);
-                        } else
-                            mw.jTabbedPane.add(lnsp);
-                        mw.jTabbedPane.setTitleAt(mw.jTabbedPane.getSelectedIndex(), file.getFileName().toString());
-                        // lnsp.load(file); //TODO: Implement load path method ?
+                        final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(file));
+                        TextFile textFile = mw.project.requestResource(file, false);
+                        syntaxPane.load(textFile.getReader());
+                        mw.openTab(syntaxPane, file.getFileName().toString());
+                        mw.openFiles.add(new Pair<>(textFile, syntaxPane));
                     } catch (IOException e1) {
+                        System.err.println("opening the file failed");
+                        e1.printStackTrace();
                         mw.reportException(e1, false);
                     }
                 }
-                //TODO
             }
         };
         this.newFile = new AbstractAction(NEW_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 try {
-                    final LineNumberSyntaxPane lnsp = new LineNumberSyntaxPane("asm");
-                    if (mw.jTabbedPane.getTabCount() != 0) {
-                        mw.jTabbedPane.add(lnsp, mw.jTabbedPane.getSelectedIndex() + 1);
-                        mw.jTabbedPane.setSelectedIndex(mw.jTabbedPane.getSelectedIndex() + 1);
-                    } else
-                        mw.jTabbedPane.add(lnsp);
-                    mw.jTabbedPane.setTitleAt(mw.jTabbedPane.getSelectedIndex(),"(untitled)");
+                    final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(DEFAULT_FILE_EXTENSION);
+                    mw.openTab(syntaxPane, "(untitled)");
+                    mw.openFiles.add(new Pair<>(null, syntaxPane));
                 } catch (IOException e1) {
                     mw.reportException(e1, false);
                 }
@@ -202,41 +282,22 @@ public class MainWindow extends JFrame {
         };
         this.saveFile = new AbstractAction(SAVE_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                if (lnsp != null /* &&  */) // If LNSP can write themselves: Should they know the target Path?
-                    if (true /* lnsp.isWritten()*/)
-                        lnsp.store(); // ?!
-                    else {
-                        if (mw.fileChooser.showSaveDialog(mw) == JFileChooser.APPROVE_OPTION) {
-                            final Path file = mw.fileChooser.getSelectedFile().toPath();
-
-                            // lnsp.store(mw.fileChooser.getSelectedFile().toPath()); //TODO: Implement store path method?
-                           //TODO
-                        }
-                    }
+                mw.saveFile(mw.getCurrentFile());
+                mw.refreshTree();
             }
         };
         this.saveAll = new AbstractAction(SAVE_ALL_FILES_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 for (int i = 0, all = mw.jTabbedPane.getTabCount(); i < all; ++i) {
-                    LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getComponentAt(i);
-                    if (lnsp != null /* && lnsp.isWritten() */) // If LNSP can write themselves: Should they know the target Path?
-                        lnsp.store(); // ?!
-                    //TODO
+                    mw.saveFile(mw.getFileAt(i));
+                    mw.refreshTree();
                 }
             }
         };
         this.saveAs = new AbstractAction(SAVE_FILE_AS_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    if (mw.fileChooser.showSaveDialog(mw) == JFileChooser.APPROVE_OPTION) {
-                        final Path file = mw.fileChooser.getSelectedFile().toPath();
-
-                        // lnsp.store(mw.fileChooser.getSelectedFile()); //TODO: Implement store path method
-
-                    }
-                }
+                mw.saveFileAs(mw.getCurrentFile());
+                mw.refreshTree();
             }
         };
         this.undo = new AbstractAction(UNDO_TEXT) {
@@ -259,36 +320,26 @@ public class MainWindow extends JFrame {
         };
         this.copy = new AbstractAction(COPY_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    throw new UnsupportedOperationException("fill stuff");
-                    //TODO
-                }
+                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
+                syntaxPane.copy();
             }
         };
         this.cut = new AbstractAction(CUT_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) MainWindow.this.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    throw new UnsupportedOperationException("mill stuff");
-                    //TODO
-                }
+                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
+                syntaxPane.cut();
             }
         };
         this.paste = new AbstractAction(PASTE_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) MainWindow.this.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    throw new UnsupportedOperationException("will stuff");
-                    //TODO
-                }
+                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
+                syntaxPane.paste();
             }
         };
         this.refreshTree = new AbstractAction(REFRESH_TREE_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                MainWindow.this.fsTree = new JTree(MainWindow.this.makeFileSystemTree());
-                MainWindow.this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
+                mw.refreshTree();
             }
         };
     }
