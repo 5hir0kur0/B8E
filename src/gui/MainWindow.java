@@ -25,7 +25,8 @@ public class MainWindow extends JFrame {
     private final Project project;
 
     private final JTabbedPane jTabbedPane;
-    private final JSplitPane jSplitPane;
+    private final JSplitPane problemsSplit;
+    private final JSplitPane mainSplit;
     private final JTable problemTable;
     private final JTree fsTree;
     private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
@@ -50,30 +51,28 @@ public class MainWindow extends JFrame {
 
         this.jTabbedPane = new JTabbedPane(JTabbedPane.BOTTOM, JTabbedPane.SCROLL_TAB_LAYOUT);
 
-        this.jSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        this.jSplitPane.setOneTouchExpandable(true);
-        this.jSplitPane.setBottomComponent(new JScrollPane(problemTable));
-        this.jSplitPane.setTopComponent(jTabbedPane);
+        this.problemsSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        this.problemsSplit.setOneTouchExpandable(true);
+        this.problemsSplit.setBottomComponent(new JScrollPane(problemTable));
+        this.problemsSplit.setTopComponent(jTabbedPane);
 
         // Default to collapsed ... sort of
         // TODO: Find a better way to do that
         this.problemTable.setMinimumSize(new Dimension());
-        this.jSplitPane.setDividerLocation(super.getHeight());
-        if (project.isPermanent() || true) { //TODO: remove true or remove check
-            JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-            jsp.setOneTouchExpandable(true);
-            this.fsTree = new JTree(makeFileSystemTree());
-            jsp.setRightComponent(new JScrollPane((this.fsTree)));
-            jsp.setLeftComponent(this.jSplitPane);
-            super.add(jsp, BorderLayout.CENTER);
-        } else {
-            this.fsTree = null;
-            super.add(this.jSplitPane, BorderLayout.CENTER);
-        }
-
-        this.toggleProblems(false, true);
+        this.problemsSplit.setDividerLocation(super.getHeight());
+        this.mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        this.mainSplit.setOneTouchExpandable(true);
+        this.fsTree = new JTree(makeFileSystemTree());
+        this.mainSplit.setRightComponent(new JScrollPane((this.fsTree)));
+        this.mainSplit.setLeftComponent(this.problemsSplit);
+        super.add(this.mainSplit, BorderLayout.CENTER);
 
         super.setVisible(true);
+
+        // doesn't work when called directly
+        SwingUtilities.invokeLater(() -> toggleSplit(true, this.problemsSplit));
+        if (!this.project.isPermanent())
+            SwingUtilities.invokeLater(() -> toggleSplit(true, this.mainSplit));
     }
 
 
@@ -287,33 +286,32 @@ public class MainWindow extends JFrame {
     }
 
     /**
-     * toggleProblems JSplitPane
+     * toggleSplit JSplitPane
      * http://stackoverflow.com/questions/4934499/how-to-set-jsplitpane-divider-collapse-expand-state/11283453#11283453
-     * @param upLeft - is it left or top component to collapse? or button or right
-     * @param collapse - true component should be collapsed
+     * @param collapse - if {@code true}, the component will be collapsed
+     * @param sp the pane to toggle
      */
-    public void toggleProblems(boolean upLeft, boolean collapse) {
+    public void toggleSplit(boolean collapse, JSplitPane sp) {
         try {
-            JSplitPane sp = this.jSplitPane;
             //get divider object
-            BasicSplitPaneDivider bspd = ((BasicSplitPaneUI) sp.getUI()).getDivider();
-            Field buttonField;
-
+            final BasicSplitPaneDivider divider = ((BasicSplitPaneUI) sp.getUI()).getDivider();
+            final Field buttonField;
             //get field button from divider
-
             buttonField = BasicSplitPaneDivider.class.getDeclaredField(collapse ? "rightButton" : "leftButton");
-
             //allow access
             buttonField.setAccessible(true);
             //get instance of button to click at
-            JButton button = (JButton) buttonField.get(((BasicSplitPaneUI) sp.getUI()).getDivider());
+            JButton button = (JButton) buttonField.get(divider);
             //click it
             button.doClick();
             //if you manage more dividers at same time before returning from event,
             //you should update layout and ui, otherwise nothing happens on some dividers:
             sp.updateUI();
             sp.doLayout();
-        } catch (Exception e) {
+            button.doClick();
+        } catch (NullPointerException expected) { }
+        catch (Exception e) {
+            System.err.println("collapsing the split pane failed:");
             e.printStackTrace();
             this.reportException(e, false);
         }
