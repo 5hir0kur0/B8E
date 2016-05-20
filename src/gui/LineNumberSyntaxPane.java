@@ -8,6 +8,8 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.List;
 import java.io.IOException;
 import java.util.Map;
@@ -63,13 +65,11 @@ public class LineNumberSyntaxPane extends JPanel {
         this.add(lineNumbers, BorderLayout.LINE_START);
         this.add(code, BorderLayout.CENTER);
 
-        this.fileExtension = Objects.requireNonNull(fileExtension);
         SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(SyntaxThemes.EMPTY_LIST,
                 (Observable, Object) -> updateLineNumbers());
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
-        updateLineNumbers();
-        updateTheme();
+        this.setFileExtension(fileExtension);
     }
 
     public void setFontSize(int newSize) {
@@ -104,12 +104,38 @@ public class LineNumberSyntaxPane extends JPanel {
         ((SyntaxHighlightedDocument)this.code.getDocument()).updateCompleteSyntaxHighlighting();
     }
 
-    public void store() {
-        //TODO
+    public final void setFileExtension(String fileExtension) {
+        this.fileExtension = Objects.requireNonNull(fileExtension);
+        this.updateLineNumbers();
+        this.updateTheme();
     }
 
-    public void reload() {
-        //TODO
+    public void store(Writer w) throws IOException {
+        this.code.write(w);
+    }
+
+    public void load(Reader r) throws IOException {
+        try {
+            this.code.getEditorKit().read(r, this.code.getStyledDocument(), 0);
+        } catch (BadLocationException impossible) {
+            System.err.println("an impossible exception occurred:");
+            impossible.printStackTrace();
+        }
+        this.code.setCaretPosition(0);
+        this.updateLineNumbers();
+        this.updateTheme();
+    }
+
+    public void copy() {
+        this.code.copy();
+    }
+
+    public void paste() {
+        this.code.paste();
+    }
+
+    public void cut() {
+        this.code.cut();
     }
 
     private void addLines(int count) {
