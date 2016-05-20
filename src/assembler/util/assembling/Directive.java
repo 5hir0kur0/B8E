@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a Assembler directive.
+ * Represents a Assembler_Old directive.
  *
  * @author Noxgrim
  */
