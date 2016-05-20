@@ -28,9 +28,9 @@ public class MainWindow extends JFrame {
     private final JSplitPane problemsSplit;
     private final JSplitPane mainSplit;
     private final JTable problemTable;
-    private final JTree fsTree;
+    private JTree fsTree;
     private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
-    private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo;
+    private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo, refreshTree;
     { setUpActions(); }
 
 
@@ -53,8 +53,8 @@ public class MainWindow extends JFrame {
 
         this.problemsSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         this.problemsSplit.setOneTouchExpandable(true);
-        this.problemsSplit.setBottomComponent(new JScrollPane(problemTable));
-        this.problemsSplit.setTopComponent(jTabbedPane);
+        this.problemsSplit.setBottomComponent(new JScrollPane(this.problemTable));
+        this.problemsSplit.setTopComponent(this.jTabbedPane);
 
         // Default to collapsed ... sort of
         // TODO: Find a better way to do that
@@ -123,7 +123,6 @@ public class MainWindow extends JFrame {
         fileMenu.setMnemonic('F');
         menuBar.add(fileMenu);
 
-
         JMenu editMenu = new JMenu(EDIT_MENU_TEXT);
         editMenu.setMnemonic('e');
         JMenuItem undo = new JMenuItem(this.undo);
@@ -136,7 +135,8 @@ public class MainWindow extends JFrame {
         cut.setMnemonic('t');
         JMenuItem paste = new JMenuItem(this.paste);
         paste.setMnemonic('p');
-
+        JMenuItem refreshTree = new JMenuItem(this.refreshTree);
+        refreshTree.setMnemonic('f');
 
         editMenu.add(undo);
         editMenu.add(redo);
@@ -144,8 +144,8 @@ public class MainWindow extends JFrame {
         editMenu.add(copy);
         editMenu.add(cut);
         editMenu.add(paste);
+        editMenu.add(refreshTree);
         menuBar.add(editMenu);
-
 
         return menuBar;
     }
@@ -161,6 +161,7 @@ public class MainWindow extends JFrame {
         final String SAVE_ALL_FILES_TEXT = "Save all";
         final String NEW_FILE_TEXT = "New";
         final String OPEN_FILE_TEXT = "Open";
+        final String REFRESH_TREE_TEXT = "Refresh file system tree";
 
         final MainWindow mw = this;
 
@@ -281,6 +282,13 @@ public class MainWindow extends JFrame {
                     throw new UnsupportedOperationException("will stuff");
                     //TODO
                 }
+            }
+        };
+        this.refreshTree = new AbstractAction(REFRESH_TREE_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.fsTree = new JTree(MainWindow.this.makeFileSystemTree());
+                MainWindow.this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
             }
         };
     }
