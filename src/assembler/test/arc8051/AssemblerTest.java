@@ -1,14 +1,11 @@
 package assembler.test.arc8051;
 
-import assembler.Assembler;
+import assembler.arc8051.Assembler_Old;
 import assembler.Preprocessor;
 import assembler.Tokenizer;
 import assembler.arc8051.MC8051Library;
-import assembler.arc8051.OperandToken8051;
-import static assembler.arc8051.OperandToken8051.OperandType8051;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
-import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
 import assembler.util.AssemblerSettings;
 import assembler.util.Regex;
@@ -26,8 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
@@ -37,7 +32,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class AssemblerTest {
 
-    private Assembler testAssem;
+    private Assembler_Old testAssem;
     private Preprocessor prepr;
     private Tokenizer tokenizer;
 
@@ -48,7 +43,7 @@ public class AssemblerTest {
         AssemblerSettings.init();
         prepr = new Preprocessor8051();
         tokenizer = new Tokenizer8051();
-        testAssem = new Assembler(MC8051Library.PROVIDER, prepr, tokenizer);
+        testAssem = new Assembler_Old(MC8051Library.PROVIDER, prepr, tokenizer);
         random = new Random();
     }
 
@@ -154,7 +149,7 @@ public class AssemblerTest {
 
     @Test
     public void test_assemble() {
-        System.out.println("____________Testing Assembler.assemble()");
+        System.out.println("____________Testing Assembler_Old.assemble()");
 
         List<Problem> problems = new ArrayList<>();
         boolean ex = false, outProblems = false;

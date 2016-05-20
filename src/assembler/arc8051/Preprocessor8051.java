@@ -534,7 +534,7 @@ public class Preprocessor8051 implements Preprocessor {
 
         String lineString = null;
         this.output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
-                                                                        // for Tokenizer and Assembler
+                                                                        // for Tokenizer and Assembler_Old
         this.output.add(includeDefaults()+1, "$line 1");
 
         for (outputIndex = 1; outputIndex < this.output.size(); ++outputIndex) {

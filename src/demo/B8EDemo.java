@@ -1,6 +1,6 @@
 package demo;
 
-import assembler.Assembler;
+import assembler.arc8051.Assembler_Old;
 import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
@@ -29,7 +29,7 @@ public class B8EDemo {
         }
         Path p = Paths.get(args[0]);
 
-        Assembler assembler;
+        Assembler_Old assembler;
         RAM ram = new RAM(0xffff+1);
         Emulator emulator;
         if (!Files.exists(p)) {
@@ -43,7 +43,7 @@ public class B8EDemo {
         // Assembling
         try {
             Path directory = p.toAbsolutePath().getParent();
-            assembler = new Assembler(MC8051Library.PROVIDER, new Preprocessor8051(), new Tokenizer8051());
+            assembler = new Assembler_Old(MC8051Library.PROVIDER, new Preprocessor8051(), new Tokenizer8051());
 
             String rawFileName = p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf('.'));
             Path output = Paths.get(directory.toString(), rawFileName + ".bin");

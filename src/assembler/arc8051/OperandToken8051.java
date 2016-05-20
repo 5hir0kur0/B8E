@@ -27,6 +27,11 @@ public class OperandToken8051 extends OperandToken {
                         "' cannot be represented as a '" + type + "'!");
     }
 
+    public OperandToken8051 toNumber(long number) {
+        return new OperandToken8051((OperandType8051) this.operandType, OperandRepresentation8051.NUMBER,
+                Long.toUnsignedString(number), this.line);
+    }
+
     @Override
     public OperandType8051 getOperandType() {
         return (OperandType8051) operandType;
