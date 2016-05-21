@@ -15,6 +15,8 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -35,8 +37,24 @@ public class MainWindow extends JFrame {
     private final JTable problemTable;
     private JTree fsTree;
     private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
-    private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo, refreshTree;
+    private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
+            refreshTree, zoomIn, zoomOut, nextTab, prevTab;
     { setUpActions(); }
+    final static String UNDO_TEXT = "Undo";
+    final static String REDO_TEXT = "Redo";
+    final static String COPY_TEXT = "Copy";
+    final static String CUT_TEXT = "Cut";
+    final static String PASTE_TEXT = "Paste";
+    final static String SAVE_FILE_TEXT = "Save";
+    final static String SAVE_FILE_AS_TEXT = "Save as…";
+    final static String SAVE_ALL_FILES_TEXT = "Save all";
+    final static String NEW_FILE_TEXT = "New";
+    final static String OPEN_FILE_TEXT = "Open";
+    final static String REFRESH_TREE_TEXT = "Refresh file system tree";
+    final static String ZOOM_IN_TEXT = "Zoom in";
+    final static String ZOOM_OUT_TEXT = "Zoom out";
+    final static String NEXT_TAB_TEXT = "Next tab";
+    final static String PREV_TAB_TEXT = "Previous tab";
 
     private final List<Pair<TextFile, LineNumberSyntaxPane>> openFiles;
 
@@ -51,8 +69,7 @@ public class MainWindow extends JFrame {
         super.setTitle(title);
         super.setLayout(new BorderLayout());
 
-
-        super.setJMenuBar(makeMenu());
+        super.setJMenuBar(this.makeMenu());
 
         this.project = Objects.requireNonNull(project);
 
@@ -78,6 +95,8 @@ public class MainWindow extends JFrame {
         super.add(this.mainSplit, BorderLayout.CENTER);
 
         this.openFiles = new ArrayList<>(10);
+
+        this.setUpKeyBindings();
 
         super.setVisible(true);
 
@@ -107,10 +126,9 @@ public class MainWindow extends JFrame {
     }
 
     private JMenuBar makeMenu() {
-        setUpActions();
-
         final String FILE_MENU_TEXT = "File";
         final String EDIT_MENU_TEXT = "Edit";
+        final String VIEW_MENU_TEXT = "View";
 
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu(FILE_MENU_TEXT);
@@ -158,6 +176,22 @@ public class MainWindow extends JFrame {
         editMenu.add(paste);
         editMenu.add(refreshTree);
         menuBar.add(editMenu);
+
+        JMenu viewMenu = new JMenu(VIEW_MENU_TEXT);
+        JMenuItem zoomIn = new JMenuItem(this.zoomIn);
+        zoomIn.setMnemonic('i');
+        viewMenu.add(zoomIn);
+        JMenuItem zoomOut = new JMenuItem(this.zoomOut);
+        zoomOut.setMnemonic('o');
+        viewMenu.add(zoomOut);
+        viewMenu.addSeparator();
+        JMenuItem nextTab = new JMenuItem(this.nextTab);
+        nextTab.setMnemonic('n');
+        viewMenu.add(nextTab);
+        JMenuItem prevTab = new JMenuItem(this.prevTab);
+        prevTab.setMnemonic('p');
+        viewMenu.add(prevTab);
+        menuBar.add(viewMenu);
 
         return menuBar;
     }
@@ -223,17 +257,6 @@ public class MainWindow extends JFrame {
     }
 
     private void setUpActions() {
-        final String UNDO_TEXT = "Undo";
-        final String REDO_TEXT = "Redo";
-        final String COPY_TEXT = "Copy";
-        final String CUT_TEXT = "Cut";
-        final String PASTE_TEXT = "Paste";
-        final String SAVE_FILE_TEXT = "Save";
-        final String SAVE_FILE_AS_TEXT = "Save as…";
-        final String SAVE_ALL_FILES_TEXT = "Save all";
-        final String NEW_FILE_TEXT = "New";
-        final String OPEN_FILE_TEXT = "Open";
-        final String REFRESH_TREE_TEXT = "Refresh file system tree";
 
         final MainWindow mw = this;
 
@@ -328,6 +351,66 @@ public class MainWindow extends JFrame {
                 mw.refreshTree();
             }
         };
+        this.zoomIn = new AbstractAction(ZOOM_IN_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() + 3));
+            }
+        };
+        this.zoomOut = new AbstractAction(ZOOM_OUT_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() - 3));
+            }
+        };
+        this.nextTab = new AbstractAction(NEXT_TAB_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mw.jTabbedPane.getTabCount() <= 1) return;
+                mw.jTabbedPane.setSelectedIndex((mw.jTabbedPane.getSelectedIndex() + 1) % mw.jTabbedPane.getTabCount());
+            }
+        };
+        this.prevTab = new AbstractAction(PREV_TAB_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mw.jTabbedPane.getTabCount() <= 1) return;
+                mw.jTabbedPane.setSelectedIndex((mw.jTabbedPane.getSelectedIndex() + mw.jTabbedPane.getTabCount() - 1)
+                                                 % mw.jTabbedPane.getTabCount());
+            }
+        };
+
+        ActionMap map = super.getRootPane().getActionMap();
+        map.put(OPEN_FILE_TEXT, openFile);
+        map.put(NEW_FILE_TEXT, newFile);
+        map.put(SAVE_FILE_TEXT, saveFile);
+        map.put(SAVE_FILE_AS_TEXT, saveAs);
+        map.put(SAVE_ALL_FILES_TEXT, saveAll);
+        map.put(CUT_TEXT, cut);
+        map.put(COPY_TEXT, copy);
+        map.put(PASTE_TEXT, paste);
+        map.put(UNDO_TEXT, undo);
+        map.put(REDO_TEXT, redo);
+        map.put(REFRESH_TREE_TEXT, refreshTree);
+        map.put(ZOOM_IN_TEXT, zoomIn);
+        map.put(ZOOM_OUT_TEXT, zoomOut);
+        map.put(NEXT_TAB_TEXT, nextTab);
+        map.put(PREV_TAB_TEXT, prevTab);
+    }
+
+    private void setUpKeyBindings() {
+        InputMap input = super.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, InputEvent.CTRL_DOWN_MASK), ZOOM_IN_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD, InputEvent.CTRL_DOWN_MASK), ZOOM_IN_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK), ZOOM_OUT_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, InputEvent.CTRL_DOWN_MASK), ZOOM_OUT_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), NEXT_TAB_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK), PREV_TAB_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                NEW_FILE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK), OPEN_FILE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK), SAVE_FILE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                SAVE_FILE_AS_TEXT);
     }
 
     /**
