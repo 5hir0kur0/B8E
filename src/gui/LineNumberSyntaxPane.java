@@ -50,7 +50,7 @@ public class LineNumberSyntaxPane extends JPanel {
 
     private String fileExtension;
 
-    public LineNumberSyntaxPane(String fileExtension) throws IOException {
+    public LineNumberSyntaxPane(String fileExtension) {
         super(new BorderLayout());
 
         this.lineNumbers = new JTextArea("1");
