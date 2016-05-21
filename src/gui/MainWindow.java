@@ -170,19 +170,11 @@ public class MainWindow extends JFrame {
     }
 
     private Pair<TextFile, LineNumberSyntaxPane> getCurrentFile() {
-        LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) this.jTabbedPane.getSelectedComponent();
-        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles) {
-            if (p.y == syntaxPane) return p;
-        }
-        return null;
+        return this.openFiles.get(this.jTabbedPane.getSelectedIndex());
     }
 
     private Pair<TextFile, LineNumberSyntaxPane> getFileAt(int index) {
-        LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) this.jTabbedPane.getComponentAt(index);
-        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles) {
-            if (p.y == syntaxPane) return p;
-        }
-        return null;
+        return this.openFiles.get(index);
     }
 
     private void saveFile(Pair<TextFile, LineNumberSyntaxPane> file) {
@@ -206,13 +198,7 @@ public class MainWindow extends JFrame {
                 file.y.store(file.x.getWriter());
                 file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
                 file.y.load(file.x.getReader());
-                for (int i = 0, stop = this.jTabbedPane.getTabCount(); i < stop; ++i) {
-                    if (file.y == this.jTabbedPane.getComponentAt(i)) {
-                        this.jTabbedPane.setTitleAt(i, file.x.getPath().getFileName().toString());
-                        return;
-                    }
-                }
-                throw new IllegalStateException("couldn't get file name of new file: " + file.x.getPath());
+                this.jTabbedPane.setTitleAt(this.openFiles.indexOf(file), file.x.getPath().getFileName().toString());
             } catch (IOException e1) {
                 this.reportException(e1, false);
                 e1.printStackTrace();

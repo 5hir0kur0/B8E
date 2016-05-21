@@ -60,10 +60,8 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
                         final int matchStart = tmpStart + m.start(i);
                         final int matchStop = tmpStart + m.end(i);
                         final int matchLength = matchStop - matchStart;
-                        if (matchStart >= tmpStart) {
-                            System.out.println("matched: " + super.getText(matchStart, matchLength) + "; expr: " + p.x);
+                        if (matchStart >= tmpStart)
                             super.setCharacterAttributes(matchStart, matchLength, p.y, false);
-                        }
                     }
                 }
             }

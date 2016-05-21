@@ -115,6 +115,11 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     public void load(Reader r) throws IOException {
+        // create a new model to discard already existing contents (in case the file is reloaded)
+        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(SyntaxThemes.EMPTY_LIST,
+                (Observable, Object) -> updateLineNumbers());
+        this.code.setContentType("text/plain");
+        this.code.setDocument(shDoc);
         try {
             this.code.getEditorKit().read(r, this.code.getStyledDocument(), 0);
         } catch (BadLocationException impossible) {
