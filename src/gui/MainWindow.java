@@ -2,10 +2,7 @@ package gui;
 
 import controller.Project;
 import controller.TextFile;
-import javafx.scene.control.*;
-import javafx.scene.control.TextField;
 import misc.Pair;
-import org.junit.*;
 
 import javax.swing.*;
 import javax.swing.event.TreeModelListener;
@@ -38,7 +35,7 @@ public class MainWindow extends JFrame {
     private JTree fsTree;
     private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
-            refreshTree, zoomIn, zoomOut, nextTab, prevTab;
+            refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile;
     { setUpActions(); }
     final static String UNDO_TEXT = "Undo";
     final static String REDO_TEXT = "Redo";
@@ -55,12 +52,32 @@ public class MainWindow extends JFrame {
     final static String ZOOM_OUT_TEXT = "Zoom out";
     final static String NEXT_TAB_TEXT = "Next tab";
     final static String PREV_TAB_TEXT = "Previous tab";
+    final static String RELOAD_FILE_TEXT = "Reload file";
 
     private final List<Pair<TextFile, LineNumberSyntaxPane>> openFiles;
 
     private final static String FILE_EXTENSION_SEPARATOR = ".";
     // used when creating a new tab without a corresponding file
     private final static String DEFAULT_FILE_EXTENSION = "asm";
+
+    /**
+     * Should be thrown, when the user has to be notified about an exception by the user of a method, but can't be
+     * notified by the method itself (because that would cause other exceptions, etc.).
+     * Should only be used for exceptions, that are <b>not severe</b>.
+     * Example:
+     * <pre>
+     *     try {
+     *         this.myMethod();
+     *     } catch (NotifyUserException e) {
+     *         this.reportException(e.getMessage(), e, <b>false</b>);
+     *     }
+     * </pre>
+     */
+    private static final class NotifyUserException extends Exception {
+        public NotifyUserException(String message, Exception e) {
+            super(message, e);
+        }
+    }
 
     public MainWindow(String title, Project project) {
         super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // TODO: Add close handler
@@ -108,21 +125,43 @@ public class MainWindow extends JFrame {
 
 
     public void reportException(Exception e, boolean severe) {
+        reportException("An Exception occurred: " + e.getClass().getSimpleName(), e, severe);
+    }
+
+    public void reportException(String message, Exception e, boolean severe) {
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
+        JPanel panel = new JPanel(new BorderLayout());
         JTextArea jta = new JTextArea(sw.toString());
         jta.setTabSize(4);
         jta.setEditable(false);
         JScrollPane jsp = new JScrollPane(jta);
+        JLabel details = new JLabel("Details:");
+        panel.add(details, BorderLayout.NORTH);
+        panel.add(jsp, BorderLayout.CENTER);
+        if (severe) {
+            JLabel saved =
+                    new JLabel("The program tried to save all your unsaved changes (except new files) to the disk.");
+            panel.add(saved, BorderLayout.SOUTH);
+        }
+        panel.setPreferredSize(new Dimension(600, 200));
         if (System.getProperty("os.name").toLowerCase().contains("windows"))
             jta.setToolTipText("This " + (severe ? "definitely" : "probably")
                     + " happened because you are using windows.");
-        JOptionPane.showMessageDialog(this, jsp, "An Exception occurred: "+e.getClass().getSimpleName(),
+        JOptionPane.showMessageDialog(this, panel, message,
                 severe ? JOptionPane.ERROR_MESSAGE : JOptionPane.WARNING_MESSAGE);
     }
 
     public void panic() {
-        throw new UnsupportedOperationException("oopsie"); //TODO
+        for (Pair<TextFile, LineNumberSyntaxPane> file : this.openFiles) {
+            if (file == null || file.x == null) continue;
+            try {
+                file.y.store(file.x.getWriter());
+            } catch (IOException e) {
+                System.err.println("error during panic-save:");
+                e.printStackTrace();
+            }
+        }
     }
 
     private JMenuBar makeMenu() {
@@ -137,6 +176,8 @@ public class MainWindow extends JFrame {
         newFile.setMnemonic('n');
         JMenuItem openFile = new JMenuItem(this.openFile);
         openFile.setMnemonic('o');
+        JMenuItem reloadFile = new JMenuItem(this.reloadFile);
+        reloadFile.setMnemonic('r');
         JMenuItem saveFile = new JMenuItem(this.saveFile);
         saveFile.setMnemonic('s');
         JMenuItem saveFileAs = new JMenuItem(this.saveAs);
@@ -146,6 +187,7 @@ public class MainWindow extends JFrame {
 
         fileMenu.add(newFile);
         fileMenu.add(openFile);
+        fileMenu.add(reloadFile);
         fileMenu.addSeparator();
         fileMenu.add(saveFile);
         fileMenu.add(saveFileAs);
@@ -165,8 +207,6 @@ public class MainWindow extends JFrame {
         cut.setMnemonic('t');
         JMenuItem paste = new JMenuItem(this.paste);
         paste.setMnemonic('p');
-        JMenuItem refreshTree = new JMenuItem(this.refreshTree);
-        refreshTree.setMnemonic('f');
 
         editMenu.add(undo);
         editMenu.add(redo);
@@ -174,7 +214,6 @@ public class MainWindow extends JFrame {
         editMenu.add(copy);
         editMenu.add(cut);
         editMenu.add(paste);
-        editMenu.add(refreshTree);
         menuBar.add(editMenu);
 
         JMenu viewMenu = new JMenu(VIEW_MENU_TEXT);
@@ -191,6 +230,10 @@ public class MainWindow extends JFrame {
         JMenuItem prevTab = new JMenuItem(this.prevTab);
         prevTab.setMnemonic('p');
         viewMenu.add(prevTab);
+        viewMenu.addSeparator();
+        JMenuItem refreshTree = new JMenuItem(this.refreshTree);
+        refreshTree.setMnemonic('f');
+        viewMenu.add(refreshTree);
         menuBar.add(viewMenu);
 
         return menuBar;
@@ -203,12 +246,20 @@ public class MainWindow extends JFrame {
         else return fileName.substring(lastIndex);
     }
 
-    private Pair<TextFile, LineNumberSyntaxPane> getCurrentFile() {
-        return this.openFiles.get(this.jTabbedPane.getSelectedIndex());
+    private Pair<TextFile, LineNumberSyntaxPane> getCurrentFile() throws NotifyUserException {
+        try {
+            return this.openFiles.get(this.jTabbedPane.getSelectedIndex());
+        } catch (IndexOutOfBoundsException e) {
+            throw new NotifyUserException("Error: Couldn't get the current file (probably there are no open files)", e);
+        }
     }
 
-    private Pair<TextFile, LineNumberSyntaxPane> getFileAt(int index) {
-        return this.openFiles.get(index);
+    private Pair<TextFile, LineNumberSyntaxPane> getFileAt(int index) throws NotifyUserException {
+        try {
+            return this.openFiles.get(index);
+        } catch (IndexOutOfBoundsException e) {
+            throw new NotifyUserException("Error: Couldn't get the file at index #" + index, e);
+        }
     }
 
     private void saveFile(Pair<TextFile, LineNumberSyntaxPane> file) {
@@ -217,8 +268,8 @@ public class MainWindow extends JFrame {
                 try {
                     file.y.store(file.x.getWriter());
                 } catch (IOException e1) {
-                    this.reportException(e1, false);
-                    e1.printStackTrace();
+                    this.reportException("Error: Saving the file \"" + file.x.getPath().getFileName()
+                            + "\" failed", e1, false);
                 }
             else
                 saveFileAs(file);
@@ -233,9 +284,10 @@ public class MainWindow extends JFrame {
                 file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
                 file.y.load(file.x.getReader());
                 this.jTabbedPane.setTitleAt(this.openFiles.indexOf(file), file.x.getPath().getFileName().toString());
+                this.refreshTree();
             } catch (IOException e1) {
-                this.reportException(e1, false);
-                e1.printStackTrace();
+                this.reportException("Error: Saving the file \""
+                        + file.x.getPath().getFileName() + "\" as \"" + path + "\" failed", e1, false);
             }
         }
     }
@@ -271,42 +323,48 @@ public class MainWindow extends JFrame {
                         mw.openTab(syntaxPane, file.getFileName().toString());
                         mw.openFiles.add(new Pair<>(textFile, syntaxPane));
                     } catch (IOException e1) {
-                        System.err.println("opening the file failed");
-                        e1.printStackTrace();
-                        mw.reportException(e1, false);
+                        mw.reportException("Error: Opening the file \"" + file.getFileName() + "\" failed", e1, false);
                     }
                 }
             }
         };
         this.newFile = new AbstractAction(NEW_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                try {
-                    final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(DEFAULT_FILE_EXTENSION);
-                    mw.openTab(syntaxPane, "(untitled)");
-                    mw.openFiles.add(new Pair<>(null, syntaxPane));
-                } catch (IOException e1) {
-                    mw.reportException(e1, false);
-                }
+                final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(DEFAULT_FILE_EXTENSION);
+                mw.openTab(syntaxPane, "(untitled)");
+                mw.openFiles.add(new Pair<>(null, syntaxPane));
             }
         };
         this.saveFile = new AbstractAction(SAVE_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                mw.saveFile(mw.getCurrentFile());
-                mw.refreshTree();
+                try {
+                    mw.saveFile(mw.getCurrentFile());
+                    mw.refreshTree();
+                } catch (NotifyUserException e1) {
+                    mw.reportException(e1.getMessage(), e1, false);
+                }
             }
         };
         this.saveAll = new AbstractAction(SAVE_ALL_FILES_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 for (int i = 0, all = mw.jTabbedPane.getTabCount(); i < all; ++i) {
-                    mw.saveFile(mw.getFileAt(i));
-                    mw.refreshTree();
+                    try {
+                        mw.saveFile(mw.getFileAt(i));
+                        mw.refreshTree();
+                    } catch (NotifyUserException e1) {
+                        mw.reportException(e1.getMessage(), e1, false);
+                    }
                 }
             }
         };
         this.saveAs = new AbstractAction(SAVE_FILE_AS_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                mw.saveFileAs(mw.getCurrentFile());
-                mw.refreshTree();
+                try {
+                    mw.saveFileAs(mw.getCurrentFile());
+                    mw.refreshTree();
+                } catch (NotifyUserException e1) {
+                    mw.reportException(e1.getMessage(), e1, false);
+                }
             }
         };
         this.undo = new AbstractAction(UNDO_TEXT) {
@@ -329,20 +387,29 @@ public class MainWindow extends JFrame {
         };
         this.copy = new AbstractAction(COPY_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                syntaxPane.copy();
+                try {
+                    mw.getCurrentFile().y.copy();
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Copy' failed", e1, false);
+                }
             }
         };
         this.cut = new AbstractAction(CUT_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                syntaxPane.cut();
+                try {
+                    mw.getCurrentFile().y.cut();
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Cut' failed", e1, false);
+                }
             }
         };
         this.paste = new AbstractAction(PASTE_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane syntaxPane = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                syntaxPane.paste();
+                try {
+                    mw.getCurrentFile().y.paste();
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Paste' failed", e1, false);
+                }
             }
         };
         this.refreshTree = new AbstractAction(REFRESH_TREE_TEXT) {
@@ -354,13 +421,21 @@ public class MainWindow extends JFrame {
         this.zoomIn = new AbstractAction(ZOOM_IN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() + 3));
+                try {
+                    mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() + 2) + 1);
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Zoom in' failed", e1, false);
+                }
             }
         };
         this.zoomOut = new AbstractAction(ZOOM_OUT_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() - 3));
+                try {
+                    mw.getCurrentFile().y.setFontSize(Math.abs(mw.getCurrentFile().y.getFontSize() - 4) + 1);
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Zoom out' failed", e1, false);
+                }
             }
         };
         this.nextTab = new AbstractAction(NEXT_TAB_TEXT) {
@@ -378,23 +453,37 @@ public class MainWindow extends JFrame {
                                                  % mw.jTabbedPane.getTabCount());
             }
         };
+        this.reloadFile = new AbstractAction(RELOAD_FILE_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Pair<TextFile, LineNumberSyntaxPane> file;
+                try {
+                    file = mw.getCurrentFile();
+                    if (file != null && file.x != null)
+                            file.y.load(file.x.getReader());
+                } catch (IOException|NotifyUserException e1) {
+                    mw.reportException("Error: Reloading the file failed", e1, false);
+                }
+            }
+        };
 
         ActionMap map = super.getRootPane().getActionMap();
-        map.put(OPEN_FILE_TEXT, openFile);
-        map.put(NEW_FILE_TEXT, newFile);
-        map.put(SAVE_FILE_TEXT, saveFile);
-        map.put(SAVE_FILE_AS_TEXT, saveAs);
-        map.put(SAVE_ALL_FILES_TEXT, saveAll);
-        map.put(CUT_TEXT, cut);
-        map.put(COPY_TEXT, copy);
-        map.put(PASTE_TEXT, paste);
-        map.put(UNDO_TEXT, undo);
-        map.put(REDO_TEXT, redo);
-        map.put(REFRESH_TREE_TEXT, refreshTree);
-        map.put(ZOOM_IN_TEXT, zoomIn);
-        map.put(ZOOM_OUT_TEXT, zoomOut);
-        map.put(NEXT_TAB_TEXT, nextTab);
-        map.put(PREV_TAB_TEXT, prevTab);
+        map.put(OPEN_FILE_TEXT, this.openFile);
+        map.put(NEW_FILE_TEXT, this.newFile);
+        map.put(SAVE_FILE_TEXT, this.saveFile);
+        map.put(SAVE_FILE_AS_TEXT, this.saveAs);
+        map.put(SAVE_ALL_FILES_TEXT, this.saveAll);
+        map.put(CUT_TEXT, this.cut);
+        map.put(COPY_TEXT, this.copy);
+        map.put(PASTE_TEXT, this.paste);
+        map.put(UNDO_TEXT, this.undo);
+        map.put(REDO_TEXT, this.redo);
+        map.put(REFRESH_TREE_TEXT, this.refreshTree);
+        map.put(ZOOM_IN_TEXT, this.zoomIn);
+        map.put(ZOOM_OUT_TEXT, this.zoomOut);
+        map.put(NEXT_TAB_TEXT, this.nextTab);
+        map.put(PREV_TAB_TEXT, this.prevTab);
+        map.put(RELOAD_FILE_TEXT, this.reloadFile);
     }
 
     private void setUpKeyBindings() {
@@ -411,6 +500,7 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK), SAVE_FILE_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 SAVE_FILE_AS_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK), RELOAD_FILE_TEXT);
     }
 
     /**
