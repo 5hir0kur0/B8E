@@ -22,10 +22,21 @@ public class Main {
     private static Project PROJECT;
     private static MainWindow MAIN_WINDOW;
 
+    private static final String LOOK_AND_FEEL_SETTING = "gui.lookAndFeel";
+    private static final String LOOK_AND_FEEL_SETTING_DEFAULT;
+    static {
+        if (System.getProperty("os.name").equalsIgnoreCase("linux"))
+            LOOK_AND_FEEL_SETTING_DEFAULT = "com.sun.java.swing.plaf.gtk.GTKLookAndFeel";
+        else
+            LOOK_AND_FEEL_SETTING_DEFAULT = UIManager.getSystemLookAndFeelClassName();
+        Settings.INSTANCE.setDefault(LOOK_AND_FEEL_SETTING, LOOK_AND_FEEL_SETTING_DEFAULT);
+    }
+
     private static final String[] CLASSES_WITH_SETTINGS = {
             "gui.LineNumberSyntaxPane",
             "gui.SyntaxThemes",
             "emulator.arc8051.State8051",
+            "controller.Main",
             //"assembler.util.AssemblerSettings"
     };
 
@@ -85,7 +96,7 @@ public class Main {
         }));
      }
 
-    public static Thread.UncaughtExceptionHandler EXCEPTION_HANDLER = (thread, throwable) -> {
+    private static Thread.UncaughtExceptionHandler EXCEPTION_HANDLER = (thread, throwable) -> {
         if (MAIN_WINDOW != null) try {
             MAIN_WINDOW.panic();
         } catch (Exception e) {
@@ -99,6 +110,19 @@ public class Main {
         }
         throwable.printStackTrace();
     };
+
+    private static void setUpLookAndFeel() {
+        final String lookAndFeel = Settings.INSTANCE.getProperty(LOOK_AND_FEEL_SETTING);
+        try {
+            UIManager.setLookAndFeel(lookAndFeel);
+        } catch (Exception e) {
+            try {
+                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            } catch (Exception e1) {
+                throw new IllegalStateException("could not set up look and feel", e1);
+            }
+        }
+    }
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(EXCEPTION_HANDLER);
@@ -119,6 +143,8 @@ public class Main {
                         pair.y.accept(argArgs);
                     }
         }
+
+        setUpLookAndFeel();
 
         PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT);
 
