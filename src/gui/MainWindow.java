@@ -11,9 +11,7 @@ import javax.swing.plaf.basic.BasicSplitPaneUI;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -106,9 +104,8 @@ public class MainWindow extends JFrame {
         this.problemsSplit.setDividerLocation(super.getHeight());
         this.mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         this.mainSplit.setOneTouchExpandable(true);
-        this.fsTree = new JTree(makeFileSystemTree());
-        this.mainSplit.setRightComponent(new JScrollPane((this.fsTree)));
         this.mainSplit.setLeftComponent(this.problemsSplit);
+        this.refreshTree();
         super.add(this.mainSplit, BorderLayout.CENTER);
 
         this.openFiles = new ArrayList<>(10);
@@ -294,7 +291,31 @@ public class MainWindow extends JFrame {
 
     private void refreshTree() {
         this.fsTree = new JTree(MainWindow.this.makeFileSystemTree());
+        this.fsTree.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.getClickCount() >= 2) {
+                    int row = MainWindow.this.fsTree.getRowForLocation(e.getX(), e.getY());
+                    if (row < 0) return;
+                    TreePath path = MainWindow.this.fsTree.getPathForRow(row);
+                    PathNode leaf = (PathNode)path.getLastPathComponent();
+                    if (Files.isRegularFile(leaf.path, LinkOption.NOFOLLOW_LINKS))
+                        MainWindow.this.openOrSwitchToFile(leaf.path);
+                }
+            }
+        });
         this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
+        this.mainSplit.setDividerLocation(0.75);
+    }
+
+    private void openOrSwitchToFile(Path path) {
+        for (int i = 0; i < this.openFiles.size(); ++i) {
+            if (this.openFiles.get(i).x.getPath().equals(path)) {
+                this.jTabbedPane.setSelectedIndex(i);
+                return;
+            }
+        }
+        this.openFile(path);
     }
 
     private void openTab(LineNumberSyntaxPane syntaxPane, String title) {
@@ -308,6 +329,18 @@ public class MainWindow extends JFrame {
         this.jTabbedPane.setTitleAt(this.jTabbedPane.getSelectedIndex(), title);
     }
 
+    private void openFile(Path path) {
+        try {
+            final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(path));
+            TextFile textFile = this.project.requestResource(path, false);
+            syntaxPane.load(textFile.getReader());
+            this.openTab(syntaxPane, path.getFileName().toString());
+            this.openFiles.add(new Pair<>(textFile, syntaxPane));
+        } catch (IOException e1) {
+            this.reportException("Error: Opening the file \"" + path.getFileName() + "\" failed", e1, false);
+        }
+    }
+
     private void setUpActions() {
 
         final MainWindow mw = this;
@@ -316,15 +349,7 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 if (mw.fileChooser.showOpenDialog(mw) == JFileChooser.APPROVE_OPTION) {
                     final Path file = mw.fileChooser.getSelectedFile().toPath();
-                    try {
-                        final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(file));
-                        TextFile textFile = mw.project.requestResource(file, false);
-                        syntaxPane.load(textFile.getReader());
-                        mw.openTab(syntaxPane, file.getFileName().toString());
-                        mw.openFiles.add(new Pair<>(textFile, syntaxPane));
-                    } catch (IOException e1) {
-                        mw.reportException("Error: Opening the file \"" + file.getFileName() + "\" failed", e1, false);
-                    }
+                    mw.openFile(file);
                 }
             }
         };
