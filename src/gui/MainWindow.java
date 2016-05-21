@@ -1,5 +1,6 @@
 package gui;
 
+import controller.Main;
 import controller.Project;
 import controller.TextFile;
 import misc.Pair;
@@ -107,6 +108,9 @@ public class MainWindow extends JFrame {
         this.mainSplit.setLeftComponent(this.problemsSplit);
         this.refreshTree();
         super.add(this.mainSplit, BorderLayout.CENTER);
+
+        this.mainSplit.setResizeWeight(0.75);
+        this.problemsSplit.setResizeWeight(0.75);
 
         this.openFiles = new ArrayList<>(10);
 
@@ -526,6 +530,40 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 SAVE_FILE_AS_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK), RELOAD_FILE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                REFRESH_TREE_TEXT);
+        // use VIM key bindings, because binding arrows seems not to work ;-)
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.CTRL_DOWN_MASK), "resizeTreeLeft");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK), "resizeTreeRight");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK), "resizeProblemsUp");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.CTRL_DOWN_MASK), "resizeProblemsDown");
+        ActionMap tmp = super.getRootPane().getActionMap();
+        tmp.put("resizeTreeLeft", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.mainSplit.setDividerLocation(MainWindow.this.mainSplit.getDividerLocation() - 10);
+            }
+        });
+        tmp.put("resizeTreeRight", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.mainSplit.setDividerLocation(MainWindow.this.mainSplit.getDividerLocation() + 10);
+            }
+        });
+        tmp.put("resizeProblemsUp", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.problemsSplit.setDividerLocation(
+                        MainWindow.this.problemsSplit.getDividerLocation() - 10);
+            }
+        });
+        tmp.put("resizeProblemsDown", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.problemsSplit.setDividerLocation(
+                        MainWindow.this.problemsSplit.getDividerLocation() + 10);
+            }
+        });
     }
 
     /**
