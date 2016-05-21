@@ -107,18 +107,23 @@ public enum Settings {
         this.settings.setProperty(key, value);
     }
 
-    /** @see java.util.Properties#load(InputStream) */
-    public void load(InputStream is) throws IOException {
-        this.settings.load(is);
+    /** @see java.util.Properties#load(Reader) */
+    public void load(Reader r) throws IOException {
+        this.settings.load(r);
     }
 
     /**
      * Save all key-value pairs into a file.<br>
      * NOTE 1: This does <b>not</b> include the default values (as they are hardcoded anyway).<br>
      * NOTE 2: This method will only create a file if there are settings actually to be saved.
-     * @see java.util.Properties#store(OutputStream, String)
+     * @see java.util.Properties#store(Writer, String)
      */
-    public void store(OutputStream os, String comments) throws IOException {
-        if (!this.settings.isEmpty()) this.settings.store(os, comments);
+    public void store(Writer w, String comments) throws IOException {
+        if (!this.settings.isEmpty()) this.settings.store(w, comments);
+    }
+
+    /** @see java.util.Properties#list(PrintStream) */
+    public void listDefaults(PrintStream out) {
+        this.defaults.list(out);
     }
 }
