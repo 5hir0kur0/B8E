@@ -28,4 +28,4 @@ $regex "sw/\b\(anl|[ox]rl)\b\s+(@?r\d+)\s*$/\g1 a, \g2/Expected 'a' as first ope
 $regex "sw/\b(xchd?)\b\s*(\S+)\s*$/\g1 a, \g2/Expected 'a' as first operand!/igSM"
 
 ; Accumulator operations
-$regex "sw/\b(r[lr]c?|swap|da)\b\s*$/\g1 a/Expected 'a' as operand!/igSM"
+$regex "sw/\b(r[lr]c?|swap|da)\b\s*$/\g1 a/Expected 'a' as first operand!/igSM"

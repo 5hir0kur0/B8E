@@ -27,8 +27,27 @@ public class OperandToken8051 extends OperandToken {
                         "' cannot be represented as a '" + type + "'!");
     }
 
+    /**
+     * @param number
+     *      the number that should be used as new value.
+     * @return
+     *      A new OperandToken that has the same values as this one but is a {@link OperandRepresentation8051#NUMBER}
+     *      and has a new specified value.
+     */
     public OperandToken8051 toNumber(long number) {
         return new OperandToken8051((OperandType8051) this.operandType, OperandRepresentation8051.NUMBER,
+                Long.toUnsignedString(number), this.line);
+    }
+
+    /**
+     * @param number
+     *      the number that should be used as new value.
+     * @return
+     *      A new OperandToken that has the same values as this one but is a {@link OperandRepresentation8051#NUMBER}
+     *      the type {@link OperandType8051#ADDRESS} and has a new specified value.
+     */
+    public OperandToken8051 toNumberAddress(long number) {
+        return new OperandToken8051(OperandType8051.ADDRESS, OperandRepresentation8051.NUMBER,
                 Long.toUnsignedString(number), this.line);
     }
 

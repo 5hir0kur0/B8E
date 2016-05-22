@@ -3,8 +3,12 @@ package assembler.arc8051;
 import assembler.util.assembling.Mnemonic;
 import assembler.tokens.OperandToken;
 import assembler.tokens.Tokens;
+import assembler.util.problems.Problem;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * A mnemonic for a microcomputer with a
@@ -47,9 +51,10 @@ public abstract class Mnemonic8051 extends Mnemonic {
     }
 
     @Override
-    public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands) {
-        return getInstructionFromOperands(codePoint, name, Arrays.asList(operands).toArray(
-                new OperandToken8051[operands.length]));
+    public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken[] operands,
+                                             Path file, List<Problem> problems) {
+        return getInstructionFromOperands(codePoint, name,
+                Arrays.asList(operands).toArray(new OperandToken8051[operands.length]), file, problems);
     }
 
     /**
@@ -63,6 +68,10 @@ public abstract class Mnemonic8051 extends Mnemonic {
      *      operands are present.
      * @param operands
      *      The operands of the mnemonic.
+     * @param file
+     *      the file in witch the mnemonic is located.
+     * @param problems
+     *      a to witch occurring Problems can be added.
      *
      * @return
      *      an assembled representation of this mnemonic.
@@ -70,7 +79,7 @@ public abstract class Mnemonic8051 extends Mnemonic {
      *      operands.
      */
     public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name,
-                                                      OperandToken8051... operands);
+                                                      OperandToken8051[] operands, Path file, List<Problem> problems);
 
     @Override
     protected String getClassName() {

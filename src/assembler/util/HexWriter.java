@@ -85,9 +85,9 @@ public class HexWriter implements AutoCloseable {
             throw new IndexOutOfBoundsException("Cannot write instruction codes into the buffer because the " +
                     "buffer is too small");
 
-        if ((address+bufferLength) != assembled.getCodePoint()) {
+        if ((address+bufferLength) != assembled.getAddress()) {
             flushBuffer();
-            address = assembled.getCodePoint();
+            address = assembled.getAddress();
         }
 
         if (instructionWrap) {
@@ -96,7 +96,7 @@ public class HexWriter implements AutoCloseable {
                     buffer[bufferLength++] = b;
             else {
                 flushBuffer();
-                address = assembled.getCodePoint();
+                address = assembled.getAddress();
                 for (byte b : codes)
                     buffer[bufferLength++] = b;
             }

@@ -28,4 +28,4 @@ $regex "se/\b\(anl|[ox]rl)\b\s+(@?r\d+)\s*$/\g1 a, \g2/Missing 'a' as first oper
 $regex "se/\b(xchd?)\b\s*(\S+)\s*$/\g1 a, \g2/Missing 'a' as first operand!/igSM"
 
 ; Accumulator operations
-$regex "se/\b(r[lr]c?|swap|da)\b\s*$/\g1 a/Missing 'a' as operand!/igSM"
+$regex "se/\b(r[lr]c?|swap|da)\b\s*$/\g1 a/Missing 'a' as first operand!/igSM"
