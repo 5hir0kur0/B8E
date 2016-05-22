@@ -1,6 +1,5 @@
 package gui;
 
-import controller.Main;
 import controller.Project;
 import controller.TextFile;
 import misc.Pair;
@@ -22,7 +21,7 @@ import java.util.*;
 import java.util.List;
 
 /**
- * @author T.
+ * @author T., Noxgrim, 5hir0kur0
  */
 public class MainWindow extends JFrame {
     private final Project project;
