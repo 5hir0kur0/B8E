@@ -1,8 +1,8 @@
 package assembler.test.arc8051;
 
-import assembler.arc8051.Assembler_Old;
 import assembler.Preprocessor;
 import assembler.Tokenizer;
+import assembler.arc8051.Assembler8051;
 import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
@@ -15,7 +15,7 @@ import misc.Settings;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.*;
+import java.io.BufferedReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -24,15 +24,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * @author Jannik
  */
 public class AssemblerTest {
 
-    private Assembler_Old testAssem;
+    private Assembler8051 testAssem;
     private Preprocessor prepr;
     private Tokenizer tokenizer;
 
@@ -43,7 +43,7 @@ public class AssemblerTest {
         AssemblerSettings.init();
         prepr = new Preprocessor8051();
         tokenizer = new Tokenizer8051();
-        testAssem = new Assembler_Old(MC8051Library.PROVIDER, prepr, tokenizer);
+        testAssem = new Assembler8051();
         random = new Random();
     }
 
@@ -158,8 +158,7 @@ public class AssemblerTest {
             Path test = Paths.get("src/assembler/test/arc8051/");
             System.out.println("__Test directory: " + test.toAbsolutePath());
 
-            problems = testAssem.assemble(test, "test", new BufferedOutputStream(Files.newOutputStream(
-                    Paths.get(test.toString(), "test.bin"))));
+            byte[] result = testAssem.assemble(test, problems);
             for (Problem p : problems)
                 if (p instanceof ExceptionProblem) {
                     System.out.println(p);
