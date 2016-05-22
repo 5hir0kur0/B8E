@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a Assembler_Old directive.
+ * Represents an assembler directive.
  *
  * @author Noxgrim
  */
@@ -48,7 +48,7 @@ public abstract class Directive {
      *      The first character of the String specifies whether the quote characters
      *      should be (i)ncluded or e(x)cluded from the resulting argument.
      *      (Valid chars: "ix")<br>
-     *      The second and third character represent the first and second character of
+     *      The second and third character represent th first and second character of
      *      the character pair respectively.
      * @param fallthrough
      *      marks this directive as 'fall through' that

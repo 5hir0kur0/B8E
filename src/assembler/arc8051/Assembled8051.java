@@ -4,21 +4,19 @@ import assembler.tokens.LabelToken;
 import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
 import assembler.tokens.Tokens;
+import assembler.util.assembling.Assembled;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenProblem;
 
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * @author Noxgrim
  */
-public class Assembled8051 {
+public class Assembled8051 implements Assembled{
 
-    private int origin;
+    private final int origin;
 
     private int originOffset;
 
@@ -26,7 +24,7 @@ public class Assembled8051 {
 
     private Path file;
 
-    private byte[] result;
+    private byte[] codes;
 
     private boolean isStatic;
 
@@ -34,9 +32,8 @@ public class Assembled8051 {
 
     private Mnemonic8051 mnemonicCache;
 
-    public Assembled8051(int origin, byte[] result, List<Token> tokens, int originOffset, Path file) {
+    public Assembled8051(int origin, List<Token> tokens, int originOffset, Path file) {
         this.origin = origin;
-        this.result = result;
         if (tokens.size() == 0)
             throw new IllegalArgumentException("Must have at least one associated Token!");
         this.tokens = tokens.toArray(new Token[tokens.size()]);
@@ -74,6 +71,7 @@ public class Assembled8051 {
             return 0;
 
         byte[] result;
+        clearRelatedProblems(problems);
 
         if (tokens[0] instanceof Tokens.MnemonicNameToken) {
             if (mnemonicCache == null) {
@@ -85,12 +83,23 @@ public class Assembled8051 {
                     mnemonicCache = o.get();
                 else {
                     problems.add(new TokenProblem("Unknown mnemonic!", Problem.Type.ERROR, file, tokens[0]));
-                    isStatic = true;
+                    isStatic = true; // Prevent future recompilation.
                     return 0;
                 }
             }
-            OperandToken[] tmpTokens = new OperandToken[tokens.length - 1];
-            boolean isStatic = true;
+            // Test minimum operands.
+            if (mnemonicCache.getMinimumOperands() > tokens.length-1) {
+                problems.add(new TokenProblem("Found " + (tokens.length-1) + " operands but mnemonic must have at " +
+                        "least " + mnemonicCache.getMinimumOperands() +
+                        " operand" + (mnemonicCache.getMinimumOperands() != 1 ? "s" : "" ) + "!",
+                        Problem.Type.ERROR, file, tokens[0]));
+                isStatic = true;
+                return 0;
+            }
+
+
+            OperandToken8051[] tmpTokens = new OperandToken8051[tokens.length - 1];
+            boolean isStatic = !mnemonicCache.isPositionSensitive();
 
             // Preparation
             outer:
@@ -116,40 +125,89 @@ public class Assembled8051 {
             this.isStatic = isStatic;
 
             // Compile
-            if (convertibleNamesIndexes.length == 0)
-                result = mnemonicCache.getInstructionFromOperands(0, (Tokens.MnemonicNameToken) tokens[0], tmpTokens);
-            else {
+            if (convertibleNamesIndexes.length == 0) // No uses of A or C
+                result = mnemonicCache.getInstructionFromOperands(origin+originOffset, (Tokens.MnemonicNameToken) tokens[0],
+                        tmpTokens, file, problems);
+            else { // Try to compile it. If no success, try to replace As and Cs with their associated addresses.
                 result = null;
                 OperandToken8051[] tmpTmpTokens;
                 for (int pos = 0, length = (int) Math.pow(2, convertibleNamesIndexes.length); pos < length; ++pos) {
-                    tmpTmpTokens = (OperandToken8051[]) Arrays.copyOf(tmpTokens, tmpTokens.length);
+                    tmpTmpTokens =  Arrays.copyOf(tmpTokens, tmpTokens.length);
                     for (int j = 0; j < convertibleNamesIndexes.length; ++j)
                         if ((1 << j | pos) > 0) {
                             OperandToken8051 ot = tmpTmpTokens[convertibleNamesIndexes[j]];
                             if (ot.getValue().equals("a"))
-                                ot = ot.toNumber(MC8051Library.A);
+                                ot = ot.toNumberAddress(MC8051Library.A);
                             else
-                                ot = ot.toNumber(MC8051Library.C);
+                                ot = ot.toNumberAddress(MC8051Library.C);
                             tmpTmpTokens[convertibleNamesIndexes[j]] = ot;
                         }
 
-                    result = mnemonicCache.getInstructionFromOperands(0,
-                            (Tokens.MnemonicNameToken) tokens[0], tmpTmpTokens);
+                    result = mnemonicCache.getInstructionFromOperands(origin+originOffset,
+                            (Tokens.MnemonicNameToken) tokens[0], tmpTmpTokens, file, problems);
                     if (result.length > 0)
                         break;
                 }
             }
 
-            return result.length - this.result.length;
+            return result.length - this.codes.length;
 
         } else if (tokens[0] instanceof DirectiveTokens.DataToken) {
             isStatic = true;
 
-            this.result = ((DirectiveTokens.DataToken) tokens[0]).getData();
+            this.codes = ((DirectiveTokens.DataToken) tokens[0]).getData();
 
-            return this.result.length;
+            return this.codes.length;
         } else {
             throw new IllegalArgumentException("Cannot be compiled!: " + tokens[0]);
+        }
+    }
+
+    private void clearRelatedProblems(List<Problem> problems) {
+        Problem p;
+        for (Iterator<Problem> i = problems.iterator(); i.hasNext();) {
+            p = i.next();
+            if (p instanceof TokenProblem) {
+                Token cause = ((TokenProblem) p).getCause();
+                for (Token t : this.tokens)
+                    if (t.equals(cause)) {
+                        i.remove();
+                        break;
+                    }
+            }
+        }
+    }
+
+    @Override
+    public byte[] getCodes() {
+        return codes;
+    }
+
+    @Override
+    public long getAddress() {
+        return origin+originOffset;
+    }
+
+    public Path getFile() {
+        return file;
+    }
+
+
+    @Override
+    public long getOrigin() {
+        return origin;
+    }
+
+    public Token[] getTokens() {
+        return tokens;
+    }
+
+    @Override
+    public void moveAddress(long amount) {
+        this.originOffset += amount;
+        if (this.originOffset < 0) {
+            originOffset = 0;
+            throw new IllegalArgumentException("Resulting address cannot be smaller than the origin address!");
         }
     }
 }

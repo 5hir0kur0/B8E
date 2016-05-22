@@ -2,6 +2,10 @@ package assembler.util.assembling;
 
 import assembler.tokens.OperandToken;
 import assembler.tokens.Tokens;
+import assembler.util.problems.Problem;
+
+import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Represents a mnemonic in an assembler language.
@@ -96,34 +100,13 @@ public abstract class Mnemonic {
      *      operands are present.
      * @param operands
      *      The operands of the mnemonic.
-     *
-     * @return
-     *      the byte length of the resulting instruction.<br>
-     *      This method calls {@link #getInstructionFromOperands(long, Tokens.MnemonicNameToken, OperandToken...)}
-     *      and returns the length of the resulting array.
-     */
-    public int getByteNumber(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands) {
-        return getInstructionFromOperands(codePoint, name, operands).length;
-    }
-
-    /**
-     * @param codePoint
-     *      The location of the mnemonic in the program
-     *      memory. This can be used by some mnemonics
-     *      to perform further calculations.<br>
-     * @param name
-     *      the name token used for this specific call.
-     *      Can be used as cause for an error if no
-     *      operands are present.
-     * @param operands
-     *      The operands of the mnemonic.
      *  @return
      *      an assembled representation of this mnemonic.
      *      It consists of the opcode and the assembled
      *      operands.
      */
-    public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken... operands);
-
+    public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken[]
+            operands, Path file, List<Problem> problems);
 
     @Override
     public String toString() {
