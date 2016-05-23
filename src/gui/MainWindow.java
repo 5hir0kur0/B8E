@@ -78,7 +78,6 @@ public class MainWindow extends JFrame {
     }
 
     public MainWindow(String title, Project project) {
-        super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // TODO: Add close handler
         super.setSize(420, 420); // TODO: Use #.pack() later
         super.setLocationRelativeTo(null);
         super.setTitle(title);
@@ -114,6 +113,18 @@ public class MainWindow extends JFrame {
         this.openFiles = new ArrayList<>(10);
 
         this.setUpKeyBindings();
+
+        super.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                try {
+                    MainWindow.this.project.close();
+                } catch (IOException e1) {
+                    MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
+                    e1.printStackTrace();
+                }
+            }
+        });
 
         super.setVisible(true);
 
