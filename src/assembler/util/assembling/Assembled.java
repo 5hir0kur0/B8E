@@ -2,6 +2,8 @@ package assembler.util.assembling;
 
 import assembler.tokens.Token;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -149,5 +151,13 @@ public class Assembled {
         return this.getClass().getSimpleName()+"["+mnemonic.toString()+", Address:"+String.format("%04x", codePoint)+
                 ", Codes:" +codesString+", Length:"+getLength()+", "+Arrays.toString(tokens.toArray())+
                 ", Unresolved:"+unresolved+"]";
+    }
+
+    public long getAddress() {
+        return codePoint;
+    }
+
+    public Path getFile() {
+        return Paths.get(".");
     }
 }
