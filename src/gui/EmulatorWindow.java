@@ -30,7 +30,7 @@ public class EmulatorWindow extends JFrame {
     private final NumeralSystem memoryNumeralSystem;
     private boolean running;
     private final SwingWorker<Void, Void> emulatorRunner;
-    private JButton nextButton, runButton, pauseButton, codeButton;
+    private JButton nextButton, runButton, pauseButton, codeButton, loadButton, storeButton;
     private JTable listingTable;
     private JToolBar toolBar;
     private RegisterTableModel registerTableModel;
@@ -205,12 +205,21 @@ public class EmulatorWindow extends JFrame {
         this.codeButton  = new JButton("Show Code Memory");
         this.codeButton.setMnemonic('c');
         this.codeButton.addActionListener(this::showCodeMemory);
+        this.loadButton = new JButton("Load State");
+        this.loadButton.setMnemonic('l');
+        this.loadButton.addActionListener(this::loadState);
+        this.storeButton = new JButton("Store State");
+        this.storeButton.setMnemonic('s');
+        this.storeButton.addActionListener(this::storeState);
 
         this.toolBar.add(this.nextButton);
         this.toolBar.add(this.runButton);
         this.toolBar.add(this.pauseButton);
         this.toolBar.addSeparator();
         this.toolBar.add(this.codeButton);
+        this.toolBar.addSeparator();
+        this.toolBar.add(this.storeButton);
+        this.toolBar.add(this.loadButton);
     }
 
     private void showCodeMemory(ActionEvent e) {
@@ -222,6 +231,14 @@ public class EmulatorWindow extends JFrame {
                 ), true);
         codeMemory.setPreferredSize(new Dimension(800, 400));
         JOptionPane.showMessageDialog(this, codeMemory, "Code Memory", JOptionPane.PLAIN_MESSAGE);
+    }
+
+    private void loadState(ActionEvent e) {
+        throw new UnsupportedOperationException("TODO"); //TODO finish
+    }
+
+    private void storeState(ActionEvent e) {
+        throw new UnsupportedOperationException("TODO"); //TODO finish
     }
 
     private void pauseProgram(ActionEvent e) {
@@ -259,6 +276,8 @@ public class EmulatorWindow extends JFrame {
         if (runButton) this.runButton.setEnabled(false);
         if (pauseButton) this.pauseButton.setEnabled(false);
         if (codeButton) this.codeButton.setEnabled(false);
+        this.loadButton.setEnabled(false);
+        this.storeButton.setEnabled(false);
     }
 
     private void enableElements() {
@@ -266,6 +285,8 @@ public class EmulatorWindow extends JFrame {
         this.runButton.setEnabled(true);
         this.pauseButton.setEnabled(true);
         this.codeButton.setEnabled(true);
+        this.loadButton.setEnabled(true);
+        this.storeButton.setEnabled(true);
     }
 
     private void updateListingTable() {
