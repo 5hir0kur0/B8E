@@ -1,5 +1,6 @@
 package assembler.util;
 
+import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
 import assembler.util.assembling.Assembled;
 
@@ -52,11 +53,10 @@ public class Listing {
             StringBuilder sb = new StringBuilder();
 
             for (Token t : tokens) {
-                sb.append(t.getValue());
                 if (t.getType() == Token.TokenType.OPERAND)
-                    sb.append(", ");
+                    sb.append(((OperandToken) t).getFullValue()).append(", ");
                 else
-                    sb.append(" ");
+                    sb.append(t.getValue()).append(" ");
             }
             if (tokens[tokens.length-2].getType() == Token.TokenType.OPERAND)
                 sb.setLength(sb.length()-2);
@@ -68,7 +68,7 @@ public class Listing {
             sb.setLength(0);
 
             for (byte b : codes) {
-                sb.append(String.format("%02x ", 0xFF & b));
+                sb.append(String.format("%02x ", 0xFF & b).toUpperCase());
             }
             sb.setLength(sb.length()-1);
 

@@ -14,7 +14,7 @@ import java.util.*;
 /**
  * @author Jannik
  */
-public class Assembled8051 implements Assembled{
+public class Assembled8051 implements Assembled {
 
     private final int origin;
 
@@ -32,8 +32,13 @@ public class Assembled8051 implements Assembled{
 
     private Mnemonic8051 mnemonicCache;
 
-    public Assembled8051(int origin, List<Token> tokens, int originOffset, Path file) {
-        this.origin = origin;
+    private List<LabelToken> labels;
+
+    public Assembled8051(int origin, int originOffset, List<Token> tokens, List<LabelToken> labels, Path file) {
+        if ((this.origin = origin) < 0)
+            throw new IllegalArgumentException("Origin address cannot be negative");
+        if ((this.originOffset = originOffset) < 0)
+            throw new IllegalArgumentException("Origin address offset cannot be negative");
         if (tokens.size() == 0)
             throw new IllegalArgumentException("Must have at least one associated Token!");
         this.tokens = tokens.toArray(new Token[tokens.size()]);
@@ -54,8 +59,10 @@ public class Assembled8051 implements Assembled{
         for (int i = 0; i < convertibleNamesIndexes.length; i++)
             convertibleNamesIndexes[i] = convertible.get(i);
 
+        this.labels = Objects.requireNonNull(labels);
+        for (LabelToken lt : labels)
+            lt.setAttachedTo(this);
         this.file = file;
-        this.originOffset = originOffset;
     }
 
     public boolean isStatic() {
@@ -66,6 +73,7 @@ public class Assembled8051 implements Assembled{
         isStatic = aStatic;
     }
 
+    @Override
     public int compile(List<Problem> problems, List<LabelToken> labels) {
         if (isStatic)
             return 0;
@@ -99,7 +107,7 @@ public class Assembled8051 implements Assembled{
 
 
             OperandToken8051[] tmpTokens = new OperandToken8051[tokens.length - 1];
-            boolean isStatic = !mnemonicCache.isPositionSensitive();
+            boolean isStatic = !mnemonicCache.isPositionSensitive(), unresolved = false;
 
             // Preparation
             outer:
@@ -113,15 +121,19 @@ public class Assembled8051 implements Assembled{
                         isStatic = false;
                         for (LabelToken l : labels)
                             if (token.getValue().equals(l.getValue())) {
-                                tmpTokens[i - 1] = token.toNumber(l.getCodePoint());
+                                tmpTokens[i - 1] = token.toNumber(l.getAddress());
                                 continue outer;
                             }
                         problems.add(new TokenProblem("Unresolved symbol!", Problem.Type.ERROR, file, token));
-                        return 0;
+                        unresolved = true;
                     } else {
                         tmpTokens[i - 1] = token;
                     }
                 }
+            if (unresolved) {          // At this point it is assumed, that all tokens have been
+                this.isStatic = true;  // converted into Assembled and all labels have been found
+                return 0;              // so if a symbol has not been resolved it will never be
+            }                          // resolved marking the whole Assembled invalid.
             this.isStatic = isStatic;
 
             // Compile
@@ -150,7 +162,10 @@ public class Assembled8051 implements Assembled{
                 }
             }
 
-            return result.length - this.codes.length;
+            int len = this.codes.length;
+            this.codes = result;
+
+            return result.length - len;
 
         } else if (tokens[0] instanceof DirectiveTokens.DataToken) {
             isStatic = true;
@@ -188,16 +203,17 @@ public class Assembled8051 implements Assembled{
         return origin+originOffset;
     }
 
+    @Override
     public Path getFile() {
         return file;
     }
-
 
     @Override
     public long getOrigin() {
         return origin;
     }
 
+    @Override
     public Token[] getTokens() {
         return tokens;
     }
@@ -209,5 +225,7 @@ public class Assembled8051 implements Assembled{
             originOffset = 0;
             throw new IllegalArgumentException("Resulting address cannot be smaller than the origin address!");
         }
+        for (LabelToken lt : labels)
+            lt.moveAddress(amount);
     }
 }

@@ -86,13 +86,13 @@ public class DirectiveTokens {
      *
      * @author Jannik
      */
-    public static class OrganisationToken extends Token {
+    public static class OriginChangeToken extends Token {
 
-        /** The code point the <code>OrganisationToken</code> is referring to. */
+        /** The code point the <code>OriginChangeToken</code> is referring to. */
         private long codePoint;
 
         /**
-         * Constructs a new <code>OrganisationToken</code> that contains an
+         * Constructs a new <code>OriginChangeToken</code> that contains an
          * address.<br>
          * The the internal address should be changed to the given one.
          *
@@ -101,7 +101,7 @@ public class DirectiveTokens {
          * @param line
          *      the line of the token.
          */
-        public OrganisationToken(final long codePoint, int line) {
+        public OriginChangeToken(final long codePoint, int line) {
             super(Long.toString(codePoint), TokenType.DIRECTIVE, line);
             if ((this.codePoint = codePoint) < 0) throw new IllegalArgumentException("'code point' cannot be 'null'!");
         }
@@ -110,7 +110,7 @@ public class DirectiveTokens {
          * Returns the <code>code point</code> the internal <code>code point</code>
          * should be set to.
          */
-        public long getCodePoint() {
+        public long getAddress() {
             return codePoint;
         }
     }
