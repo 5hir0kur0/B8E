@@ -24,21 +24,4 @@ public class Tokens {
             super(value, TokenType.MNEMONIC_NAME, line);
         }
     }
-
-    /**
-     * Represents a Symbol, user- or assembler-defined
-     * names for constants (e.g.: addresses).
-     */
-    public static class SymbolToken extends Token {
-
-        /**
-         * Constructs a new Symbol Token.
-         *
-         * @param value the value of the token.
-         * @param line the line of the token.
-         */
-        public SymbolToken(String value, int line) {
-            super(value, TokenType.SYMBOL, line);
-        }
-    }
 }

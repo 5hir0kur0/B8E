@@ -61,7 +61,7 @@ public class Token implements Comparable<Token> {
      * The different types a token can have.
      */
     public enum TokenType {
-        MNEMONIC_NAME, OPERAND, LABEL, SYMBOL, DIRECTIVE
+        MNEMONIC_NAME, OPERAND, LABEL, DIRECTIVE
     }
 
     /**
