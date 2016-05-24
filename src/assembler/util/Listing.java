@@ -13,7 +13,7 @@ public class Listing {
     private List<ListingElement> elements;
 
     public Listing(List<Assembled> assembled) {
-        this.elements = new LinkedList<>();
+        this.elements = new ArrayList<>(assembled.size());
         for (Assembled a : assembled)
             elements.add(new ListingElement(a));
     }
