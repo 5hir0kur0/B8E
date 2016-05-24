@@ -173,6 +173,12 @@ public class MainWindow extends JFrame {
                 e.printStackTrace();
             }
         }
+        try {
+            this.project.close();
+        } catch (IOException e) {
+            System.err.println("error during panic-save:");
+            e.printStackTrace();
+        }
     }
 
     private JMenuBar makeMenu() {
