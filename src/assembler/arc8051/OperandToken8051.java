@@ -61,6 +61,25 @@ public class OperandToken8051 extends OperandToken {
         return (OperandRepresentation8051) operandRepresentation;
     }
 
+    @Override
+    public String getFullValue() {
+        switch ((OperandType8051)operandType) {
+            case CONSTANT:
+                return '#' + value;
+            case ADDRESS:
+                return value;
+            case NEGATED_ADDRESS:
+                return '/' + value;
+            case ADDRESS_OFFSET:
+                return Integer.parseInt(value) < 0 ? value : '+' + value;
+            case NAME:
+                return value;
+            case INDIRECT:
+                return '@' + value;
+        }
+        return value;
+    }
+
     /**
      * Contains all the possible types of a 8051 operand
      * as an enum.

@@ -1,5 +1,7 @@
 package assembler.tokens;
 
+import assembler.util.assembling.Assembled;
+
 /**
  * Represents a token of type 'label'.
  * Can hold the code point it is referring to.
@@ -8,62 +10,83 @@ package assembler.tokens;
  */
 public class LabelToken extends Token {
 
+    private final long origin;
+
     /**
      * The position in the code memory this label points
      * to.
      */
-    private long codePoint;
+    private long originOffset;
+
+    private Assembled attachedTo;
 
     /**
      * Constructs a new LabelToken.
      *
      * @param value the value of the token.
      * @param line the line of the token.
-     * @param codePoint
+     * @param originOffset
      *      the position in code memory this label
      *      points to.<br>
      *      Can be <code>-1</code> if not set.
      */
-    public LabelToken(String value, int line, long codePoint) {
+    public LabelToken(String value, int line, long origin, long originOffset) {
         super(value, TokenType.LABEL, line);
-
-        if ((this.codePoint = codePoint) < -1)
-            throw new IllegalArgumentException("Code point cannot be smaller that -1!");
-    }
-
-    /**
-     * Constructs a new LabelToken and no code point (-1).
-     *
-     * @param value the value of the token.
-     * @param line the line of the token.
-     */
-    public LabelToken(String value, int line) {
-        this(value, line, -1);
+        if ((this.origin = origin) < 0)
+            throw new IllegalArgumentException("Origin address cannot be negative");
+        if ((this.originOffset = originOffset) < 0)
+            throw new IllegalArgumentException("Origin address offset cannot be negative");
     }
 
     /**
      * Returns the position in code memory this label
      * is referring to.
      */
-    public long getCodePoint() {
-        return codePoint;
+    public long getAddress() {
+        return origin + originOffset;
     }
 
     /**
-     * @param codePoint
+     * @param originOffset
      *      the position in code memory to set.<br>
      *      This value cannot be negative.
      */
-    public void setCodePoint(long codePoint) {
-        if (codePoint < 0)
+    public void setOriginOffset(long originOffset) {
+        if (originOffset < 0)
             throw new IllegalArgumentException("Code point cannot be negative!");
-        this.codePoint = codePoint;
+        this.originOffset = originOffset;
     }
 
+    /**
+     * @return
+     *      the {@link Assembled} associated with this label
+     *      (the instructions that are before the label).
+     */
+    public Assembled getAttachedTo() {
+        return attachedTo;
+    }
+
+    /**
+     * @param attachedTo
+     *      the {@link Assembled} associated with this label
+     *      (the instructions that are before the label) to be
+     *      set.
+     */
+    public void setAttachedTo(Assembled attachedTo) {
+        this.attachedTo = attachedTo;
+    }
+
+    public void moveAddress(long amount) {
+        this.originOffset += amount;
+        if (this.originOffset < 0) {
+            originOffset = 0;
+            throw new IllegalArgumentException("Resulting address cannot be smaller than the origin address!");
+        }
+    }
 
     @Override
     public String toString() {
-        return String.format("%s(%d)[%s, %s"+(codePoint != -1?", %02x":"")+"]",
-                getClass().getSimpleName(), line, type, value, codePoint);
+        return String.format("%s(%d)[%s, %s"+(originOffset != -1?", %02x":"")+"]",
+                getClass().getSimpleName(), line, type, value, originOffset);
     }
 }

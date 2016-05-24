@@ -1,6 +1,8 @@
 package assembler.util.assembling;
 
+import assembler.tokens.LabelToken;
 import assembler.tokens.Token;
+import assembler.util.problems.Problem;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -23,4 +25,6 @@ public interface Assembled {
     Token[] getTokens();
 
     Path getFile();
+
+    int compile(List<Problem> problems, List<LabelToken> labels);
 }

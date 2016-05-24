@@ -143,7 +143,7 @@ public class Tokenizer8051 implements Tokenizer {
                 protected boolean perform(String[] args) {
 
                     try {
-                        tokens.add(new DirectiveTokens.OrganisationToken(Long.parseLong(args[0]), line));
+                        tokens.add(new DirectiveTokens.OriginChangeToken(Long.parseLong(args[0]), line));
                     } catch (NumberFormatException e) {
                         problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
                                 file, line, args[1]));

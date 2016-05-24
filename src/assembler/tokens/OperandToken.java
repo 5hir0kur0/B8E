@@ -47,6 +47,12 @@ public abstract class OperandToken extends Token {
      */
     public abstract Enum getOperandRepresentation();
 
+    /**
+     * @return
+     *      the value of the operand with post- or prefixes.
+     */
+    public abstract String getFullValue();
+
     @Override
     public String toString() {
         return this.getClass().getSimpleName()+"("+line+")["+type.toString()+", "+getOperandType()+", "+
