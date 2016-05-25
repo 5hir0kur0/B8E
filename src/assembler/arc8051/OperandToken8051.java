@@ -10,6 +10,7 @@ import assembler.tokens.OperandToken;
  * @author Noxgrim
  */
 public class OperandToken8051 extends OperandToken {
+
     /**
      * Constructs a new OperandToken.
      *
@@ -28,6 +29,21 @@ public class OperandToken8051 extends OperandToken {
     }
 
     /**
+     * Constructs a new OperandToken.
+     *
+     * @param type  the operandType of the OperandToken.
+     * @param representation the operandRepresentation of the OperandToken.
+     * @param value the value of the token as a string.
+     * @param line the line of the token.
+     * @param id the instruction id.
+     */
+    protected OperandToken8051(OperandType8051 type, OperandRepresentation8051 representation, String value, int line,
+                            int id) {
+        this(type, representation, value, line);
+        this.instructionId = id;
+    }
+
+    /**
      * @param number
      *      the number that should be used as new value.
      * @return
@@ -36,7 +52,7 @@ public class OperandToken8051 extends OperandToken {
      */
     public OperandToken8051 toNumber(long number) {
         return new OperandToken8051((OperandType8051) this.operandType, OperandRepresentation8051.NUMBER,
-                Long.toUnsignedString(number), this.line);
+                Long.toUnsignedString(number), this.line, this.instructionId);
     }
 
     /**
@@ -48,7 +64,7 @@ public class OperandToken8051 extends OperandToken {
      */
     public OperandToken8051 toNumberAddress(long number) {
         return new OperandToken8051(OperandType8051.ADDRESS, OperandRepresentation8051.NUMBER,
-                Long.toUnsignedString(number), this.line);
+                Long.toUnsignedString(number), this.line, this.instructionId);
     }
 
     @Override

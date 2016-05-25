@@ -13,8 +13,8 @@ public class Listing {
 
     private List<ListingElement> elements;
 
-    public Listing(List<Assembled> assembled) {
-        this.elements = new LinkedList<>();
+    public Listing(List<? extends Assembled> assembled) {
+        this.elements = new ArrayList<>();
         for (Assembled a : assembled)
             elements.add(new ListingElement(a));
     }
@@ -58,7 +58,7 @@ public class Listing {
                 else
                     sb.append(t.getValue()).append(" ");
             }
-            if (tokens[tokens.length-2].getType() == Token.TokenType.OPERAND)
+            if (tokens[tokens.length-1].getType() == Token.TokenType.OPERAND)
                 sb.setLength(sb.length()-2);
             else
                 sb.setLength(sb.length()-1);
@@ -68,7 +68,7 @@ public class Listing {
             sb.setLength(0);
 
             for (byte b : codes) {
-                sb.append(String.format("%02x ", 0xFF & b).toUpperCase());
+                sb.append(String.format("%02x ", b & 0xFF).toUpperCase());
             }
             sb.setLength(sb.length()-1);
 
@@ -115,7 +115,7 @@ public class Listing {
 
         @Override
         public String toString() {
-            return Long.toHexString(address) + " " + codes + "    " + line + " " + lineString;
+            return Long.toHexString(address) + "  " + codes + "    " + line + " " + lineString;
         }
     }
 

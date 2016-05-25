@@ -1,5 +1,7 @@
 package assembler.tokens;
 
+import assembler.arc8051.OperandToken8051;
+
 import java.util.Objects;
 
 /**
@@ -52,6 +54,28 @@ public abstract class OperandToken extends Token {
      *      the value of the operand with post- or prefixes.
      */
     public abstract String getFullValue();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof OperandToken)) return false;
+        if (!super.equals(o)) return false;
+
+        OperandToken that = (OperandToken) o;
+
+        if (!operandType.equals(that.operandType)) return false;
+        if (!operandRepresentation.equals(that.operandRepresentation)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + operandType.hashCode();
+        result = 31 * result + operandRepresentation.hashCode();
+        return result;
+    }
 
     @Override
     public String toString() {
