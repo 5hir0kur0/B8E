@@ -1,9 +1,6 @@
 package demo;
 
-import assembler.arc8051.Assembler_Old;
-import assembler.arc8051.MC8051Library;
-import assembler.arc8051.Preprocessor8051;
-import assembler.arc8051.Tokenizer8051;
+import assembler.Assembler;
 import assembler.util.problems.Problem;
 import emulator.Emulator;
 import emulator.RAM;
@@ -16,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -32,7 +30,7 @@ public class B8EDemo {
         }
         Path p = Paths.get(args[0]);
 
-        Assembler_Old assembler;
+        Assembler assembler;
         RAM ram = new RAM(0xffff+1);
         Emulator emulator;
         if (!Files.exists(p)) {
@@ -46,7 +44,7 @@ public class B8EDemo {
         // Assembling
         try {
             Path directory = p.toAbsolutePath().getParent();
-            assembler = new Assembler_Old(MC8051Library.PROVIDER, new Preprocessor8051(), new Tokenizer8051());
+            assembler = Assembler.of("8051");
 
             String rawFileName = p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf('.'));
             Path output = Paths.get(directory.toString(), rawFileName + ".bin");
@@ -54,7 +52,8 @@ public class B8EDemo {
             System.out.print("Assembling \"" + p + "\"...");
             try (BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(
                     Paths.get(rawFileName + ".bin")))){
-                List<Problem> problems = assembler.assemble(directory, rawFileName, out);
+                List<Problem> problems = new LinkedList<>();
+                byte[] outputs = assembler.assemble(p, directory, problems);
                 System.out.println("Done.");
                 if (problems.size() == 0)
                     System.out.println("No problems occurred.");
