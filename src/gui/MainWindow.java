@@ -1,6 +1,5 @@
 package gui;
 
-import controller.Main;
 import controller.Project;
 import controller.TextFile;
 import misc.Pair;
@@ -22,7 +21,7 @@ import java.util.*;
 import java.util.List;
 
 /**
- * @author Tobias
+ * @author Tobias, Jannik, Gordian
  */
 public class MainWindow extends JFrame {
     private final Project project;
@@ -79,7 +78,6 @@ public class MainWindow extends JFrame {
     }
 
     public MainWindow(String title, Project project) {
-        super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // TODO: Add close handler
         super.setSize(420, 420); // TODO: Use #.pack() later
         super.setLocationRelativeTo(null);
         super.setTitle(title);
@@ -115,6 +113,18 @@ public class MainWindow extends JFrame {
         this.openFiles = new ArrayList<>(10);
 
         this.setUpKeyBindings();
+
+        super.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                try {
+                    MainWindow.this.project.close();
+                } catch (IOException e1) {
+                    MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
+                    e1.printStackTrace();
+                }
+            }
+        });
 
         super.setVisible(true);
 
@@ -162,6 +172,12 @@ public class MainWindow extends JFrame {
                 System.err.println("error during panic-save:");
                 e.printStackTrace();
             }
+        }
+        try {
+            this.project.close();
+        } catch (IOException e) {
+            System.err.println("error during panic-save:");
+            e.printStackTrace();
         }
     }
 
