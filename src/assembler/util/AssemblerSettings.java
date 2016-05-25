@@ -170,6 +170,14 @@ public class AssemblerSettings {
      */
     public static final String INCLUDE_DEFAULT_FILE = "assembler.include-default-file";
 
+    public static final String OUTPUT_HEX = "assembler.output.hex";
+    public static final String OUTPUT_HEX_EXTENSION = "assembler.output.hex.extension";
+    public static final String OUTPUT_HEX_BUFFER_LENGTH = "assembler.output.hex.buffer-length";
+    public static final String OUTPUT_HEX_WRAP = "assembler.output.hex.instruction-wrap";
+
+    public static final String OUTPUT_BIN = "assembler.output.binary";
+    public static final String OUTPUT_BIN_EXTENSION = "assembler.output.binary.extension";
+
     /**
      * If this value is set to <code>true</code>, the preprocessor will be skipped
      * (by stripping it down to a basic file reader).<br>
@@ -218,6 +226,14 @@ public class AssemblerSettings {
 
         s.setDefault(INCLUDE_DEFAULT_FILE, "true");
         s.setDefault(SKIP_PREPROCESSING, "false");
+
+        s.setDefault(OUTPUT_HEX, "true");
+        s.setDefault(OUTPUT_HEX_EXTENSION, ".hex");
+        s.setDefault(OUTPUT_HEX_BUFFER_LENGTH, "16");
+        s.setDefault(OUTPUT_HEX_WRAP, "true");
+
+        s.setDefault(OUTPUT_BIN, "true");
+        s.setDefault(OUTPUT_BIN_EXTENSION, ".bin");
     }
 
     /**

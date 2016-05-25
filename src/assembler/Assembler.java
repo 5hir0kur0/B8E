@@ -1,6 +1,7 @@
 package assembler;
 
 import assembler.arc8051.Assembler8051;
+import assembler.util.Listing;
 import assembler.util.problems.Problem;
 
 import java.nio.file.Path;
@@ -14,7 +15,9 @@ import java.util.List;
  */
 public interface Assembler {
 
-    byte[] assemble(Path source, List<Problem> problems);
+    byte[] assemble(Path source, Path directory, List<Problem> problems);
+
+    Listing getListing();
 
     static Assembler of(final String modelName) {
 

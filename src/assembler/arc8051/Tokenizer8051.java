@@ -168,7 +168,7 @@ public class Tokenizer8051 implements Tokenizer {
         for (String s : input) {
             line++;
             Scanner scanner = new Scanner(s);
-            while (scanner.hasNextLine()) {
+            for (int id = 0; scanner.hasNextLine(); ++id) {
                 StringBuilder lineString = new StringBuilder(scanner.nextLine());
                 {
                     Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(lineString);
@@ -192,6 +192,7 @@ public class Tokenizer8051 implements Tokenizer {
 
                 while (!lineString.toString().trim().isEmpty()) {
                     if ((token = findLabelOrMnemonic(lineString)) != null) {
+                        token.setInstructionId(id);
                         tokens.add(token);
                         if (token.getType() == Token.TokenType.MNEMONIC_NAME)
                             break;
@@ -199,6 +200,7 @@ public class Tokenizer8051 implements Tokenizer {
                 }
                 while (!lineString.toString().trim().isEmpty()) {
                     if ((token = findOperandToken(lineString)) != null) {
+                        token.setInstructionId(id);
                         tokens.add(token);
                     }
                 }
@@ -636,7 +638,7 @@ public class Tokenizer8051 implements Tokenizer {
                         val = value.toString();
                         if (type.isAddress()) {
                             for (String name : MC8051Library.RESERVED_NAMES)
-                                if (name.equals(val)) {
+                                if (name.equalsIgnoreCase(val)) {
                                     type = OperandType8051.NAME;
                                     break;
                                 }
@@ -644,6 +646,13 @@ public class Tokenizer8051 implements Tokenizer {
                             if (val.equals("c")) {
                                 val = Integer.toString(MC8051Library.C & 0xFF);
                                 repr = OperandRepresentation8051.NUMBER;
+                            } else {
+                                for (String name : MC8051Library.RESERVED_NAMES)
+                                    if (name.equalsIgnoreCase(val)) {
+                                        problems.add(new TokenizingProblem("Reserved name cannot be used in a " +
+                                                "negated address!", Problem.Type.ERROR, file, this.line, val));
+                                        break outer;
+                                    }
                             }
                         }
                     }

@@ -1,7 +1,5 @@
 package assembler.arc8051;
 
-import assembler.util.assembling.Mnemonic;
-import assembler.tokens.OperandToken;
 import assembler.tokens.Token;
 import assembler.tokens.Tokens;
 import assembler.util.problems.Problem;
@@ -13,7 +11,6 @@ import misc.Settings;
 import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -222,7 +219,7 @@ public class MC8051Library {
                     } else
                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
 
-                    handleUnnecessaryOperands(this.getName(), true, 0, 1, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 1, operands, file, problems);
 
                     return result;
                 }
@@ -238,6 +235,8 @@ public class MC8051Library {
                     OperandType8051 type1 = op1.getOperandType(), type2 = op2.getOperandType();
 
                     Byte offset = handleShortJump(codePoint, op3, 3, file, problems);
+                    if (offset == null)
+                        return result;
 
                     int value;
 
@@ -247,7 +246,7 @@ public class MC8051Library {
                             if (type1 == OperandType8051.NAME || type1 == OperandType8051.INDIRECT) {
                                 if (op1.getValue().equals("a"))
                                     result = new byte[]{(byte) (type2 == OperandType8051.CONSTANT ? 0xB4 : 0xB5),
-                                            (byte) value, offset == null ? -3 : offset};
+                                            (byte) value, offset};
                                 else if (op1.getValue().startsWith("r")) {
                                     int ordinal = Integer.parseInt(op1.getValue().substring(1));
                                     if (ordinal > (type1 == OperandType8051.NAME ? 7 : 1))
@@ -255,7 +254,7 @@ public class MC8051Library {
                                     else {
                                         result = new byte[]{(byte) (ordinal
                                                 | (type1 == OperandType8051.NAME ? 0xB8 : 0xB6)), // Set desired bits to ordinal
-                                                (byte) value, offset == null ? -3 : offset};
+                                                (byte) value, offset};
                                     }
                                 }
                             } else
@@ -267,7 +266,7 @@ public class MC8051Library {
                     } else
                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
 
-                    handleUnnecessaryOperands(this.getName(), false, 0, 3, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 3, operands, file, problems);
 
                     return result;
                 }
@@ -326,8 +325,10 @@ public class MC8051Library {
                         case ADDRESS: {
                             int value = Integer.parseInt(op1.getValue());
                             Byte offset = handleShortJump(codePoint,op2, 3, file, problems);
+                            if (offset == null)
+                                return result;
                             if (value <= 0xff)
-                                result = new byte[]{(byte) 0xD5, (byte) value, offset == null ? -3 : offset};
+                                result = new byte[]{(byte) 0xD5, (byte) value, offset};
                             else
                                 problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, file, op1));
                             break;
@@ -336,10 +337,12 @@ public class MC8051Library {
                             if (op1.getValue().startsWith("r")) {
                                 int ordinal = Integer.parseInt(op1.getValue().substring(1));
                                 Byte offset = handleShortJump(codePoint,op2, 2, file, problems);
+                                if (offset == null)
+                                    return result;
                                 if (ordinal > 7)
                                     problems.add(new TokenProblem("Register ordinal too big!", Type.ERROR, file, op1));
                                 else
-                                    return new byte[]{(byte)(ordinal | 0xD8), offset == null ? -2 : offset};
+                                    return new byte[]{(byte)(ordinal | 0xD8), offset};
                                 break;
                             }
                         default:
@@ -355,7 +358,7 @@ public class MC8051Library {
                 public byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name,
                                                          OperandToken8051[] operands, Path file, List<Problem> problems) {
                     if (operands[0].getOperandType() == OperandType8051.NAME && operands[0].getValue().equals("dptr")) {
-                        handleUnnecessaryOperands(this.getName(), false, 0, 1, operands, file, problems);
+                        handleUnnecessaryOperands(this.getName(), 1, operands, file, problems);
                         return new byte[]{(byte) 0xA3};
                     } else
                         return incDecOperation((byte) 0x04, (byte) 0x06, (byte) 0x08, (byte) 0x05, this, operands,
@@ -429,7 +432,7 @@ public class MC8051Library {
                     } else
                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
 
-                    handleUnnecessaryOperands(this.getName(), true, 0, 1, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 1, operands, file, problems);
 
                     return result;
                 }
@@ -674,7 +677,7 @@ public class MC8051Library {
                         problems.add(new TokenProblem(this.getName().toUpperCase() + " must have 2 operands!",
                                 Type.ERROR, file, name));
 
-                    handleUnnecessaryOperands(this.getName(), true, 0, 2, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 2, operands, file, problems);
 
                     return result;
                 }
@@ -725,7 +728,7 @@ public class MC8051Library {
 
                     }
 
-                    handleUnnecessaryOperands(this.getName(), false, 0, 2, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 2, operands, file, problems);
                     return result;
                 }
             },
@@ -893,7 +896,7 @@ public class MC8051Library {
                             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
                         }
 
-                    handleUnnecessaryOperands(this.getName(), true, 0, 2, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 2, operands, file, problems);
                     return result;
                 }
             },
@@ -924,7 +927,7 @@ public class MC8051Library {
                         } else
                             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
                     }
-                    handleUnnecessaryOperands(this.getName(), true, firstIgnored?1:0, 2, operands, file, problems);
+                    handleUnnecessaryOperands(this.getName(), 2, operands, file, problems);
 
                     return result;
                 }
@@ -1001,7 +1004,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
         }
 
-        handleUnnecessaryOperands(mnemonic.getName(), true, 0, 2, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 2, operands, file, problems);
 
         return result;
     }
@@ -1057,7 +1060,7 @@ public class MC8051Library {
         } else
             problems.add(new TokenProblem("Operand needs to be an address!", Type.ERROR, file, operands[0]));
 
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
         return result;
 
     }
@@ -1134,59 +1137,66 @@ public class MC8051Library {
                                     Type.ERROR, file, op2));
                         else
                             result = new byte[]{opc5, (byte) val};
-                        if (!(operands[0].getOperandType() == OperandType8051.NAME &&
-                                operands[0].getValue().equals("c")))
+                        if (!(op1.getOperandType() == OperandType8051.NAME &&
+                                op1.getValue().equals("c")))
                             problems.add(new TokenProblem("Missing 'c' as first operand!", Type.ERROR,
-                                    file, operands[0]));
+                                    file, op1));
                         break outer;
                     }
                     case INDIRECT:
-                    case NAME:
-                        if (op.getValue().startsWith("r")) {
-                            OperandType8051 type = op.getOperandType();
-                            if (!(operands[0].getOperandType() == OperandType8051.NAME &&
-                                    operands[0].getValue().equals("a")))
+                    case NAME: {
+                        if (op2.getValue().startsWith("r")) {
+                            OperandType8051 type = op2.getOperandType();
+                            if (!(op1.getOperandType() == OperandType8051.NAME &&
+                                    op1.getValue().equals("a")))
                                 problems.add(new TokenProblem("Missing 'a' as first operand!", Type.ERROR, file,
-                                        operands[0]));
+                                        op1));
 
-                            int ordinal = Integer.parseInt(op.getValue().substring(1));
+                            int ordinal = Integer.parseInt(op2.getValue().substring(1));
                             if (ordinal > (type == OperandType8051.NAME ? 7 : 1))
-                                problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, file, op));
+                                problems.add(new TokenProblem("Register ordinal too high!", Type.ERROR, file, op2));
                             else
                                 result = new byte[]{(byte) (ordinal | (type == OperandType8051.NAME ? opc4 : opc2))};
+                        } else
+                            problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
+                        break outer;
+                    }
+                    case CONSTANT:
+                    case ADDRESS:
+                    {
+                        int value = Integer.parseInt(op2.getValue());
+                        OperandType8051 type = op2.getOperandType();
+                        if (value > 0xff) {
+                            problems.add(new TokenProblem("Value of " +
+                                    (type == OperandType8051.CONSTANT ? "constant" : "direct address") +
+                                    " too big!", Type.ERROR, file, op2));
+                            break outer;
+                        } else if (op1.getValue().equals("a")) {
+                            if (type == OperandType8051.CONSTANT
+                                    || type == OperandType8051.ADDRESS) {
+
+                                result = new byte[]{type == OperandType8051.CONSTANT ? opc1 : opc3,
+                                        (byte) value};
+                            } else
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
+                            break outer;
+                        } else if (op1.getValue().equals("c") && cOp) {
+                            if (type == OperandType8051.ADDRESS)
+                                result = new byte[]{opc6, (byte) value};
+                            else
+                                problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
                             break outer;
                         }
+                    }
+
                 }
 
-                int value = Integer.parseInt(op2.getValue());
-                OperandType8051 type = op2.getOperandType();
-                if (value > 0xff)
-                    problems.add(new TokenProblem("Value of " +
-                            (type == OperandType8051.CONSTANT ? "constant" : "direct address") +
-                            " too big!", Type.ERROR, file, op2));
-
-                else if (op1.getValue().equals("a")) {
-                    if (op2.getOperandType() == OperandType8051.CONSTANT
-                            || type == OperandType8051.ADDRESS) {
-
-                        result = new byte[]{type == OperandType8051.CONSTANT ? opc1 : opc3,
-                                (byte) value};
-                    } else
-                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
-                    break;
-                } else if (op1.getValue().equals("c") && cOp) {
-                    if (type == OperandType8051.ADDRESS)
-                        result = new byte[]{opc6, (byte) value};
-                    else
-                        problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
-                    break;
-                }
             default:
                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op1));
         }
 
 
-        handleUnnecessaryOperands(mnemonic.getName(), true, 0, 3, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 3, operands, file, problems);
         return result;
 
     }
@@ -1237,7 +1247,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
         }
 
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
         return result;
     }
@@ -1268,7 +1278,7 @@ public class MC8051Library {
         if (operands.length > 0 && !operands[0].getValue().equals("a")) {
             problems.add(new TokenProblem("Incompatible operand! (Expected \"a\")", Type.WARNING, file, operands[0]));
         }
-        handleUnnecessaryOperands(mnemonic.getName(), true, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
         return new byte[]{opc1};
     }
@@ -1332,7 +1342,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op));
         }
 
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
         return result;
     }
@@ -1364,7 +1374,7 @@ public class MC8051Library {
                 problems.add(new TokenProblem("Incompatible operand! (Expected \"ab\")", Type.WARNING, file, operands[0]));
         }
 
-        handleUnnecessaryOperands(mnemonic.getName(), true, 0, 0, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
         return new byte[]{opc1};
     }
@@ -1395,17 +1405,19 @@ public class MC8051Library {
 
         OperandToken8051 op1 = operands[0], op2 = operands[1];
         Byte offset = handleShortJump(codePoint, op2, 3, file, problems);
+        if (offset == null)
+            return result;
 
         if (op1.getOperandType() == OperandType8051.ADDRESS) {
             int value = Integer.parseInt(op1.getValue());
             if (value > 0xff)
                 problems.add(new TokenProblem("Value of direct address too big!", Type.ERROR, file, op1));
             else
-                result = new byte[]{opc1, (byte) value, offset == null ? -3 : offset};
+                result = new byte[]{opc1, (byte) value, offset};
         } else
             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op1));
 
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 2, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 2, operands, file, problems);
         return result;
     }
 
@@ -1432,9 +1444,11 @@ public class MC8051Library {
                                            Mnemonic8051 mnemonic, long codePoint, OperandToken8051[] operands,
                                            Path file, List<Problem> problems) {
         Byte offset = handleShortJump(codePoint, operands[0], 2, file, problems);
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        if (offset == null)
+            return new byte[0];
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
-        return new byte[]{opc1, offset == null ? -2 : offset};
+        return new byte[]{opc1, offset};
     }
 
     /**
@@ -1479,7 +1493,7 @@ public class MC8051Library {
         } else
             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, operands[0]));
 
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
 
         return result;
     }
@@ -1506,7 +1520,7 @@ public class MC8051Library {
     private static byte[] noOperandOperation(final byte opc1,
                                              Mnemonic8051 mnemonic, OperandToken8051[] operands,
                                              Path file, List<Problem> problems) {
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 0, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 0, operands, file, problems);
         return new byte[] {opc1};
     }
 
@@ -1531,7 +1545,7 @@ public class MC8051Library {
                                            Mnemonic8051 mnemonic, OperandToken8051[] operands,
                                            Path file, List<Problem> problems) {
         Byte result = handleAddress(operands[0], file, problems);
-        handleUnnecessaryOperands(mnemonic.getName(), false, 0, 1, operands, file, problems);
+        handleUnnecessaryOperands(mnemonic.getName(), 1, operands, file, problems);
         return (result == null ? new byte[0] : new byte[]{opc1, result});
 
     }
@@ -1628,33 +1642,20 @@ public class MC8051Library {
 
     /**
      * Adds an ERROR or WARNING to every unnecessary operand of a mnemonic.
-     *
-     * @param mnemonicName the name of the mnemonic.
-     * @param hasObviousOperands whether the mnemonic has unnecessary operands.
-     * @param ignored
-     *      the number of operands that were ignored. If <code>hasObviousOperands</code> is <code>true</code>
-     *      0 is assumed.
+     *  @param mnemonicName the name of the mnemonic.
      * @param firstOperand
      *      the first operand that should be handled. If some operands are ignored their value will be subtracted from
      *      this value.
      * @param operands the operands that will be handled.
-     *
      * @param file the file of the mnemonic.
      * @param problems a List to that occurring Problems can be added to.
      */
-    private static void handleUnnecessaryOperands(String mnemonicName, boolean hasObviousOperands, int ignored,
+    private static void handleUnnecessaryOperands(String mnemonicName,
                                                   int firstOperand, OperandToken8051[] operands,
                                                   Path file, List<Problem> problems) {
-        String setting = Settings.INSTANCE.getProperty(AssemblerSettings.UNNECESSARY_OPERANDS,
-                AssemblerSettings.VALID_ERROR);
-        if (!hasObviousOperands)
-            ignored = 0;
-        final String err = !setting.equals("error") && hasObviousOperands ?
-                "Too many operands! " + mnemonicName.toUpperCase() + " must have "+(firstOperand-1)+" or "+firstOperand+
-                        " operands." :
-                "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly "+firstOperand+" operand"+
-                        (firstOperand == 0 ? "":"s")+".";
-        for (int i = firstOperand - ignored; i < operands.length; ++i)
+        final String err = "Too many operands! " + mnemonicName.toUpperCase() + " must have exactly " + firstOperand +
+                " operand" + (firstOperand == 1 ? "" : "s") + ".";
+        for (int i = firstOperand; i < operands.length; ++i)
             getErrorSetting(operands[i], AssemblerSettings.UNNECESSARY_OPERANDS,
                     err, "Unnecessary operand.", file, problems);
 

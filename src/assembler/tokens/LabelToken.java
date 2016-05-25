@@ -10,7 +10,7 @@ import assembler.util.assembling.Assembled;
  */
 public class LabelToken extends Token {
 
-    private final long origin;
+    private long origin;
 
     /**
      * The position in the code memory this label points
@@ -39,6 +39,19 @@ public class LabelToken extends Token {
     }
 
     /**
+     * Constructs a new LabelToken with <code>-1</code>
+     * as origin and origin offset.
+     *
+     * @param value the value of the token.
+     * @param line the line of the token.
+     */
+    public LabelToken(String value, int line) {
+        super(value, TokenType.LABEL, line);
+        this.origin = -1;
+        this.originOffset = 0;
+    }
+
+    /**
      * Returns the position in code memory this label
      * is referring to.
      */
@@ -47,14 +60,16 @@ public class LabelToken extends Token {
     }
 
     /**
-     * @param originOffset
-     *      the position in code memory to set.<br>
-     *      This value cannot be negative.
+     * @param origin
+     *      the origin address the address is based
+     *      of to be set.<br>
+     *      Cannot be set if it is already set.
      */
-    public void setOriginOffset(long originOffset) {
-        if (originOffset < 0)
-            throw new IllegalArgumentException("Code point cannot be negative!");
-        this.originOffset = originOffset;
+    public void setOrigin(long origin) {
+        if (this.origin == -1)
+            this.origin = origin;
+        else
+            throw new IllegalStateException("Origin address already set!");
     }
 
     /**

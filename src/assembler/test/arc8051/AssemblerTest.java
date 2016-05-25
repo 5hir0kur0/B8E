@@ -155,10 +155,11 @@ public class AssemblerTest {
         boolean ex = false, outProblems = false;
         try {
             System.out.println("Running assembler:");
-            Path test = Paths.get("src/assembler/test/arc8051/");
+            Path test = Paths.get("src/assembler/test/arc8051/test.asm");
+            Path dir  = Paths.get("src/assembler/test/arc8051");
             System.out.println("__Test directory: " + test.toAbsolutePath());
 
-            byte[] result = testAssem.assemble(test, problems);
+            byte[] result = testAssem.assemble(test, dir, problems);
             for (Problem p : problems)
                 if (p instanceof ExceptionProblem) {
                     System.out.println(p);
@@ -171,8 +172,8 @@ public class AssemblerTest {
 
             System.out.println("__Comparing test.hex with text.comp.hex");
 
-            try (BufferedReader asm = Files.newBufferedReader(Paths.get(test.toString(), "test.hex"));
-                 BufferedReader com = Files.newBufferedReader(Paths.get(test.toString(), "test.comp.hex"))) {
+            try (BufferedReader asm = Files.newBufferedReader(Paths.get(dir.toString(), "test.hex"));
+                 BufferedReader com = Files.newBufferedReader(Paths.get(dir.toString(), "test.comp.hex"))) {
                 String asmLine, comLine;
                 int line = 0;
                 while ((asmLine = asm.readLine()) != null | (comLine = com.readLine()) != null) {
@@ -188,7 +189,6 @@ public class AssemblerTest {
             ex = true;
         }
         if (ex && !outProblems) {
-            problems.addAll(MC8051Library.getProblems());
             for (Problem p : problems)
                 if (p instanceof ExceptionProblem) {
                     System.out.println(p);
