@@ -15,6 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
@@ -48,7 +49,7 @@ public class EmulatorWindow extends JFrame {
     private final static Font HEADER_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
 
     private final static String REGISTER_NUMERAL_SYSTEM_SETTING = "gui.emulator.registerNumeralSystem";
-    private final static String REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT = NumeralSystem.BINARY.name();
+    private final static String REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT = NumeralSystem.HEXADECIMAL.name();
     private final static Predicate<String> IS_VALID_NUMERAL_SYSTEM = s -> {
         try {
             NumeralSystem.valueOf(s);
@@ -66,6 +67,7 @@ public class EmulatorWindow extends JFrame {
 
     /**
      * Create a new emulator window.
+     * NOTE: The emulator window should be started in a separate thread.
      * @param emulator the {@link Emulator} to be used; must not be {@code null}
      * @param listing the {@link Listing} to be used; may be {@code null}
      */
@@ -96,12 +98,18 @@ public class EmulatorWindow extends JFrame {
             }
         };
 
-        for (Register r : this.emulator.getRegisters()) {
-            if (r.getName().equals("PCH")) this.PCH = (ByteRegister) r;
-            else if (r.getName().equals("PCL")) this.PCL = (ByteRegister) r;
-        }
-
-        if (this.PCH == null || this.PCL == null) throw new IllegalArgumentException("Couldn't get PCH or PCL");
+        Thread.currentThread().setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                if (e instanceof Exception)
+                    EmulatorWindow.this.reportException("An (uncaught) exception occurred",
+                            "An (uncaught) exception occurred", (Exception) e);
+                else {
+                    System.err.println("An error occurred while executing the emulator:");
+                    e.printStackTrace();
+                }
+            }
+        });
 
         createAndShowGUI();
     }
@@ -109,7 +117,8 @@ public class EmulatorWindow extends JFrame {
     void reportException(String title, String message, Exception e) {
         JPanel panel = new JPanel(new BorderLayout());
         if (message != null) {
-            JTextArea jta = new JTextArea(message);
+            JTextArea jta = new JTextArea(message + "\nException (" + e.getClass().getSimpleName() + "): "
+                    + e.getMessage());
             jta.setEditable(false);
             JScrollPane jsp = new JScrollPane(jta);
             panel.add(jsp, BorderLayout.CENTER);
@@ -120,6 +129,13 @@ public class EmulatorWindow extends JFrame {
     }
 
     private void createAndShowGUI() {
+        for (Register r : this.emulator.getRegisters()) {
+            if (r.getName().equals("PCH")) this.PCH = (ByteRegister) r;
+            else if (r.getName().equals("PCL")) this.PCL = (ByteRegister) r;
+        }
+
+        if (this.PCH == null || this.PCL == null) throw new IllegalArgumentException("Couldn't get PCH or PCL");
+
         JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         mainSplit.setOneTouchExpandable(true);
         JPanel registersAndListing = new JPanel(new BorderLayout());
@@ -234,11 +250,33 @@ public class EmulatorWindow extends JFrame {
     }
 
     private void loadState(ActionEvent e) {
-        throw new UnsupportedOperationException("TODO"); //TODO finish
+        final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            final Path path = fileChooser.getSelectedFile().toPath();
+            try {
+                this.emulator.loadStateFrom(path);
+                super.getContentPane().removeAll();
+                this.createAndShowGUI();
+                super.revalidate();
+                super.repaint();
+            } catch (IOException e1) {
+                this.reportException("An error occurred while loading the stored state", "The stored state at " + path
+                        + " could not be loaded.", e1);
+            }
+        }
     }
 
     private void storeState(ActionEvent e) {
-        throw new UnsupportedOperationException("TODO"); //TODO finish
+        final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            final Path path = fileChooser.getSelectedFile().toPath();
+            try {
+                this.emulator.saveStateTo(path);
+            } catch (IOException e1) {
+                this.reportException("An error occurred while storing the current state", "The could not be stored at "
+                        + path, e1);
+            }
+        }
     }
 
     private void pauseProgram(ActionEvent e) {
@@ -427,7 +465,11 @@ public class EmulatorWindow extends JFrame {
     }
 
     private class RegisterTableModel extends AbstractTableModel {
-        private final java.util.List<Register> registers = EmulatorWindow.this.emulator.getRegisters();
+        private final java.util.List<Register> registers;
+        {
+            this.registers = new ArrayList<>(EmulatorWindow.this.emulator.getRegisters());
+            this.registers.sort((r1, r2) -> r1.getName().compareToIgnoreCase(r2.getName()));
+        }
         private final NumeralSystem numeralSystem = EmulatorWindow.this.registerNumeralSystem;
 
         @Override

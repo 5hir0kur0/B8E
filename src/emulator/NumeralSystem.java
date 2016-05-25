@@ -48,7 +48,7 @@ public enum NumeralSystem {
         switch (target) {
             case BINARY: return Long.toUnsignedString(value, 2);
             case DECIMAL: return Long.toUnsignedString(value, 10);
-            case HEXADECIMAL: return Long.toUnsignedString(value, 16);
+            case HEXADECIMAL: return Long.toUnsignedString(value, 16).toUpperCase();
             default: throw new UnsupportedOperationException("Illegal numeral system: "+target);
         }
     }
@@ -72,7 +72,7 @@ public enum NumeralSystem {
         switch (target) {
             case BINARY: return Misc.zeroFill(Long.toUnsignedString(value, 2), length);
             case DECIMAL: return Misc.zeroFill(Long.toUnsignedString(value, 10), length);
-            case HEXADECIMAL: return Misc.zeroFill(Long.toUnsignedString(value, 16), length);
+            case HEXADECIMAL: return Misc.zeroFill(Long.toUnsignedString(value, 16).toUpperCase(), length);
             default: throw new UnsupportedOperationException("Illegal numeral system: "+target);
         }
     }

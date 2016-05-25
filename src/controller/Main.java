@@ -38,7 +38,7 @@ public class Main {
             "gui.EmulatorWindow",
             "emulator.arc8051.State8051",
             "controller.Main",
-            //"assembler.util.AssemblerSettings"
+            "assembler.util.AssemblerSettings"
     };
 
     static {
@@ -135,14 +135,18 @@ public class Main {
             PROJECT_PATH = Paths.get(System.getProperty("user.dir"));
             PROJECT_PERMANENT = false;
         }
-        else for (int i = 0; i < args.length; ++i) {
-            if (args[i].startsWith("--"))
+        else outer: for (int i = 0; i < args.length; ++i) {
+            if (args[i].startsWith("--")) {
                 for (Pair<String, Consumer<List<String>>> pair : CL_OPTIONS)
                     if (pair.x.equals(args[i])) {
                         List<String> argArgs = new LinkedList<>();
                         while (i < args.length - 1 && !args[++i].startsWith("--")) argArgs.add(args[i]);
                         pair.y.accept(argArgs);
+                        continue outer;
                     }
+                System.err.println("Illegal argument: " + args[i]);
+                System.exit(12);
+            }
         }
 
         setUpLookAndFeel();
