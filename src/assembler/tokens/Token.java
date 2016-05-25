@@ -10,11 +10,13 @@ import java.util.Objects;
  */
 public class Token implements Comparable<Token> {
     /** The type of the token. */
-    protected TokenType type;
+    protected final TokenType type;
     /** The value of the token. */
     protected String value;
     /** The line of the token.*/
     protected int line;
+    /** Number to differentiate tokens in the same line but different instructions. */
+    protected int instructionId;
 
 
     /**
@@ -32,15 +34,40 @@ public class Token implements Comparable<Token> {
             throw new IllegalArgumentException("Line of token cannot be negative!");
 
         this.type  = Objects.requireNonNull(type, "'Type' of token cannot be 'null'!");
+        this.instructionId = 0;
     }
 
-
+    /**
+     * Returns the type of the Token.
+     * @see Token.TokenType
+     */
     public TokenType getType() {
         return type;
     }
 
+    /**
+     * Returns the value of the Token as a String.
+     */
     public String getValue() {
         return value;
+    }
+
+    /**
+     * @param instructionId
+     *      the number to differentiate tokens in the same line
+     *      but different instructions to be set.
+     */
+    public void setInstructionId(int instructionId) {
+        this.instructionId = instructionId;
+    }
+
+    /**
+     * @return
+     *      the number to differentiate tokens in the same line
+     *      but different instructions.
+     */
+    public int getInstructionId() {
+        return instructionId;
     }
 
     @Override
@@ -55,7 +82,7 @@ public class Token implements Comparable<Token> {
      * The different types a token can have.
      */
     public enum TokenType {
-        MNEMONIC_NAME, OPERAND, LABEL, SYMBOL, COMMENT
+        MNEMONIC_NAME, OPERAND, LABEL, DIRECTIVE
     }
 
     /**
@@ -63,6 +90,29 @@ public class Token implements Comparable<Token> {
      */
     public int getLine() {
         return line;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Token)) return false;
+
+        Token token = (Token) o;
+
+        if (line != token.line) return false;
+        if (instructionId != token.instructionId) return false;
+        if (type != token.type) return false;
+        return value.equals(token.value);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = type.hashCode();
+        result = 31 * result + value.hashCode();
+        result = 31 * result + line;
+        result = 31 * result + instructionId;
+        return result;
     }
 
     @Override

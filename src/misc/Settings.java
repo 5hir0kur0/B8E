@@ -47,6 +47,16 @@ public enum Settings {
     }
 
     /**
+     * @param key the desired property's key
+     * @param valueIsValid if the {@code test()} method yields false, the default value will be returned.
+     * @return either the value found at {@code key} or {@code defaultValue} of the property.
+     *         Note: If no default value is specified {@code null} will be returned.
+     */
+    public String getProperty(String key, Predicate<String> valueIsValid) {
+        return this.getProperty(key, this.defaults.getProperty(key), valueIsValid);
+    }
+
+    /**
      * Get an integral property.
      * @param key the property's key
      * @param defaultValue the default value to be returned if the key does not have a value associated with it or if
@@ -62,6 +72,23 @@ public enum Settings {
             //TODO: log exception
             return defaultValue;
         }
+    }
+
+    /**
+     * Get an integral property.
+     * @param key the property's key
+     * @param valueIsValid if the {@code test()} method yields {@code false}, {@code defaultValue} will be returned.
+     * @return the integer found at {@code key}, {@code defaultValue} or {@code 0} if no value could be found
+     */
+    public int getIntProperty(String key, IntPredicate valueIsValid) {
+        int defaultVal;
+        try {
+            defaultVal = Integer.parseInt(this.defaults.getProperty(key));
+        } catch (NumberFormatException | NullPointerException e) {
+            //TODO: log exception
+            return 0;
+        }
+        return getIntProperty(key, defaultVal, valueIsValid);
     }
 
     /**
@@ -84,6 +111,32 @@ public enum Settings {
         }
         if (!valueIsValid.test(result)) return defaultValue;
         return result;
+    }
+
+    /**
+     * Get a boolean property.
+     * @param key the property's key
+     * @param defaultValue the default value to be returned if the key does not have a value associated with it, if
+     *                     the value is not a valid integer.
+     * @return either the value found at {@code key} or {@code defaultValue} of the property.
+     *         Note: If no default value is specified {@code true} will be returned.
+     */
+    public boolean getBoolProperty(String key, boolean defaultValue) {
+        String res = this.settings.getProperty(key);
+        if (null == res || res.trim().isEmpty()) return defaultValue;
+        return Boolean.parseBoolean(res);
+    }
+
+    /**
+     * Get a boolean property.
+     * @param key the property's key
+     * @return the boolean found at {@code key} or {@code defaultValue}
+     */
+    public boolean getBoolProperty(String key) {
+        String res = this.settings.getProperty(key);
+        if (null == res || res.trim().isEmpty())
+            return Boolean.parseBoolean(this.defaults.getProperty(key));
+        return Boolean.parseBoolean(res);
     }
 
     /**

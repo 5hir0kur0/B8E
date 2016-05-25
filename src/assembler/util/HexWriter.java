@@ -85,9 +85,9 @@ public class HexWriter implements AutoCloseable {
             throw new IndexOutOfBoundsException("Cannot write instruction codes into the buffer because the " +
                     "buffer is too small");
 
-        if ((address+bufferLength) != assembled.getCodePoint()) {
+        if ((address+bufferLength) != assembled.getAddress()) {
             flushBuffer();
-            address = assembled.getCodePoint();
+            address = assembled.getAddress();
         }
 
         if (instructionWrap) {
@@ -96,7 +96,7 @@ public class HexWriter implements AutoCloseable {
                     buffer[bufferLength++] = b;
             else {
                 flushBuffer();
-                address = assembled.getCodePoint();
+                address = assembled.getAddress();
                 for (byte b : codes)
                     buffer[bufferLength++] = b;
             }
@@ -118,7 +118,7 @@ public class HexWriter implements AutoCloseable {
      * @param assembled
      *      the used Assembled List.
      */
-    public void writeAll(List<Assembled> assembled) throws IOException {
+    public void writeAll(List<? extends Assembled> assembled) throws IOException {
         for (Assembled a : assembled)
             write(a, true);
     }
@@ -131,7 +131,7 @@ public class HexWriter implements AutoCloseable {
      *      whether the buffer wraps around instructions ({@link Assembled#getCodes()})
      *      or bytes.
      */
-    public void writeAll(List<Assembled> assembled, boolean instructionWrap) throws IOException {
+    public void writeAll(List<? extends Assembled> assembled, boolean instructionWrap) throws IOException {
         for (Assembled a : assembled)
             write(a, instructionWrap);
     }
@@ -174,7 +174,7 @@ public class HexWriter implements AutoCloseable {
     public void close() throws Exception {
         if (bufferLength != 0)
             flushBuffer();
-        out.write(":00000001FF"); // Writes default EOF (Record Type 01)
+        out.write(":00000001FF\n"); // Writes default EOF (Record Type 01)
 
         out.close();
     }
