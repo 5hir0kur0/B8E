@@ -31,7 +31,7 @@ public class MainWindow extends JFrame {
     private final JSplitPane mainSplit;
     private final JTable problemTable;
     private JTree fsTree;
-    private final JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+    private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
             refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile;
     { setUpActions(); }
@@ -125,6 +125,9 @@ public class MainWindow extends JFrame {
                 }
             }
         });
+        super.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        this.fileChooser = new JFileChooser(this.project.getProjectPath().toString());
 
         super.setVisible(true);
 

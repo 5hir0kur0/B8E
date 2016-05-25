@@ -161,11 +161,11 @@ public enum SyntaxThemes {
 
     //properties file patterns
     private static final Pattern PROP_COMMENT = Pattern.compile("([#!].*)$");
-    private static final Pattern PROP_KEY = Pattern.compile("^\\s*((?:[\\w]|\\\\\\s)+)\\s*[=:]\\s*");
+    private static final Pattern PROP_KEY = Pattern.compile("^\\s*((?:[\\w\\.\\-]|\\\\\\s)+)\\s*[=:]\\s*");
     private static final Pattern PROP_UNICODE =
-            Pattern.compile("^\\s*(?:[\\w]|\\\\\\s)+\\s*[=:]\\s*(\\\\u[\\da-fA-F]{4})");
+            Pattern.compile("^\\s*(?:[\\w\\.\\-]|\\\\\\s)+\\s*[=:]\\s*(\\\\u[\\da-fA-F]{4})");
     private static final Pattern PROP_VALUE =
-            Pattern.compile("^\\s*(?:[\\w]|\\\\\\s)+\\s*[=:]\\s*([^\\s].*)$|^\\s*([^\\s].*)\\s*$");
+            Pattern.compile("^\\s*(?:[\\w\\.\\-]|\\\\\\s)+\\s*[=:]\\s*([^\\s].*)$|^\\s*([^\\s].*)\\s*$");
     private static final Pattern PROP_END_ESCAPE = Pattern.compile("(\\\\)$");
 
     //asm source file patterns
