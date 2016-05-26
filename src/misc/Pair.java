@@ -1,9 +1,13 @@
 package misc;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+
 /**
  * Simple generic class to store a pair of items.
  * @author 5hir0kur0
  */
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Pair<X, Y> {
     public X x;
     public Y y;
