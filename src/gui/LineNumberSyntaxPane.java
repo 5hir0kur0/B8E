@@ -10,6 +10,7 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Collections;
 import java.util.List;
 import java.io.IOException;
 import java.util.Map;
@@ -65,7 +66,7 @@ public class LineNumberSyntaxPane extends JPanel {
         this.add(lineNumbers, BorderLayout.LINE_START);
         this.add(code, BorderLayout.CENTER);
 
-        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(SyntaxThemes.EMPTY_LIST,
+        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(Collections.emptyList(),
                 (Observable, Object) -> updateLineNumbers());
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
@@ -91,11 +92,11 @@ public class LineNumberSyntaxPane extends JPanel {
                         Integer.parseInt(FONT_SIZE_SETTING_DEFAULT), IS_VALID_FONT_SIZE));
         this.lineNumbers.setFont(f);
         this.code.setFont(f);
-        this.lineNumbers.setBackground(SyntaxThemes.getCurrentTheme().getLineNumberBackground());
-        this.code.setBackground(SyntaxThemes.getCurrentTheme().getCodeBackground());
-        this.lineNumbers.setForeground(SyntaxThemes.getCurrentTheme().getLineNumberForeground());
-        this.code.setForeground(SyntaxThemes.getCurrentTheme().getCodeForeground());
-        this.style = verifyStyle(SyntaxThemes.getCurrentTheme().getStyleForType(this.fileExtension));
+        this.lineNumbers.setBackground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberBackground());
+        this.code.setBackground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeBackground());
+        this.lineNumbers.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberForeground());
+        this.code.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeForeground());
+        this.style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme().getStyleForType(this.fileExtension).style);
         ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(this.style);
         this.updateSyntaxHighlighting();
     }
@@ -116,7 +117,7 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void load(Reader r) throws IOException {
         // create a new model to discard already existing contents (in case the file is reloaded)
-        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(SyntaxThemes.EMPTY_LIST,
+        SyntaxHighlightedDocument shDoc = new SyntaxHighlightedDocument(Collections.emptyList(),
                 (Observable, Object) -> updateLineNumbers());
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);

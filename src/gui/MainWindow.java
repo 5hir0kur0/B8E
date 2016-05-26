@@ -148,9 +148,19 @@ public class MainWindow extends JFrame {
         super.setVisible(true);
 
         // doesn't work when called directly
-        SwingUtilities.invokeLater(() -> toggleSplit(true, this.problemsSplit));
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException ignored) { }
+            toggleSplit(true, this.problemsSplit);
+        });
         if (!this.project.isPermanent())
-            SwingUtilities.invokeLater(() -> toggleSplit(true, this.mainSplit));
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException ignored) { }
+                toggleSplit(true, this.mainSplit);
+            });
     }
 
 

@@ -35,6 +35,7 @@ public class Main {
     private static final String[] CLASSES_WITH_SETTINGS = {
             "gui.LineNumberSyntaxPane",
             "gui.SyntaxThemes",
+            "gui.SyntaxThemes",
             "gui.EmulatorWindow",
             "emulator.arc8051.State8051",
             "controller.Main",
@@ -149,9 +150,9 @@ public class Main {
             }
         }
 
-        setUpLookAndFeel();
-
         PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT);
+
+        setUpLookAndFeel();
 
         SwingUtilities.invokeLater(() -> MAIN_WINDOW = new MainWindow("B8E: " + PROJECT.getName(), PROJECT));
     }
