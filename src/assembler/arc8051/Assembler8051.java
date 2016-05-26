@@ -39,6 +39,7 @@ public class Assembler8051 implements Assembler {
         this.tokenizer = new Tokenizer8051();
     }
 
+    @Override
     public byte[] getResult() {
         return result;
     }
@@ -49,7 +50,7 @@ public class Assembler8051 implements Assembler {
     }
 
     @Override
-    public byte[] assemble(Path source, Path directory, List<Problem> problems) {
+    public byte[] assemble(Path source, Path directory, List<Problem<?>> problems) {
         result = new byte[0xFFFF+1];
 
         List<LabelToken> labels = new LinkedList<>();
@@ -69,7 +70,7 @@ public class Assembler8051 implements Assembler {
         return result;
     }
 
-    private List<Token> getTokens(Path source, Path directory, List<Problem> problems) {
+    private List<Token> getTokens(Path source, Path directory, List<Problem<?>> problems) {
         List<String> inputOutput = new LinkedList<>();
         problems.addAll(preprocessor.preprocess(directory, source, inputOutput));
 
@@ -78,7 +79,7 @@ public class Assembler8051 implements Assembler {
     }
 
     private List<Assembled8051> toAssembled(List<Token> tokens, List<LabelToken> labels,
-                                            List<Problem> problems, Path source) {
+                                            List<Problem<?>> problems, Path source) {
         int origin = 0;
         Path currentFile = source;
 
@@ -161,7 +162,7 @@ public class Assembler8051 implements Assembler {
         return result;
     }
 
-    private int resolve(List<Assembled8051> assembled, List<LabelToken> labels, List<Problem> problems,
+    private int resolve(List<Assembled8051> assembled, List<LabelToken> labels, List<Problem<?>> problems,
                          final int upTo) {
         int origin = 0;
         int change = 0;
@@ -187,7 +188,7 @@ public class Assembler8051 implements Assembler {
         return change;
     }
 
-    private void writeBinary(byte[] out, List<Assembled8051> assembled, List<Problem> problems) {
+    private void writeBinary(byte[] out, List<Assembled8051> assembled, List<Problem<?>> problems) {
 
         final int maxAddr = out.length-1;
         for (Assembled8051 a : assembled) {
@@ -209,7 +210,7 @@ public class Assembler8051 implements Assembler {
         }
     }
 
-    private void writeFiles(Path directory, Path file, List<? extends Assembled> assembled, List<Problem> problems) {
+    private void writeFiles(Path directory, Path file, List<? extends Assembled> assembled, List<Problem<?>> problems) {
         Settings s = Settings.INSTANCE;
 
         // Write Intel HEX

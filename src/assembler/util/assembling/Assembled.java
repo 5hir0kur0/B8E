@@ -26,5 +26,5 @@ public interface Assembled {
 
     Path getFile();
 
-    int compile(List<Problem> problems, List<LabelToken> labels);
+    int compile(List<Problem<?>> problems, List<LabelToken> labels);
 }

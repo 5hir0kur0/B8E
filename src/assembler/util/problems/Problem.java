@@ -6,7 +6,7 @@ import java.util.Objects;
 /**
  * @author Noxgrim
  */
-public class Problem<T> implements Comparable<Problem> {
+public class Problem<T> implements Comparable<Problem<?>> {
 
     private Path path;
     private int line;
@@ -16,7 +16,7 @@ public class Problem<T> implements Comparable<Problem> {
     private T cause;
 
     @Override
-    public int compareTo(Problem o) {
+    public int compareTo(Problem<?> o) {
         Objects.requireNonNull(o, "Object to be compared cannot be 'null'.");
         if (type != o.type)
             return type.compareTo(o.type);

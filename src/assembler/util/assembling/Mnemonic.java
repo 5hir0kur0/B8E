@@ -106,7 +106,7 @@ public abstract class Mnemonic {
      *      operands.
      */
     public abstract byte[] getInstructionFromOperands(long codePoint, Tokens.MnemonicNameToken name, OperandToken[]
-            operands, Path file, List<Problem> problems);
+            operands, Path file, List<Problem<?>> problems);
 
     @Override
     public String toString() {
