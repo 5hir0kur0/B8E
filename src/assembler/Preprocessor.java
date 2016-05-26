@@ -23,5 +23,5 @@ public interface Preprocessor {
      *      All warnings and/or errors that occur while assembling will
      *      be returned.
      */
-    List<Problem> preprocess(Path workingDirectory, Path file, List<String> output);
+    List<Problem<?>> preprocess(Path workingDirectory, Path file, List<String> output);
 }

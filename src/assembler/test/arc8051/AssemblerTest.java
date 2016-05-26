@@ -56,7 +56,7 @@ public class AssemblerTest {
             Field f = prepr.getClass().getDeclaredField("problems");
             f.setAccessible(true);
 
-            List<Problem> list = (List<Problem>) f.get(prepr);
+            List<Problem<?>> list = (List<Problem<?>>) f.get(prepr);
 
             HashMap<String, String> map = new HashMap<>();
             int rand;
@@ -97,7 +97,7 @@ public class AssemblerTest {
             Settings.INSTANCE.setProperty(AssemblerSettings.INCLUDE_PATH, "src/assembler/include");
 
             List<String> output = new LinkedList<>();
-            List<Problem> problems;
+            List<Problem<?>> problems;
 
             problems = prepr.preprocess(dir, Paths.get(dir.toString(), "preprocess_test.asm"), output);
 
@@ -137,7 +137,7 @@ public class AssemblerTest {
                                 "/a.5, @a + pc, #42, 32.0",
                 };
         // TODO add test and edge cases.
-        List<Problem> problems = new LinkedList<>();
+        List<Problem<?>> problems = new LinkedList<>();
         List<Token> result = tokenizer.tokenize(Arrays.asList(test), problems);
 
         System.out.println("Output:");
@@ -151,7 +151,7 @@ public class AssemblerTest {
     public void test_assemble() {
         System.out.println("____________Testing Assembler_Old.assemble()");
 
-        List<Problem> problems = new ArrayList<>();
+        List<Problem<?>> problems = new ArrayList<>();
         boolean ex = false, outProblems = false;
         try {
             System.out.println("Running assembler:");
@@ -206,7 +206,7 @@ public class AssemblerTest {
     @Test
     public void testRegex() {
         System.out.println("____________Testing Regex()");
-        List<Problem> problems = new ArrayList<>();
+        List<Problem<?>> problems = new ArrayList<>();
         try {
             Path file = Paths.get("src/assembler/test/arc8051/imaginary.asm");
             //TODO: Finish!

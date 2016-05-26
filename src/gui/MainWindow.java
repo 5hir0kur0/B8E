@@ -1,7 +1,12 @@
 package gui;
 
+import assembler.Assembler;
+import assembler.util.Listing;
+import assembler.util.problems.Problem;
 import controller.Project;
 import controller.TextFile;
+import emulator.RAM;
+import emulator.arc8051.MC8051;
 import misc.Pair;
 
 import javax.swing.*;
@@ -33,7 +38,8 @@ public class MainWindow extends JFrame {
     private JTree fsTree;
     private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
-            refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile;
+            refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile, buildRunMain, buildRunCurrent,
+            buildMain, buildCurrent, runMain, runCurrent, setMain;
     { setUpActions(); }
     final static String UNDO_TEXT = "Undo";
     final static String REDO_TEXT = "Redo";
@@ -51,8 +57,17 @@ public class MainWindow extends JFrame {
     final static String NEXT_TAB_TEXT = "Next tab";
     final static String PREV_TAB_TEXT = "Previous tab";
     final static String RELOAD_FILE_TEXT = "Reload file";
+    final static String BUILD_RUN_MAIN_TEXT = "Build and run main file";
+    final static String BUILD_MAIN_TEXT = "Build main file";
+    final static String RUN_MAIN_TEXT = "Run main file";
+    final static String BUILD_RUN_CURR_TEXT = "Build and run current file";
+    final static String BUILD_CURR_TEXT = "Build current file";
+    final static String RUN_CURR_TEXT = "Run current file";
+    final static String SET_MAIN_TEXT = "Set main file";
 
     private final List<Pair<TextFile, LineNumberSyntaxPane>> openFiles;
+    private Path lastBuilt;
+    private List<Problem<?>> problems;
 
     private final static String FILE_EXTENSION_SEPARATOR = ".";
     // used when creating a new tab without a corresponding file
@@ -123,6 +138,7 @@ public class MainWindow extends JFrame {
                     MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
                     e1.printStackTrace();
                 }
+                System.exit(0);
             }
         });
         super.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -188,6 +204,7 @@ public class MainWindow extends JFrame {
         final String FILE_MENU_TEXT = "File";
         final String EDIT_MENU_TEXT = "Edit";
         final String VIEW_MENU_TEXT = "View";
+        final String PROJECT_MENU_TEXT = "Project";
 
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu(FILE_MENU_TEXT);
@@ -255,6 +272,34 @@ public class MainWindow extends JFrame {
         refreshTree.setMnemonic('f');
         viewMenu.add(refreshTree);
         menuBar.add(viewMenu);
+
+        JMenu projectMenu = new JMenu(PROJECT_MENU_TEXT);
+        projectMenu.setMnemonic('p');
+        JMenuItem buildRunMain = new JMenuItem(this.buildRunMain);
+        buildRunMain.setMnemonic('r');
+        projectMenu.add(buildRunMain);
+        JMenuItem buildMain = new JMenuItem(this.buildMain);
+        buildMain.setMnemonic('b');
+        projectMenu.add(buildMain);
+        JMenuItem runMain = new JMenuItem(this.runMain);
+        runMain.setMnemonic('m');
+        projectMenu.add(runMain);
+        projectMenu.addSeparator();
+        JMenuItem buildRunCurrent = new JMenuItem(this.buildRunCurrent);
+        buildRunCurrent.setMnemonic('u');
+        projectMenu.add(buildRunCurrent);
+        JMenuItem buildCurrent = new JMenuItem(this.buildCurrent);
+        buildCurrent.setMnemonic('i');
+        projectMenu.add(buildCurrent);
+        JMenuItem runCurrent = new JMenuItem(this.runCurrent);
+        runCurrent.setMnemonic('c');
+        projectMenu.add(runCurrent);
+        projectMenu.addSeparator();
+        JMenuItem setMain = new JMenuItem(this.setMain);
+        setMain.setMnemonic('s');
+        projectMenu.add(setMain);
+        menuBar.add(projectMenu);
+
 
         return menuBar;
     }
@@ -333,7 +378,8 @@ public class MainWindow extends JFrame {
 
     private void openOrSwitchToFile(Path path) {
         for (int i = 0; i < this.openFiles.size(); ++i) {
-            if (this.openFiles.get(i).x.getPath().equals(path)) {
+            final Path open = openFiles.get(i).x.getPath();
+            if (open != null && open.equals(path)) {
                 this.jTabbedPane.setSelectedIndex(i);
                 return;
             }
@@ -514,6 +560,55 @@ public class MainWindow extends JFrame {
                 }
             }
         };
+        this.buildRunMain = new AbstractAction(BUILD_RUN_MAIN_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
+        this.buildMain = new AbstractAction(BUILD_MAIN_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
+        this.runMain = new AbstractAction(RUN_MAIN_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
+        this.buildRunCurrent = new AbstractAction(BUILD_RUN_CURR_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+
+                    mw.built(mw.getCurrentFile().x.getPath());
+                    mw.run(mw.getCurrentFile().x.getPath());
+
+                } catch (NotifyUserException e1) {
+                    mw.reportException(e1.getMessage(), e1, false);
+                }
+            }
+        };
+        this.buildCurrent = new AbstractAction(BUILD_CURR_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
+        this.runCurrent = new AbstractAction(RUN_CURR_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
+        this.setMain = new AbstractAction(SET_MAIN_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        };
 
         ActionMap map = super.getRootPane().getActionMap();
         map.put(OPEN_FILE_TEXT, this.openFile);
@@ -532,6 +627,13 @@ public class MainWindow extends JFrame {
         map.put(NEXT_TAB_TEXT, this.nextTab);
         map.put(PREV_TAB_TEXT, this.prevTab);
         map.put(RELOAD_FILE_TEXT, this.reloadFile);
+        map.put(BUILD_RUN_MAIN_TEXT, this.buildRunMain);
+        map.put(BUILD_MAIN_TEXT, this.buildMain);
+        map.put(RUN_MAIN_TEXT, this.runMain);
+        map.put(BUILD_RUN_CURR_TEXT, this.buildRunMain);
+        map.put(BUILD_CURR_TEXT, this.buildCurrent);
+        map.put(RUN_CURR_TEXT, this.runCurrent);
+        map.put(SET_MAIN_TEXT, this.setMain);
     }
 
     private void setUpKeyBindings() {
@@ -583,6 +685,42 @@ public class MainWindow extends JFrame {
                         MainWindow.this.problemsSplit.getDividerLocation() + 10);
             }
         });
+    }
+
+    private void built(Path path) {
+        try {
+            Assembler a = this.project.getAssembler();
+            List<Problem<?>> problems = new ArrayList<>(42);
+            a.assemble(path, this.project.getProjectPath(), problems);
+
+            this.lastBuilt = path;
+            this.problems = problems;
+        } catch (Exception e) {
+            this.reportException("Could not build!", e, false);
+        }
+    }
+
+    private void run(Path path) {
+        byte[] code;
+        Listing listing;
+        if (this.lastBuilt == null || !this.lastBuilt.equals(path)) {
+            code = new byte[0];
+            listing = null;
+            // TODO: Search File and Listing on disk
+        } else {
+            code = this.project.getAssembler().getResult();
+            if (code == null) {
+                JOptionPane.showMessageDialog(this, "File not yet built!", "Cannot run!", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            listing = this.project.getAssembler().getListing();
+        }
+
+
+        int i = 0;
+        RAM codeMemory = new RAM(65536);
+        for (byte b : code) codeMemory.set(i++, b);
+        SwingUtilities.invokeLater(() -> new EmulatorWindow(new MC8051(codeMemory, new RAM(65536)), listing));
     }
 
     /**
@@ -711,12 +849,10 @@ public class MainWindow extends JFrame {
 
             @Override
             public void addTreeModelListener(TreeModelListener l) {
-                System.out.println("MainWindow.addTreeModelListener");
             }
 
             @Override
             public void removeTreeModelListener(TreeModelListener l) {
-                System.out.println("MainWindow.removeTreeModelListener");
             }
         };
     }

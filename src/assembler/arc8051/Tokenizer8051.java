@@ -34,7 +34,7 @@ public class Tokenizer8051 implements Tokenizer {
 
     private List<Token> tokens;
     /** A list of Problems that occurred while tokenizing. */
-    private List<Problem> problems;
+    private List<Problem<?>> problems;
 
     /**
      * Constructs a new Tokenizer for the 8051 architecture.
@@ -157,7 +157,7 @@ public class Tokenizer8051 implements Tokenizer {
 
 
     @Override
-    public List<Token> tokenize(List<String> input, List<Problem> problems) {
+    public List<Token> tokenize(List<String> input, List<Problem<?>> problems) {
         tokens = new LinkedList<>();
         this.problems.clear();
 

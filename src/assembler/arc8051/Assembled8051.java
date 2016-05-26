@@ -75,7 +75,7 @@ public class Assembled8051 implements Assembled {
     }
 
     @Override
-    public int compile(List<Problem> problems, List<LabelToken> labels) {
+    public int compile(List<Problem<?>> problems, List<LabelToken> labels) {
         if (isStatic)
             return 0;
 
@@ -180,9 +180,9 @@ public class Assembled8051 implements Assembled {
         }
     }
 
-    private void clearRelatedProblems(List<Problem> problems) {
+    private void clearRelatedProblems(List<Problem<?>> problems) {
         Problem p;
-        for (Iterator<Problem> i = problems.iterator(); i.hasNext();) {
+        for (Iterator<Problem<?>> i = problems.iterator(); i.hasNext();) {
             p = i.next();
             if (p instanceof TokenProblem) {
                 Token cause = ((TokenProblem) p).getCause();

@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  */
 public class Preprocessor8051 implements Preprocessor {
 
-    private List<Problem> problems;
+    private List<Problem<?>> problems;
     private Path directory;
 
     private Path currentFile;
@@ -502,7 +502,7 @@ public class Preprocessor8051 implements Preprocessor {
     }
 
     @Override
-    public List<Problem> preprocess(Path workingDirectory, Path file, List<String> output) {
+    public List<Problem<?>> preprocess(Path workingDirectory, Path file, List<String> output) {
         problems.clear();
         regexes.clear();
         this.output.clear();
