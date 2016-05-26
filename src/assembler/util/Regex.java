@@ -53,7 +53,7 @@ public class Regex {
     /** The line that will be used when creating new Problems. */
     private int problemFileLine;
     /** The List newly created Problems will be added to. */
-    private List<Problem> problems;
+    private List<Problem<?>> problems;
 
 
     //Valid modifiers
@@ -250,7 +250,7 @@ public class Regex {
      *
      * @see #compile(String[])
      */
-    public Regex(String format, Path problemFile, int problemFileLine, List<Problem> problemList) {
+    public Regex(String format, Path problemFile, int problemFileLine, List<Problem<?>> problemList) {
         Objects.requireNonNull(format, "'format' cannot be 'null'!");
         setProblemReport(problemFile, problemFileLine, problemList);
         modifier = new StringBuffer();
@@ -276,7 +276,7 @@ public class Regex {
      *      the <code>List</code> newly created <code>Problem</code>s will
      *      be added to.
      */
-    public void setProblemReport(Path problemFile, int problemFileLine, List<Problem> problemList) {
+    public void setProblemReport(Path problemFile, int problemFileLine, List<Problem<?>> problemList) {
         this.problemFile = Objects.requireNonNull(problemFile, "'File' cannot be 'null'.");
         this.problemFileLine = Objects.requireNonNull(problemFileLine, "'Line' cannot be 'null'.");
         this.problems = Objects.requireNonNull(problemList, "'Problems' cannot be 'null'.");
@@ -747,7 +747,7 @@ public class Regex {
      *
      * @see #replaceGroups(Matcher, String)
      */
-    public String perform(String target, Path problemFile, int problemFileLine, List<Problem> problemList) {
+    public String perform(String target, Path problemFile, int problemFileLine, List<Problem<?>> problemList) {
         setProblemReport(problemFile, problemFileLine, problemList);
         return perform(target);
     }

@@ -15,9 +15,11 @@ import java.util.List;
  */
 public interface Assembler {
 
-    byte[] assemble(Path source, Path directory, List<Problem> problems);
+    byte[] assemble(Path source, Path directory, List<Problem<?>> problems);
 
     Listing getListing();
+
+    byte[] getResult();
 
     static Assembler of(final String modelName) {
 

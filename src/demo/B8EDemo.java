@@ -49,7 +49,7 @@ public class B8EDemo {
             System.out.print("Assembling \"" + p + "\"...");
             try (BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(
                     Paths.get(rawFileName + ".bin")))){
-                List<Problem> problems = new LinkedList<>();
+                List<Problem<?>> problems = new LinkedList<>();
                 byte[] outputs = assembler.assemble(p, directory, problems);
                 System.out.println("Done.");
                 if (problems.size() == 0)

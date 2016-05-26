@@ -188,7 +188,7 @@ public abstract class Directive {
      *      whether the directive was performed
      *      successfully.
      */
-    public boolean perform(final String args, Problem<String> p, List<Problem> problems) {
+    public boolean perform(final String args, Problem<String> p, List<Problem<?>> problems) {
         Objects.requireNonNull(args, "Argument String cannot be 'null'!");
         Objects.requireNonNull(p, "Problem cannot be 'null'!");
         Objects.requireNonNull(problems, "Problem List cannot be 'null'!");

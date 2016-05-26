@@ -38,7 +38,7 @@ public class Main {
             "gui.EmulatorWindow",
             "emulator.arc8051.State8051",
             "controller.Main",
-            //"assembler.util.AssemblerSettings"
+            "assembler.util.AssemblerSettings"
     };
 
     static {
