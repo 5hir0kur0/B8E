@@ -7,16 +7,114 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import javax.swing.text.StyleConstants;
+import javax.xml.bind.JAXB;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+
+
+public enum SyntaxThemes {
+    INSTANCE;
+
+    private final static String SYNTAX_THEMES_SETTING_NAME = "gui.syntax-theme-folder";
+    private final static String SYNTAX_THEMES_SETTING_DEFAULT = ".";
+    private final static String SYNTAX_THEME_NAME_SETTING_NAME = "gui.syntax-theme-name";
+    private final static String SYNTAX_THEME_NAME_SETTING_DEFAULT = "DEFAULT";
+    private static final char FILE_EXTENSION_SEPARATOR = '.';
+
+    private final Map<String, SyntaxTheme> themes;
+    private String currentThemeName;
+
+    SyntaxThemes() throws IllegalArgumentException {
+        // no need for a static block, since INSTANCE is static
+        Settings.INSTANCE.setDefault(SYNTAX_THEMES_SETTING_NAME, SYNTAX_THEMES_SETTING_DEFAULT);
+        Settings.INSTANCE.setDefault(SYNTAX_THEME_NAME_SETTING_NAME, SYNTAX_THEME_NAME_SETTING_DEFAULT);
+
+        this.themes = new HashMap<>();
+        try {
+            final Path themePath = Paths.get(Settings.INSTANCE.getProperty(SYNTAX_THEMES_SETTING_NAME));
+            Files.newDirectoryStream(themePath).forEach(path -> {
+                if (Files.isReadable(themePath) && Files.isRegularFile(themePath))
+                    try (Reader in = Files.newBufferedReader(themePath)){
+                        final SyntaxTheme tmp = JAXB.unmarshal(in, SyntaxTheme.class);
+                        final String tmpName = getThemeName(themePath);
+                        if (tmpName.trim().isEmpty())
+                            throw new IllegalArgumentException("theme name must not be null or empty");
+                        if (tmp == null) throw new IllegalArgumentException("theme must not be null");
+                        themes.put(getThemeName(path), tmp);
+                    } catch (IOException|IndexOutOfBoundsException e) {
+                        System.err.println("An exception occurred while parsing the theme '" + themePath + "':");
+                        e.printStackTrace();
+                    }
+            });
+        } catch (InvalidPathException|IOException e) {
+            System.err.println("An exception occurred while reading the syntax themes:");
+            e.printStackTrace();
+        }
+
+        this.currentThemeName = Settings.INSTANCE.getProperty(SYNTAX_THEME_NAME_SETTING_NAME);
+    }
+
+    public SyntaxTheme getCurrentTheme() {
+        if (SYNTAX_THEME_NAME_SETTING_DEFAULT.equals(this.currentThemeName)
+                || !this.themes.containsKey(this.currentThemeName)) return makeFallbackTheme();
+        SyntaxTheme result = this.themes.get(this.currentThemeName);
+        if (result == null || !result.isValid()) return makeFallbackTheme();
+        return result;
+    }
+
+    public void setCurrentTheme(String name) throws IllegalArgumentException {
+        if (!this.themes.containsKey(name)) throw new IllegalArgumentException(name + " is not a valid theme name");
+        this.currentThemeName = name;
+    }
+
+    private static String getThemeName(Path p) {
+        final String tmpName = p.getFileName().toString();
+        if (tmpName.indexOf(FILE_EXTENSION_SEPARATOR) < 0) return tmpName;
+        return tmpName.substring(0, tmpName.lastIndexOf(FILE_EXTENSION_SEPARATOR));
+    }
+
+    private static SyntaxTheme makeFallbackTheme() {
+        return FallbackSyntaxThemes.DEFAULT.getSyntaxTheme();
+    }
+
+    private void storeSyntaxTheme(Path path) throws JAXBException {
+        //try (Writer out = Files.newBufferedWriter(path)) {
+        //    JAXB.marshal(this.getCurrentTheme(), out);
+        //} catch (IOException e) {
+        //    e.printStackTrace();
+        //}
+        JAXBContext jaxbContext = JAXBContext.newInstance(SyntaxTheme.class);
+        Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
+
+        jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+
+        jaxbMarshaller.marshal(this.getCurrentTheme(), System.out);
+    }
+
+    public static void main(String[] imaTest) {
+        try {
+            SyntaxThemes.INSTANCE.storeSyntaxTheme(Paths.get("/tmp/test.path"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 
 /**
  * @author Gordian
  */
-public enum SyntaxThemes {
+enum FallbackSyntaxThemes {
     DEFAULT("base16-default",
             new Color(0x181818), // base00
             new Color(0x282828), // base01
@@ -41,91 +139,65 @@ public enum SyntaxThemes {
 
         @Override public SyntaxTheme getSyntaxTheme() {
             if (null == DEFAULT.syntaxTheme) {
-                DEFAULT.syntaxTheme = new SyntaxTheme() {
-                    @Override
-                    public List<Pair<Pattern, AttributeSet>> getStyleForType(String type) {
-                        switch (Objects.requireNonNull(type).toLowerCase()) {
-                            case "asm":
-                            case "asm51":
-                                if (null == asmTheme) asmTheme = SyntaxThemes.createAsmSourceFileTheme(
-                                        DEFAULT.base0A, // to do foreground
-                                        DEFAULT.base06, // to do background
-                                        DEFAULT.base05, // comments
-                                        DEFAULT.base0D, // strings
-                                        DEFAULT.base0A, // labels
-                                        DEFAULT.base09, // mnemonics
-                                        DEFAULT.base09, // commas
-                                        DEFAULT.base03, // number radix (pre- or suffixes)
-                                        DEFAULT.base0E, // decimal numbers
-                                        DEFAULT.base0E, // binary numbers
-                                        DEFAULT.base0E, // octal numbers
-                                        DEFAULT.base0E, // hexadecimal numbers
-                                        DEFAULT.base08, // number error
-                                        DEFAULT.base09, // symbol indirect reserved
-                                        DEFAULT.base0A, // symbol reserved
-                                        DEFAULT.base08, // symbol reserved error
-                                        DEFAULT.base0B, // type prefix
-                                        DEFAULT.base0C, // symbols (in general)
-                                        DEFAULT.base09, // dot operator
-                                        DEFAULT.base05, // directive background
-                                        DEFAULT.base09, // directive color
-                                        DEFAULT.base0E, // directive include path file
-                                        DEFAULT.base03, // directive include path brackets
-                                        DEFAULT.base04, // parentheses content
-                                        DEFAULT.base0C, // parentheses
-                                        DEFAULT.base08  // errors
-                                );
-                                return asmTheme;
-                            case "hex":
-                                if (null == hexTheme) hexTheme = SyntaxThemes.createIntelHexTheme(
-                                        DEFAULT.base04, // irrelevant
-                                        DEFAULT.base08, // error
-                                        DEFAULT.base04, // start code
-                                        DEFAULT.base09, // data byte
-                                        DEFAULT.base04, // address
-                                        DEFAULT.base08, // valid record type
-                                        DEFAULT.base0E, // data
-                                        DEFAULT.base04, // checksum foreground
-                                        DEFAULT.base0A, // checksum background
-                                        DEFAULT.base01, // EOF foreground
-                                        DEFAULT.base0C  // EOF background
-                                );
-                                return hexTheme;
-                            case "properties":
-                                if (null == propertiesTheme) propertiesTheme = createPropertiesTheme(
-                                        DEFAULT.base04, // comment
-                                        DEFAULT.base08, // key
-                                        DEFAULT.base0B, // value
-                                        DEFAULT.base0D, // end escape
-                                        DEFAULT.base0F  // unicode
-                                );
-                                return propertiesTheme;
-                            default:
-                                //TODO: Log
-                                return SyntaxThemes.EMPTY_LIST;
-                        }
-                    }
+                final Map<String, Style> tmpMap = new HashMap<>();
+                final Style tmpAsmStyle = new Style(FallbackSyntaxThemes.createAsmSourceFileTheme(
+                        DEFAULT.base0A, // to do foreground
+                        DEFAULT.base06, // to do background
+                        DEFAULT.base05, // comments
+                        DEFAULT.base0D, // strings
+                        DEFAULT.base0A, // labels
+                        DEFAULT.base09, // mnemonics
+                        DEFAULT.base09, // commas
+                        DEFAULT.base03, // number radix (pre- or suffixes)
+                        DEFAULT.base0E, // decimal numbers
+                        DEFAULT.base0E, // binary numbers
+                        DEFAULT.base0E, // octal numbers
+                        DEFAULT.base0E, // hexadecimal numbers
+                        DEFAULT.base08, // number error
+                        DEFAULT.base09, // symbol indirect reserved
+                        DEFAULT.base0A, // symbol reserved
+                        DEFAULT.base08, // symbol reserved error
+                        DEFAULT.base0B, // type prefix
+                        DEFAULT.base0C, // symbols (in general)
+                        DEFAULT.base09, // dot operator
+                        DEFAULT.base05, // directive background
+                        DEFAULT.base09, // directive color
+                        DEFAULT.base0E, // directive include path file
+                        DEFAULT.base03, // directive include path brackets
+                        DEFAULT.base04, // parentheses content
+                        DEFAULT.base0C, // parentheses
+                        DEFAULT.base08  // errors
+                ));
+                tmpMap.put("asm", tmpAsmStyle);
+                final Style tmpHexStyle = new Style(FallbackSyntaxThemes.createIntelHexTheme(
+                        DEFAULT.base04, // irrelevant
+                        DEFAULT.base08, // error
+                        DEFAULT.base04, // start code
+                        DEFAULT.base09, // data byte
+                        DEFAULT.base04, // address
+                        DEFAULT.base08, // valid record type
+                        DEFAULT.base0E, // data
+                        DEFAULT.base04, // checksum foreground
+                        DEFAULT.base0A, // checksum background
+                        DEFAULT.base01, // EOF foreground
+                        DEFAULT.base0C  // EOF background
+                ));
+                tmpMap.put("hex", tmpHexStyle);
+                final Style tmpPropertiesStyle = new Style(FallbackSyntaxThemes.createPropertiesTheme(
+                        DEFAULT.base04, // comment
+                        DEFAULT.base08, // key
+                        DEFAULT.base0B, // value
+                        DEFAULT.base0D, // end escape
+                        DEFAULT.base0F  // unicode
+                ));
+                tmpMap.put("properties", tmpPropertiesStyle);
+                final Color tmpLineNumberBackground = DEFAULT.base06;
+                final Color tmpLineNumberForeground = DEFAULT.base04;
+                final Color tmpCodeBackground = DEFAULT.base07;
+                final Color tmpCodeForeground = DEFAULT.base02;
 
-                    @Override
-                    public Color getLineNumberBackground() {
-                        return DEFAULT.base06;
-                    }
-
-                    @Override
-                    public Color getLineNumberForeground() {
-                        return DEFAULT.base04;
-                    }
-
-                    @Override
-                    public Color getCodeBackground() {
-                        return DEFAULT.base07;
-                    }
-
-                    @Override
-                    public Color getCodeForeground() {
-                        return DEFAULT.base02;
-                    }
-                };
+                DEFAULT.syntaxTheme = new SyntaxTheme(tmpMap, tmpLineNumberBackground, tmpLineNumberForeground,
+                        tmpCodeBackground, tmpCodeForeground);
             }
             return DEFAULT.syntaxTheme;
         }
@@ -236,7 +308,7 @@ public enum SyntaxThemes {
 
     private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 
-    SyntaxThemes(String name,
+    FallbackSyntaxThemes(String name,
                  Color base00, // the colors are set in the constructor, because they are final and
                  Color base01, // the compiler complains when they are set in an initializer block
                  Color base02,
@@ -271,47 +343,6 @@ public enum SyntaxThemes {
         this.base0D = Objects.requireNonNull(base0D);
         this.base0E = Objects.requireNonNull(base0E);
         this.base0F = Objects.requireNonNull(base0F);
-    }
-
-    // settings
-    private final static String SYNTAX_THEME_SETTING = "gui.editor.syntax-theme";
-    private final static String SYNTAX_THEME_SETTING_DEFAULT = "base16-default";
-    private final static Pattern THEME_NAME_PATTERN = Pattern.compile("[\\w\\-]+");
-    private final static Predicate<String> IS_VALID_THEME_NAME = s -> THEME_NAME_PATTERN.matcher(s).matches();
-
-    static {
-        Settings.INSTANCE.setDefault(SYNTAX_THEME_SETTING, SYNTAX_THEME_SETTING_DEFAULT);
-        SyntaxThemes.setSyntaxThemeByName(Settings.INSTANCE.getProperty(SYNTAX_THEME_SETTING,
-                                                                        SYNTAX_THEME_SETTING_DEFAULT,
-                                                                        IS_VALID_THEME_NAME));
-    }
-
-    private static SyntaxTheme currentTheme;
-
-    public static void setSyntaxThemeByName(String name) {
-        SyntaxThemes.currentTheme = getSyntaxThemeByName(name);
-    }
-
-    public static SyntaxTheme getCurrentTheme() {
-        return SyntaxThemes.currentTheme;
-    }
-
-    static SyntaxTheme getSyntaxThemeByName(String name) {
-        for (SyntaxThemes st : SyntaxThemes.values())
-            if (st.name.equals(name))
-                return st.getSyntaxTheme();
-        throw new IllegalArgumentException("invalid syntax theme name");
-    }
-
-    public static List<String> getThemeNames() {
-        if (SyntaxThemes.names == null) {
-            List<String> tmpList = new LinkedList<>();
-            for (SyntaxThemes st : SyntaxThemes.values()) {
-                tmpList.add(st.name);
-            }
-            SyntaxThemes.names = tmpList;
-        }
-        return SyntaxThemes.names;
     }
 
     /** creates the light intel hex theme */
