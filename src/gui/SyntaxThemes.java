@@ -69,6 +69,10 @@ public enum SyntaxThemes {
                                         DEFAULT.base09, // dot operator
                                         DEFAULT.base05, // directive background
                                         DEFAULT.base09, // directive color
+                                        DEFAULT.base0E, // directive include path file
+                                        DEFAULT.base03, // directive include path brackets
+                                        DEFAULT.base04, // parentheses content
+                                        DEFAULT.base0C, // parentheses
                                         DEFAULT.base08  // errors
                                 );
                                 return asmTheme;
@@ -216,13 +220,19 @@ public enum SyntaxThemes {
     private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<=[\\w,])\\s*+([/#+-])[\\w\"'\\(]+");
 
     private static final Pattern ASM_DIRECTIVE_LINE =
-            Pattern.compile("^(\\s*(?:[$#\\.].*?|[$#\\.]?(?:if|elif|else|regex|end|file|line|org|end|d[bws])\\s+.*?|" +
+            Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|regex|end|file|line|include|org|end|d[bws])\\s+.*?|" +
                     "\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE = Pattern.compile(
-            "^\\s*(?:([$#\\.]?org|end|d[bws]|if|elif|else|regex|end|file|line|equ|set|bit|code|[ix]?data)" +
+            "^\\s*(?:([\\$#\\.]?\\s*(?:org|end|d[bws]|if|elif|else|regex|end|file|line|include|equ|set|bit|code|[ix]?data))" +
                     "|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE_SYMBOL = Pattern.compile(
             "^\\s*\\b([\\w&&[\\D]]\\w*)\\b\\s*(?:equ|set|bit|code|[ix]?data)\\s*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS =
+            Pattern.compile("^\\s*[\\$#\\.]?\\s*?include\\s+(<).*?(>)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_DIRECTIVE_PATH_INCLUDE_FILE =
+            Pattern.compile("^\\s*[\\$#\\.]\\s*?include\\s+?<(.*?)>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_PARENTHESES = Pattern.compile("(\\().*(\\)),|(\\().*(\\))", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_PARENTHESES_CONTENT = Pattern.compile("\\((.*)\\),|\\((.*)\\)", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 
@@ -362,11 +372,19 @@ public enum SyntaxThemes {
                                                                               Color dotColor,
                                                                               Color directiveBackgroundColor,
                                                                               Color directiveColor,
+                                                                              Color includePathFileColor,
+                                                                              Color includePathBracketsColor,
+                                                                              Color parenthesesContentColor,
+                                                                              Color parenthesesColor,
                                                                               Color errorColor
                                                                              ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
         tmp.add(new Pair<>(ASM_ERRORS, create(StyleConstants.Foreground, errorColor,
                 StyleConstants.StrikeThrough, true)));
+        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(StyleConstants.Foreground, parenthesesContentColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_PARENTHESES, create(StyleConstants.Foreground, parenthesesColor,
+                StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(StyleConstants.Foreground, dotColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_SYMBOL, create(StyleConstants.Foreground, symbolColor,
@@ -382,6 +400,10 @@ public enum SyntaxThemes {
         tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(StyleConstants.Background, directiveBackgroundColor)));
                 // Do not disable error strike through because errors still could occur in the directive
         tmp.add(new Pair<>(ASM_DIRECTIVE, create(StyleConstants.Foreground, directiveColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(StyleConstants.Foreground, includePathFileColor,
+                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(StyleConstants.Foreground, includePathBracketsColor,
                 StyleConstants.StrikeThrough, false)));
         tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(StyleConstants.Foreground, symbolColor,
                 StyleConstants.StrikeThrough, false)));

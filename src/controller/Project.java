@@ -62,7 +62,7 @@ public class Project implements AutoCloseable {
     }
 
     public Assembler getAssembler() {
-        if (this.assembler == null) throw new UnsupportedOperationException("todo"); //TODO
+        if (this.assembler == null) assembler = Assembler.of("8051");
         return this.assembler;
     }
 

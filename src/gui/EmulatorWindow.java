@@ -80,7 +80,7 @@ public class EmulatorWindow extends JFrame {
         this.memoryNumeralSystem = NumeralSystem.valueOf(Settings.INSTANCE.getProperty(MEMORY_NUMERAL_SYSTEM_SETTING,
                 MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT, IS_VALID_NUMERAL_SYSTEM));
         this.running = false;
-        this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         this.setSize(new Dimension(420, 420));
 
         this.emulatorRunner = new SwingWorker<Void, Void>() {
