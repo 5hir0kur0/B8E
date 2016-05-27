@@ -5,6 +5,7 @@ import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.StyleContext;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.awt.*;
@@ -13,29 +14,28 @@ import static javax.swing.text.StyleConstants.*;
 /**
  * @author 5hir0kur0
  */
-@XmlRootElement(name = "style")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class DummyAttributeSet {
     @SuppressWarnings("unused")
     private DummyAttributeSet() { }
-    private Integer alignment;
+    @XmlAttribute private Integer alignment;
     @XmlJavaTypeAdapter(ColorAdapter.class)
-    private Color background;
-    private Boolean bold;
-    private String  fontFamily;
-    private Integer fontSize;
+    @XmlAttribute private Color background;
+    @XmlAttribute private Boolean bold;
+    @XmlAttribute private String  fontFamily;
+    @XmlAttribute private Integer fontSize;
     @XmlJavaTypeAdapter(ColorAdapter.class)
-    private Color   foreground;
-    private Boolean italic;
-    private Float leftIndent;
-    private Float lineSpacing;
-    private Float rightIndent;
-    private Float spaceAbove;
-    private Float spaceBelow;
-    private Boolean strikeThrough;
-    private Boolean subscript;
-    private Boolean superscript;
-    private Boolean underline;
+    @XmlAttribute private Color   foreground;
+    @XmlAttribute private Boolean italic;
+    @XmlAttribute private Float leftIndent;
+    @XmlAttribute private Float lineSpacing;
+    @XmlAttribute private Float rightIndent;
+    @XmlAttribute private Float spaceAbove;
+    @XmlAttribute private Float spaceBelow;
+    @XmlAttribute private Boolean strikeThrough;
+    @XmlAttribute private Boolean subscript;
+    @XmlAttribute private Boolean superscript;
+    @XmlAttribute private Boolean underline;
     DummyAttributeSet(AttributeSet as) {
         this.alignment     = getAlignment(as);
         this.background    = getBackground(as);

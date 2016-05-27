@@ -96,7 +96,8 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setBackground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeBackground());
         this.lineNumbers.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberForeground());
         this.code.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeForeground());
-        this.style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme().getStyleForType(this.fileExtension).style);
+        this.style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme()
+                .getStyleForType(this.fileExtension).getStyle());
         ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(this.style);
         this.updateSyntaxHighlighting();
     }
