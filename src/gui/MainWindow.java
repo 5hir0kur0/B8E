@@ -9,11 +9,13 @@ import emulator.RAM;
 import emulator.arc8051.MC8051;
 import javafx.scene.control.*;
 import misc.Pair;
+import misc.Settings;
 
 import javax.swing.*;
 import javax.swing.event.TreeModelListener;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
+import javax.swing.table.*;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
@@ -35,7 +37,7 @@ public class MainWindow extends JFrame {
     private final JTabbedPane jTabbedPane;
     private final JSplitPane problemsSplit;
     private final JSplitPane mainSplit;
-    private final JTable problemTable;
+    private JTable problemTable;
     private JTree fsTree;
     private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
@@ -103,14 +105,12 @@ public class MainWindow extends JFrame {
 
         this.project = Objects.requireNonNull(project);
 
-        this.problemTable = new JTable();
-        this.problemTable.setFillsViewportHeight(true);
 
         this.jTabbedPane = new JTabbedPane(JTabbedPane.BOTTOM, JTabbedPane.SCROLL_TAB_LAYOUT);
 
         this.problemsSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         this.problemsSplit.setOneTouchExpandable(true);
-        this.problemsSplit.setBottomComponent(new JScrollPane(this.problemTable));
+        this.setUpProblemTable();
         this.problemsSplit.setTopComponent(this.jTabbedPane);
 
         // Default to collapsed ... sort of
@@ -282,6 +282,7 @@ public class MainWindow extends JFrame {
         menuBar.add(editMenu);
 
         JMenu viewMenu = new JMenu(VIEW_MENU_TEXT);
+        viewMenu.setMnemonic('v');
         JMenuItem zoomIn = new JMenuItem(this.zoomIn);
         zoomIn.setMnemonic('i');
         viewMenu.add(zoomIn);
@@ -415,6 +416,124 @@ public class MainWindow extends JFrame {
         });
         this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
         this.mainSplit.setDividerLocation(0.75);
+    }
+
+    private final void setUpProblemTable() {
+        this.problemTable = new JTable(new ProblemTableModel());
+        this.problemTable.setDefaultRenderer(Object.class, new ProblemTableCellRenderer());
+
+        TableColumn tc;
+        this.problemTable.getColumnModel().getColumn(0).setMaxWidth(70);
+        this.problemTable.getColumnModel().getColumn(1).setWidth(30);
+        this.problemTable.getColumnModel().getColumn(2).setMaxWidth(40);
+        this.problemTable.getColumnModel().getColumn(4).setWidth(100);
+
+        JScrollPane jsp = new JScrollPane(this.problemTable);
+        this.problemsSplit.setBottomComponent(jsp);
+    }
+
+    private static class ProblemTableModel extends AbstractTableModel {
+
+        private static final String[] columns = {"Type", "File", "Line", "Message", "Cause"};
+        private final ArrayList<Object[]> data;
+
+        private static final Color ERROR_COLOR = new Color(0x990000); // Crimson red
+        private static final Color WARNING_COLOR = Color.ORANGE;
+        private static final Color INFO_COLOR = Color.LIGHT_GRAY;
+
+        private static final Color LIGHT_FOREGROUND = Color.LIGHT_GRAY;
+        private static final Color DARK_FOREGROUND = Color.DARK_GRAY;
+
+        public ProblemTableModel() {
+            this.data = new ArrayList<>(42);
+        }
+
+        @Override
+        public int getRowCount() {
+            return data.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columns.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return columns[column];
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            return data.get(rowIndex)[columnIndex];
+        }
+
+        @Override
+        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+            while (data.size() <= rowIndex)
+                data.add(new Object[columns.length]);
+
+            data.get(rowIndex)[columnIndex] = aValue;
+
+            fireTableCellUpdated(rowIndex, columnIndex);
+        }
+
+        public void removeRow(int row) {
+            data.remove(row);
+            fireTableRowsDeleted(row, row);
+        }
+
+        public Pair<Color, Color> getRowColor(int row) {
+            if (data.size() > row)
+                switch ((Problem.Type)data.get(row)[0]) {
+                    case ERROR:
+                        return new Pair<>(LIGHT_FOREGROUND, ERROR_COLOR);
+                    case WARNING:
+                        return new Pair<>(DARK_FOREGROUND, WARNING_COLOR);
+                }
+            return new Pair<>(DARK_FOREGROUND, INFO_COLOR);
+        }
+    }
+
+    private class ProblemTableCellRenderer extends DefaultTableCellRenderer {
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+                                                       int row, int column) {
+            ProblemTableModel ptm = (ProblemTableModel) table.getModel();
+
+            Component c  = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            Pair<Color, Color> colors = ptm.getRowColor(row);
+            c.setForeground(colors.x);
+            c.setBackground(colors.y);
+            return c;
+        }
+    }
+
+    private void refreshProblemTable() {
+        if (this.problems.isEmpty()) {
+            this.problemTable.setVisible(false);
+        } else {
+            this.problemTable.setVisible(true);
+
+            ProblemTableModel tm = (ProblemTableModel) this.problemTable.getModel();
+
+            int rowCount = tm.getRowCount();
+            for (int i = rowCount - 1; i >= this.problems.size(); i--)
+                tm.removeRow(i);
+
+            for (int row = 0; row < this.problems.size(); ++row) {
+                Problem<?> p = this.problems.get(row);
+                this.problemTable.setValueAt(p.getType(), row, 0);
+                this.problemTable.setValueAt(p.getPath(), row, 1);
+                this.problemTable.setValueAt(p.getLine(), row, 2);
+                this.problemTable.setValueAt(p.getMessage(), row, 3);
+                this.problemTable.setValueAt(p.getCause(), row, 4);
+            }
+
+            this.problemTable.revalidate();
+
+        }
     }
 
     private void openOrSwitchToFile(Path path) {
@@ -604,19 +723,41 @@ public class MainWindow extends JFrame {
         this.buildRunMain = new AbstractAction(BUILD_RUN_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                if (main.isEmpty())
+                    JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not build.",
+                            JOptionPane.INFORMATION_MESSAGE);
+                else {
+                    Path path = Paths.get(main);
+                    mw.build(path);
+                    mw.run(path);
+                }
             }
         };
         this.buildMain = new AbstractAction(BUILD_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                if (main.isEmpty())
+                    JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not build.",
+                            JOptionPane.INFORMATION_MESSAGE);
+                else {
+                    Path path = Paths.get(main);
+                    mw.build(path);
+                }
             }
         };
         this.runMain = new AbstractAction(RUN_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                if (main.isEmpty())
+                    JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not run.",
+                            JOptionPane.INFORMATION_MESSAGE);
+                else {
+                    Path path = Paths.get(main);
+                    mw.build(path);
+                }
             }
         };
         this.buildRunCurrent = new AbstractAction(BUILD_RUN_CURR_TEXT) {
@@ -624,7 +765,7 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
 
-                    mw.built(mw.getCurrentFile().x.getPath());
+                    mw.build(mw.getCurrentFile().x.getPath());
                     mw.run(mw.getCurrentFile().x.getPath());
 
                 } catch (NotifyUserException e1) {
@@ -635,19 +776,35 @@ public class MainWindow extends JFrame {
         this.buildCurrent = new AbstractAction(BUILD_CURR_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
+                try {
 
+                    mw.build(mw.getCurrentFile().x.getPath());
+
+                } catch (NotifyUserException e1) {
+                    mw.reportException(e1.getMessage(), e1, false);
+                }
             }
         };
         this.runCurrent = new AbstractAction(RUN_CURR_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
+                try {
+
+                    mw.run(mw.getCurrentFile().x.getPath());
+
+                } catch (NotifyUserException e1) {
+                    mw.reportException(e1.getMessage(), e1, false);
+                }
 
             }
         };
         this.setMain = new AbstractAction(SET_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                if (fileChooser.showDialog(mw, "Choose") == JFileChooser.APPROVE_OPTION) {
+                    Settings.INSTANCE.setProperty("project.main-file",
+                            fileChooser.getSelectedFile().toPath().toAbsolutePath().toString());
+                }
             }
         };
 
@@ -691,9 +848,19 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK), SAVE_FILE_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 SAVE_FILE_AS_TEXT);
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK), RELOAD_FILE_TEXT);
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_DOWN_MASK), RELOAD_FILE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 REFRESH_TREE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK), BUILD_RUN_MAIN_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK), BUILD_MAIN_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                RUN_MAIN_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK),
+                BUILD_RUN_CURR_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK),
+                BUILD_CURR_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK |
+                InputEvent.SHIFT_DOWN_MASK), RUN_CURR_TEXT);
         // use VIM key bindings, because binding arrows seems not to work ;-)
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.CTRL_DOWN_MASK), "resizeTreeLeft");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK), "resizeTreeRight");
@@ -728,17 +895,18 @@ public class MainWindow extends JFrame {
         });
     }
 
-    private void built(Path path) {
+    private void build(Path path) {
         try {
             Assembler a = this.project.getAssembler();
             List<Problem<?>> problems = new ArrayList<>(42);
+            this.problems = problems;
             a.assemble(path, this.project.getProjectPath(), problems);
 
             this.lastBuilt = path;
-            this.problems = problems;
         } catch (Exception e) {
             this.reportException("Could not build!", e, false);
         }
+        this.refreshProblemTable();
     }
 
     private void run(Path path) {
@@ -751,7 +919,7 @@ public class MainWindow extends JFrame {
         } else {
             code = this.project.getAssembler().getResult();
             if (code == null) {
-                JOptionPane.showMessageDialog(this, "File not yet built!", "Cannot run!", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "File not yet build!", "Cannot run!", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             listing = this.project.getAssembler().getListing();
