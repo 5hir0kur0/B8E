@@ -536,10 +536,10 @@ public class Regex {
                     global = true;
                     break;
                 case CASE_SENSITIVE_FLAG:
-                    caseSensitive = false;
+                    caseSensitive = true;
                     break;
                 case CASE_INSENSITIVE_FLAG:
-                    caseSensitive = true;
+                    caseSensitive = false;
                     break;
                 case REPLACE_IN_STRING_FLAG:
                     replaceString = true;
@@ -947,7 +947,10 @@ public class Regex {
      *      the other Object to be tested.
      * @return
      *      <code>true</code> if <code>obj</code> is a <code>Regex</code> and the
-     *      internal <code>Pattern</code>s use the same pattern.
+     *      internal <code>Pattern</code>s use the same pattern.<br>
+     *      If one of them is case insensitive, the case will be ignored by both of
+     *      them while comparing.<br>
+     *      Conditions will be ignored.
      */
     @Override
     public boolean equals(Object obj) {

@@ -12,8 +12,6 @@ import assembler.util.problems.Problem;
 import assembler.util.problems.TokenProblem;
 import misc.Settings;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +31,10 @@ public class Assembler8051 implements Assembler {
 
     private byte[] result;
     private Listing listing;
+
+    static {
+        AssemblerSettings.init(); // Load settings
+    }
 
     public Assembler8051() {
         this.preprocessor  = new Preprocessor8051();
@@ -61,9 +63,9 @@ public class Assembler8051 implements Assembler {
 
         resolve(assembled, labels, problems, Integer.MAX_VALUE);
 
-        writeBinary(result, assembled, problems);
+        int actualBytes = writeBinaryToArray(result, assembled, problems);
 
-        writeFiles(directory, source, assembled, problems);
+        writeFiles(directory, source, actualBytes + 1, assembled, problems);
 
         Collections.sort(problems);
 
@@ -188,9 +190,10 @@ public class Assembler8051 implements Assembler {
         return change;
     }
 
-    private void writeBinary(byte[] out, List<Assembled8051> assembled, List<Problem<?>> problems) {
+    private int writeBinaryToArray(byte[] out, List<Assembled8051> assembled, List<Problem<?>> problems) {
 
         final int maxAddr = out.length-1;
+        int maxAddrWritten = 0;
         for (Assembled8051 a : assembled) {
             int address = (int) a.getAddress();
             if (address > maxAddr) {
@@ -204,19 +207,24 @@ public class Assembler8051 implements Assembler {
                     problems.add(new TokenProblem("Only " + i + " byte" + (i == 1 ? "" : "s") + "of instruction are in " +
                             "the valid code memory area!:" + address, Problem.Type.ERROR, a.getFile(), a.getTokens()[0]));
                     continue;
-                }
+                } else if (address + i > maxAddrWritten)
+                    maxAddrWritten = address + i;
+
                 out[address + i] = codes[i];
             }
         }
+        return maxAddrWritten;
     }
 
-    private void writeFiles(Path directory, Path file, List<? extends Assembled> assembled, List<Problem<?>> problems) {
+    private void writeFiles(Path directory, Path file, final int actualBytes,
+                            List<? extends Assembled> assembled, List<Problem<?>> problems) {
         Settings s = Settings.INSTANCE;
 
         // Write Intel HEX
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_HEX))
             try (HexWriter hw = new HexWriter(Files.newBufferedWriter(getFile(directory, file,
-                    s.getProperty(AssemblerSettings.HEX_FILE_EXTENSION))))) {
+                    s.getProperty(AssemblerSettings.OUTPUT_HEX_EXTENSION) )),
+                    s.getIntProperty(AssemblerSettings.OUTPUT_HEX_BUFFER_LENGTH, i -> i > 0))) {
 
                 hw.writeAll(assembled, s.getBoolProperty(AssemblerSettings.OUTPUT_HEX_WRAP));
 
@@ -230,8 +238,10 @@ public class Assembler8051 implements Assembler {
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN)) {
            try (OutputStream os = Files.newOutputStream(getFile(directory, file,
                    s.getProperty(AssemblerSettings.OUTPUT_BIN_EXTENSION)))){
-
-               os.write(result);
+               if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN_NECESSARY))
+                   os.write(result, 0 , actualBytes);
+               else
+                   os.write(result);
 
            } catch (Exception e) {
                 problems.add(new ExceptionProblem("Could not write binary file!", Problem.Type.ERROR, e));
@@ -241,7 +251,11 @@ public class Assembler8051 implements Assembler {
 
     private Path getFile(Path directory, Path file, String extension) {
         String fileName = file.getFileName().toString();
-        return Paths.get(directory.toString(), fileName.substring(0, fileName.lastIndexOf('.'))+extension);
+        final String outDir = Settings.INSTANCE.getProperty(AssemblerSettings.OUTPUT_DIR);
+        if (outDir.isEmpty())
+            return Paths.get(file.getParent().toString(), fileName.substring(0, fileName.lastIndexOf('.')) + extension);
+        else
+            return Paths.get(directory.toString(), outDir, fileName.substring(0, fileName.lastIndexOf('.')) + extension);
 
     }
 }

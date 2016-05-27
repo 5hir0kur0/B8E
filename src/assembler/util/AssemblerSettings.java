@@ -55,23 +55,6 @@ public class AssemblerSettings {
      * Defaults to: "error"
      */
     public static final String UNNECESSARY_OPERANDS = "assembler.errors.unnecessary-operands";
-    /**
-     * The extension of assembly source files.<br>
-     * <br>
-     * Valid values: All values that start with a dot '.' and are then followed
-     *               by word characters.<br>
-     * Defaults to: ".asm"
-     */
-    public static final String SOURCE_FILE_EXTENSION = "assembler.output.file-extensions.asm";
-
-    /**
-     * The extension of Intel-HEX files.<br>
-     * <br>
-     * Valid values: All values that start with a dot '.' and are then followed
-     *               by word characters.<br>
-     * Defaults to: ".hex"
-     */
-    public static final String HEX_FILE_EXTENSION = "assembler.output.file-extensions.hex";
 
     /**
      * The behavior if non comment or white-space line are found after the use of an
@@ -149,34 +132,108 @@ public class AssemblerSettings {
      * <code>&lt;&gt;</code>).<br>
      * Multiple paths can be separated with a semicolon (<code>;</code>)<br>
      * <br>
-     * Valid values:
-     * Defaults to: "include"
+     * Valid values: Any valid path
+     * Defaults to: ""
      */
     public static final String INCLUDE_PATH = "assembler.directives.include.path";
 
     /**
      * Determines whether the preprocessor searches recursively for a given file
      * in the given path.<br>
+     * <br>
      * Valid values: true, false<br>
      * Defaults to: false
      */
-    public static final String INCLUDE_RECURSIVE_SEARCH = "assembler.directives.include.path.recursive-search";
+    public static final String INCLUDE_RECURSIVE_SEARCH = "assembler.directives.include.recursive-search";
 
     /**
      * If this value is set to <code>true</code> the default include file <code>'default.asm'</code>
      * will be included automatically on each run of the assembler.<br>
+     * <br>
      * Valid values: true, false<br>
      * Defaults to: true
      */
     public static final String INCLUDE_DEFAULT_FILE = "assembler.include-default-file";
 
+    /**
+     * The MCU file to include. If empty, the file will not be included. The file will be treated like
+     * a normal include.<br>
+     * <br>
+     * Valid values: Any valid path<br>
+     * Defaults to: "mcu/8051.mcu"
+     */
+    public static final String MCU_FILE = "assembler.mcu-file";
+
+    /**
+     * The output directory relative to the <code>directory</code> given to the assembler (usually
+     * the project directory).<br>
+     * <br>
+     * Valid values: Any valid path<br>
+     * Special values: "." - Project directory,
+     *                 "" - Directory of the source file.
+     * Defaults to: "."
+     */
+    public static final String OUTPUT_DIR = "assembler.output.directory";
+
+    /**
+     * Whether to write Intel-HEX files to disk at all.<br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
     public static final String OUTPUT_HEX = "assembler.output.hex";
+
+    /**
+     * The extension of Intel-HEX files.<br>
+     * <br>
+     * Valid values: All values that start with a dot '.' and are then followed
+     *               by word characters.<br>
+     * Defaults to: ".hex"
+     */
     public static final String OUTPUT_HEX_EXTENSION = "assembler.output.hex.extension";
+
+    /**
+     * The maximum number of data bytes in a line of the output file.<br>
+     * <br>
+     * Valid values: All values bigger than 0
+     * Defaults to: 16
+     */
     public static final String OUTPUT_HEX_BUFFER_LENGTH = "assembler.output.hex.buffer-length";
+
+    /**
+     * If <code>true</code> the HEX writer will start a new line if the bytes of a
+     * instructions pass the maximum buffer length.<br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
     public static final String OUTPUT_HEX_WRAP = "assembler.output.hex.instruction-wrap";
 
+    /**
+     * Whether to write binary files to disk at all. <br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
     public static final String OUTPUT_BIN = "assembler.output.binary";
+
+    /**
+     * The extension of binary files.<br>
+     * <br>
+     * Valid values: All values that start with a dot '.' and are then followed
+     *               by word characters.<br>
+     * Defaults to: ".bin"
+     */
     public static final String OUTPUT_BIN_EXTENSION = "assembler.output.binary.extension";
+
+    /**
+     * Whether to only write instructions. If <code>false</code>, the whole code memory will be written
+     * to file. <br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
+    public static final String OUTPUT_BIN_NECESSARY = "assembler.output.binary.only-write-necessary";
 
     /**
      * If this value is set to <code>true</code>, the preprocessor will be skipped
@@ -193,6 +250,7 @@ public class AssemblerSettings {
      * <br>
      * A possible gain of deactivating the preprocessor is a potential gain of
      * disabling the potential gain of speed.<br>
+     *
      * Valid values: true, false<br>
      * Defaults to: false
      */
@@ -215,17 +273,17 @@ public class AssemblerSettings {
         s.setDefault(MULTIPLE_SAME_MATCH_CASE, "error");
         s.setDefault(UNNECESSARY_SEGMENTS, "warn");
 
-        s.setDefault(SOURCE_FILE_EXTENSION, ".asm");
-        s.setDefault(HEX_FILE_EXTENSION, ".hex");
-
         s.setDefault(END_CODE_AFTER, "warn");
         s.setDefault(DEFAULT_FLAGS, "");
         s.setDefault(INCLUDE_DEPTH, "256");
-        s.setDefault(INCLUDE_PATH, "includes");
+        s.setDefault(INCLUDE_PATH, "");
+        s.setDefault(MCU_FILE, "mcu/8051.mcu");
         s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
 
         s.setDefault(INCLUDE_DEFAULT_FILE, "true");
         s.setDefault(SKIP_PREPROCESSING, "false");
+
+        s.setDefault(OUTPUT_DIR, ".");
 
         s.setDefault(OUTPUT_HEX, "true");
         s.setDefault(OUTPUT_HEX_EXTENSION, ".hex");
@@ -234,6 +292,7 @@ public class AssemblerSettings {
 
         s.setDefault(OUTPUT_BIN, "true");
         s.setDefault(OUTPUT_BIN_EXTENSION, ".bin");
+        s.setDefault(OUTPUT_BIN_NECESSARY, "true");
     }
 
     /**

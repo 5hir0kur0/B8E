@@ -72,7 +72,8 @@ public class Project implements AutoCloseable {
     }
 
     public String getName() {
-        return Settings.INSTANCE.getProperty("project.name", this.projectPath.getFileName().toString(),
+        return Settings.INSTANCE.getProperty("project.name", this.projectPath.getFileName().toString() +
+                (this.permanent ? "" : " [temporary]"),
                 s -> !s.trim().isEmpty());
     }
 }

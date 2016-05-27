@@ -1,5 +1,7 @@
 package controller;
 
+import assembler.Assembler;
+import assembler.util.problems.Problem;
 import gui.MainWindow;
 import misc.Pair;
 import misc.Settings;
@@ -58,6 +60,13 @@ public class Main {
             System.out.println("     open project in DIRECTORY");
             System.out.println(" b8e --list-default-settings");
             System.out.println("     print default settings to stdout");
+            System.out.println(" b8e --assemble <file> [architecture]");
+            System.out.println("     assemble a file without starting the GUI");
+            System.out.println("      <file>         the file to assemble");
+            System.out.println("      [architecture] the assembler's architecture (defaults to \"8051\")");
+            System.out.println(" b8e --settings <setting>...");
+            System.out.println("     set settings to specific values on startup; settings don't have to exist");
+            System.out.println("      <setting>... setting in <key>=<value> format");
             System.exit(exit);
         }));
         CL_OPTIONS.add(new Pair<>("--list-default-settings", list -> {
@@ -89,12 +98,65 @@ public class Main {
             PROJECT_PERMANENT = true;
         }));
         CL_OPTIONS.add(new Pair<>("--not-permanent", list -> {
-            if (!(list.size() == 1)) {
+            if (list.size() != 1) {
                 System.err.println("Invalid syntax for '--not-permanent' (exactly one argument required)");
                 System.exit(5);
-                PROJECT_PATH = Paths.get(list.get(0));
-                PROJECT_PERMANENT = false;
             }
+            PROJECT_PATH = Paths.get(list.get(0));
+            PROJECT_PERMANENT = false;
+        }));
+        CL_OPTIONS.add(new Pair<>("--settings", list -> {
+            if (list.isEmpty()) {
+                System.err.println("Invalid syntax for '--settings': Expected at least 1 argument.");
+                System.exit(8);
+            } else {
+                for (String setting : list) {
+                    String[] value = setting.split("=");
+                    if (value.length == 2) {
+                        Settings.INSTANCE.setProperty(value[0], value[1]);
+                    } else {
+                        System.err.println("Malformed input: " + setting);
+                        System.err.println(" Expected <key>=<value>");
+                    }
+                }
+            }
+        }));
+        CL_OPTIONS.add(new Pair<>("--assemble", list -> {
+            Assembler a;
+            Path file;
+            Path dir = PROJECT_PATH == null ? Paths.get(System.getProperty("user.dir")) : PROJECT_PATH;
+            if (list.size() >= 1) {
+                file = Paths.get(list.get(0));
+
+                if (list.size() == 2) {
+                    a = Assembler.of(list.get(1));
+                } else if (list.size() > 2) {
+                    System.err.println("Invalid syntax for '--assemble': Expected 2 arguments at most.");
+                    System.exit(7);
+                    return;
+                } else {
+                    a = Assembler.of("8051");
+                }
+
+                List<Problem<?>> problems = new LinkedList<>();
+
+                System.out.println("Start assembling of '" + file + "'...");
+                a.assemble(file, dir, problems);
+                System.out.println("Finish assembling.");
+                if (problems.size() > 0) {
+                    System.out.println("\nSome problems occurred!:");
+                    problems.forEach(System.out::println);
+                    System.out.println("Total problems: " + problems.size());
+                }
+                System.out.println("\nOutput was saved to '" + dir + "'.");
+
+                System.exit((int) problems.stream().filter(Problem::isError).count());
+
+            } else {
+                System.err.println("Invalid syntax for '--assemble': No file specified.");
+                System.exit(6);
+            }
+
         }));
      }
 
