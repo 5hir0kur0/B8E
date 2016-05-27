@@ -6,7 +6,6 @@ import misc.Pair;
 
 import javax.swing.text.*;
 import javax.xml.bind.annotation.*;
-import javax.xml.bind.annotation.adapters.XmlAdapter;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.awt.Color;
 import java.util.*;
@@ -15,9 +14,9 @@ import java.util.regex.Pattern;
 /**
  * @author Gordian
  */
-@XmlRootElement
+@XmlRootElement(namespace = "https://github.com/5hir0kur0/B8E/tree/master/src/gui")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlSeeAlso({Color.class})
+@XmlSeeAlso(Style.class)
 final class SyntaxTheme {
     /**
      * This field associates file types (as {@link String} with their respective {@link Style}s.
@@ -90,10 +89,8 @@ final class SyntaxTheme {
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlSeeAlso({Pair.class, Pattern.class, DummyAttributeSet.class, LinkedList.class})
 class Style {
-    @XmlElementWrapper(name = "pairs")
-    @XmlElement(name = "pair")
-    @XmlJavaTypeAdapter(AttributeSetAdapter.class)
-    final List<Pair<Pattern, AttributeSet>> style;
+    @XmlElement(name = "style")
+    final List<StylePair> style;
 
     // constructor for JAXB
     Style() {
@@ -101,8 +98,15 @@ class Style {
     }
 
     Style(List<Pair<Pattern, AttributeSet>> style) {
-        this.style = Objects.requireNonNull(style);
+        this.style = new LinkedList<>();
+        style.forEach(e -> this.style.add(new StylePair(e.x.pattern(), new DummyAttributeSet(e.y))));
         if (!this.isValid()) throw new IllegalArgumentException("invalid style");
+    }
+
+    List<Pair<Pattern, AttributeSet>> getStyle() {
+        List<Pair<Pattern, AttributeSet>> res =  new LinkedList<>();
+        this.style.forEach(e -> res.add(new Pair<>(Pattern.compile(e.pattern), (AttributeSet)e.attributes)));
+        return res;
     }
 
     final boolean isValid() {
@@ -110,27 +114,21 @@ class Style {
         boolean[] result = {true};
         this.style.forEach(pair -> {
             if (pair == null) { result[0] = false; return; }
-            if (pair.x == null || pair.y == null) { result[0] = false; return; }
+            if (pair.pattern == null || pair.attributes == null) { result[0] = false; return; }
         });
         return result[0];
     }
 }
 
-class AttributeSetAdapter extends XmlAdapter<LinkedList<Pair<Pattern, DummyAttributeSet>>,
-        List<Pair<Pattern, AttributeSet>>> {
-    @Override
-    public List<Pair<Pattern, AttributeSet>> unmarshal(LinkedList<Pair<Pattern, DummyAttributeSet>> v) {
-        List<Pair<Pattern, AttributeSet>> result = new LinkedList<>();
-        for (Pair<Pattern, DummyAttributeSet> entry : v)
-            result.add(new Pair<>(entry.x, entry.y.toAttributeSet()));
-        return result;
-    }
+@XmlRootElement
+class StylePair {
+    @XmlAttribute String pattern;
+    @XmlElement DummyAttributeSet attributes;
 
-    @Override
-    public LinkedList<Pair<Pattern, DummyAttributeSet>> marshal(List<Pair<Pattern, AttributeSet>> v) {
-        LinkedList<Pair<Pattern, DummyAttributeSet>> result = new LinkedList<>();
-        for (Pair<Pattern, AttributeSet> entry : v)
-            result.add(new Pair<>(entry.x, new DummyAttributeSet(entry.y)));
-        return result;
+    @SuppressWarnings("unused") private StylePair() { }
+
+    StylePair(String pattern, DummyAttributeSet attributes) {
+        this.pattern = Objects.requireNonNull(pattern);
+        this.attributes = Objects.requireNonNull(attributes);
     }
 }
