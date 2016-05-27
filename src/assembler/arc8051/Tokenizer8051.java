@@ -180,7 +180,6 @@ public class Tokenizer8051 implements Tokenizer {
                         for (Directive d : directives) {
                             if (d.getName().equalsIgnoreCase(name)) {
                                 d.perform(args, new TokenizingProblem("?", Problem.Type.ERROR, file, line, null), problems);
-
                                 break;
                             }
                         }

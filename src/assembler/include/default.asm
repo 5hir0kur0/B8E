@@ -9,16 +9,16 @@
 ; Author: Noxgrim
 
 ; Convert any pseudo instructions/directives into valid assembler directives
-$regex "s/^\s*(equ|set|[ix]?data|code|bit|end|include|line|file|org|d[bws]|if|else|elif|endif)(\s*?.*?$)/\$\g1\g2/igSM"
+$regex "s/^\s*\b(equ|set|[ix]?data|code|bit|end|include|line|file|org|d[bws]|if|else|elif|endif)\b(\s*?.*?$)/\$\g1\g2/igSM"
 
 ; Convert "infix" directives to "prefix" directives
-$regex "s/^\s*(\S+)\s+(equ|set|code|bit|[ix]?data)\s+?(.*?$)/\$\g2 \g1 \g3/igSM"
+$regex "s/^\s*([\S&&[^;]]+)\s+(equ|set|code|bit|[ix]?data)\s+(.*?)$/\$\g2 \g1 \g3/igSM"
 
 ; Replace all "acc" refereces to the accumulator with "a"
 $regex "s/\bacc\b/a/igSM"
 
 ; Make it possible to write "a, b" instead of "ab" in multiplicative operations
-$regex "s/\(?:mul|div)\b\s+a\s*,\s*b\s*$/lcall \g1/igSM"
+$regex "s/\b(?:mul|div)\b\s+a\s*,\s*b\s*$/lcall \g1/igSM"
 
 ; (Temporarily) replace jumps/calls that should be caulculated by the assembler with long jumps/calls.
 $regex "s/\bjmp\b\s+(\w+)\s*$/ljmp \g1/igSM"

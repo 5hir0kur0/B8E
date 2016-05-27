@@ -21,8 +21,8 @@ $regex "se/\b(addc?|subb)\b\s+(\w+)\s*$/\g1 a, \g2/Missing 'a' as first operand!
 $regex "se/\b(mul|div)\b\s+$/\g1 ab/Missing 'ab' as operand!/igSM"
 
 ; Logical operations
-$regex "se/\b\(anl|[ox]rl)\b\s+(\/\w+)\s*$/\g1 c, \g2/Missing 'c' as first operand!/igSM"
-$regex "se/\b\(anl|[ox]rl)\b\s+(@?r\d+)\s*$/\g1 a, \g2/Missing 'a' as first operand!/igSM"
+$regex "se/\b(anl|[ox]rl)\b\s+(\/\w+)\s*$/\g1 c, \g2/Missing 'c' as first operand!/igSM"
+$regex "se/\b(anl|[ox]rl)\b\s+(@?r\d+)\s*$/\g1 a, \g2/Missing 'a' as first operand!/igSM"
 
 ; Swapping operations
 $regex "se/\b(xchd?)\b\s*(\S+)\s*$/\g1 a, \g2/Missing 'a' as first operand!/igSM"

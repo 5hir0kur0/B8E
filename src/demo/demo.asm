@@ -1,24 +1,26 @@
+MEM equ 20h
+
 MOV A, #01h
 
 START: CJNE A, #01h, LES_OTHER_VERGLEICHS
-       SETB 20h
+       SETB MEM
        LES_OTHER_VERGLEICHS: CJNE A, #80h, SHIFT
-                             CLR 20h
+                             CLR MEM
 
-       SHIFT: JNB 20h, SHIFT_RIGHT
+       SHIFT: JNB MEM, SHIFT_RIGHT
               RL A ; Rotate A left
               LJMP OUT
               SHIFT_RIGHT: RR A ; Rotate A right
 
        OUT: LCALL LOOP ; LCALL FTW!
-            MOV 80h, A  ; P0
+            MOV P0, A  ; P0
             RL A
-            MOV 90h, A  ; P1
+            MOV P1, A  ; P1
             RL A
-            MOV 0A0h, A ; P2
+            MOV P2, A ; P2
             RL A
-            MOV 0B0h, A ; P3
-            MOV A, 80h  ; P0
+            MOV P3, A ; P3
+            MOV A, P0  ; P0
 
        LJMP START
 
@@ -27,3 +29,4 @@ ENDLBL: LJMP ENDLBL
 LOOP: MOV R7, #02h
 SUBL: DJNZ R7, SUBL
       RET
+END

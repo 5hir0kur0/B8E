@@ -423,12 +423,14 @@ public class MainWindow extends JFrame {
         this.problemTable.setDefaultRenderer(Object.class, new ProblemTableCellRenderer());
 
         TableColumn tc;
+        this.problemTable.getTableHeader().setReorderingAllowed(false);
         this.problemTable.getColumnModel().getColumn(0).setMaxWidth(70);
         this.problemTable.getColumnModel().getColumn(1).setWidth(30);
         this.problemTable.getColumnModel().getColumn(2).setMaxWidth(40);
         this.problemTable.getColumnModel().getColumn(4).setWidth(100);
 
         JScrollPane jsp = new JScrollPane(this.problemTable);
+        jsp.setMinimumSize(new Dimension());
         this.problemsSplit.setBottomComponent(jsp);
     }
 
@@ -525,8 +527,9 @@ public class MainWindow extends JFrame {
             for (int row = 0; row < this.problems.size(); ++row) {
                 Problem<?> p = this.problems.get(row);
                 this.problemTable.setValueAt(p.getType(), row, 0);
-                this.problemTable.setValueAt(p.getPath(), row, 1);
-                this.problemTable.setValueAt(p.getLine(), row, 2);
+                this.problemTable.setValueAt(p.getPath() == null ? "-" :
+                        this.project.getProjectPath().relativize(p.getPath()), row, 1);
+                this.problemTable.setValueAt(p.getLine() == -1 ? "-" : p.getLine(), row, 2);
                 this.problemTable.setValueAt(p.getMessage(), row, 3);
                 this.problemTable.setValueAt(p.getCause(), row, 4);
             }
@@ -898,7 +901,7 @@ public class MainWindow extends JFrame {
     private void build(Path path) {
         try {
             Assembler a = this.project.getAssembler();
-            List<Problem<?>> problems = new ArrayList<>(42);
+            List<Problem<?>> problems = new LinkedList<>();
             this.problems = problems;
             a.assemble(path, this.project.getProjectPath(), problems);
 
@@ -927,9 +930,9 @@ public class MainWindow extends JFrame {
 
 
         int i = 0;
-        RAM codeMemory = new RAM(65536);
+        RAM codeMemory = (RAM) this.project.getEmulator().getCodeMemory();
         for (byte b : code) codeMemory.set(i++, b);
-        SwingUtilities.invokeLater(() -> new EmulatorWindow(new MC8051(codeMemory, new RAM(65536)), listing));
+        SwingUtilities.invokeLater(() -> new EmulatorWindow(this.project.getEmulator(), listing));
     }
 
     /**

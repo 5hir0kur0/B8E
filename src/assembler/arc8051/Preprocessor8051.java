@@ -12,6 +12,8 @@ import misc.Settings;
 import simplemath.SimpleMath;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -119,43 +121,91 @@ public class Preprocessor8051 implements Preprocessor {
                 @Override
                 public boolean perform(String[] args) {
                     String targetFile = args[0];
+                    FileSystem zipFS = null; // File system here to be able to close it everywhere
                     try {
                         Path target = null;
                         if (targetFile.charAt(0) == '<' && targetFile.charAt(targetFile.length()-1) == '>') {
                             targetFile = targetFile.substring(1, targetFile.length()-1);
                             String[] dirs = Settings.INSTANCE.getProperty(AssemblerSettings.INCLUDE_PATH)
                                     .split("(?<!(?<!\\\\)\\\\);");
-                            boolean recursiveSearch = Settings.INSTANCE.getBoolProperty(
-                                    AssemblerSettings.INCLUDE_RECURSIVE_SEARCH);
                             for (String dir : dirs) {
 
                                 dir = dir.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";");
 
-                                if (recursiveSearch) {
-                                    Path dirPath = Paths.get(dir);
-                                    if (!Files.exists(dirPath)) {
-                                        problems.add(new PreprocessingProblem("Include path does not exist!",
-                                                Problem.Type.ERROR, currentFile, line, dir));
-                                        continue;
-                                    }
+                                if (!Files.exists(Paths.get(dir))) {
+                                    final String message = "Include path does not exist!", finalDir = dir;
+                                    if (!problems.stream().anyMatch(p -> p.getMessage().equals(message) &&
+                                            p.getCause().equals(finalDir)))
+                                        problems.add(new PreprocessingProblem(message,
+                                                Problem.Type.ERROR, currentFile, -1, dir));
+                                    continue;
+                                }
 
-                                    target = findFile(dirPath, targetFile);
-                                    if (target != null)
-                                        break;
-                                } else
-                                    target = Paths.get(dir, targetFile);
+                                target = Paths.get(dir, targetFile);
+                                if (!Files.exists(target))
+                                    target = null;
+                                else
+                                    break;
                             }
+                            // Try to include from Jar
+                            if (target == null) {
+                                try {
+                                    // Zip-FileSystem handler:
+                                    // http://stackoverflow.com/questions/25032716/
+                                    // getting-filesystemnotfoundexception-from-zipfilesystemprovider-when-creating-a-p
+                                    URI uri = (Preprocessor.class.getResource("include/"+targetFile).toURI());
+                                    Map<String, String> env = new HashMap<>(1);
+                                    env.put("create", "true");
+                                    try {
+
+                                        zipFS = FileSystems.newFileSystem(uri, env);
+
+                                        target = Paths.get(uri);
+
+                                    } catch (IOException ioe) {
+                                        if (zipFS != null) // Close FS
+                                            zipFS.close();
+                                        problems.add(new PreprocessingProblem("Could not include from Jar: " +
+                                                ioe.getMessage(), Problem.Type.ERROR, currentFile, line, targetFile));
+                                        return false;
+                                    } catch (IllegalArgumentException e) {
+                                        // Try standard file System (Probably not in Jar.)
+                                        if (zipFS != null) // Close FS
+                                            zipFS.close();
+                                        target = Paths.get(Preprocessor.class.getResource("include/"+targetFile).toURI());
+                                    }
+                                } catch (NullPointerException | URISyntaxException e) {
+                                    problems.add(new PreprocessingProblem("Could not include from Jar: " + e.getMessage(),
+                                            Problem.Type.ERROR, currentFile, line, targetFile));
+                                    if (zipFS != null) // Close FS
+                                        zipFS.close();
+                                    return false;
+                                }
+                            }
+
                             if (target == null || !Files.exists(target)) {
-                                problems.add(new PreprocessingProblem("No matching file found!", Problem.Type.ERROR,
-                                        currentFile, line, targetFile));
+                                problems.add(new PreprocessingProblem("File to include does not exist!",
+                                        Problem.Type.ERROR, currentFile, line, targetFile));
                                 return false;
                             }
+
                         } else {
-                            target = Paths.get(directory.toString(), args[0]);
-                            System.err.println(target);
+                            boolean recursiveSearch = Settings.INSTANCE.getBoolProperty(
+                                    AssemblerSettings.INCLUDE_RECURSIVE_SEARCH);
+                            if (recursiveSearch) {
+                                target = findFile(directory, targetFile);
+
+                                if (target == null) {
+                                    problems.add(new PreprocessingProblem("File to include not found in directory!",
+                                            Problem.Type.ERROR, currentFile, line, targetFile));
+                                    return false;
+                                }
+                            }
+                            else
+                                target = Paths.get(directory.toString(), targetFile);
                             if (!Files.exists(target)) {
                                 problems.add(new PreprocessingProblem("File to include does not exist!",
-                                        Problem.Type.ERROR, currentFile, line, target.toString()));
+                                        Problem.Type.ERROR, currentFile, line, targetFile));
                                 return false;
                             }
                         }
@@ -191,11 +241,22 @@ public class Preprocessor8051 implements Preprocessor {
                             output.add(outputIndex+fileContent.size()+2, null);
                             output.add(outputIndex+fileContent.size()+3, "$file \"" + currentFile.toString() + "\" " + (line+1));
 
+                            if (zipFS != null) // Close FS
+                                zipFS.close();
                             return true;
                         }
                     } catch (InvalidPathException e) {
                         problems.add(new PreprocessingProblem("Invalid Path!: " + e.getMessage(), Problem.Type.ERROR,
                                 currentFile, line, targetFile));
+                        if (zipFS != null) // Close FS
+                            try {
+                                zipFS.close();
+                            } catch (IOException e1) {
+                                e1.printStackTrace();
+                            }
+                        return false;
+                    } catch (IOException e) {
+                        e.printStackTrace();
                         return false;
                     }
                 }
@@ -533,11 +594,11 @@ public class Preprocessor8051 implements Preprocessor {
         includeDepth = 0;
 
         String lineString = null;
-        this.output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
-                                                                        // for Tokenizer and Assembler_Old
-        this.output.add(includeDefaults()+1, "$line 1");
+        output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
+                                                                   // for Tokenizer and Assembler_Old
+        this.output.add(includeDefaults(), "$line 1");
 
-        for (outputIndex = 1; outputIndex < this.output.size(); ++outputIndex) {
+        for (outputIndex = 0; outputIndex < this.output.size(); ++outputIndex) {
             lineString = this.output.get(outputIndex);
 
             if (lineString == null) {
@@ -566,7 +627,6 @@ public class Preprocessor8051 implements Preprocessor {
                     lineString = lineString.toLowerCase();    // Only convert lines to lowercase if they
                                                               // are not a directive because fallthrough
                                                               // directives may be case sensitive.
-
                 output.add(lineString);
             } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == END_REACHED) {
                 this.line++;
@@ -585,8 +645,6 @@ public class Preprocessor8051 implements Preprocessor {
                     AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
                     problems);
 
-
-        // output.addAll(this.output);
         this.output.clear();
 
         return problems;
@@ -1133,10 +1191,15 @@ public class Preprocessor8051 implements Preprocessor {
         final Settings settings = Settings.INSTANCE;
 
         if (settings.getBoolProperty(AssemblerSettings.INCLUDE_DEFAULT_FILE))
-            this.output.add(++included, "$include <default.asm>");
+            this.output.add(included++, "$include <default.asm>");
 
-        this.output.add(++included, "$include <util.obvious-operands."+
+        this.output.add(included++, "$include <util.obvious-operands."+
                 settings.getProperty(AssemblerSettings.OBVIOUS_OPERANDS, AssemblerSettings.VALID_ERROR)+".asm>");
+        {
+            final String file = settings.getProperty(AssemblerSettings.MCU_FILE);
+            if (!file.isEmpty())
+                this.output.add(included++, "$include <"+file+">");
+        }
         return included;
     }
 
