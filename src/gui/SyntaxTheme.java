@@ -5,16 +5,11 @@ package gui;
 import misc.Pair;
 
 import javax.swing.text.*;
-import javax.swing.text.html.HTMLDocument;
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlSeeAlso;
+import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.adapters.XmlAdapter;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.awt.Color;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -22,14 +17,19 @@ import java.util.regex.Pattern;
  */
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
+@XmlSeeAlso({Color.class})
 final class SyntaxTheme {
     /**
      * This field associates file types (as {@link String} with their respective {@link Style}s.
      */
     final Map<String, Style> styleMap;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultLineNumberBackground;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultLineNumberForeground;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultCodeBackground;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultCodeForeground;
 
     SyntaxTheme(Map<String, Style> styleMap, Color defaultLineNumberBackground, Color defaultLineNumberForeground,
@@ -42,6 +42,7 @@ final class SyntaxTheme {
     }
 
     // constructor for JAXB
+    @SuppressWarnings("unused")
     SyntaxTheme() {
         this.styleMap = Collections.emptyMap();
         this.defaultLineNumberBackground = Color.WHITE;
@@ -84,12 +85,14 @@ final class SyntaxTheme {
     }
 }
 
-@XmlRootElement
+
+@XmlRootElement(name = "style")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlSeeAlso({Pair.class, Pattern.class,
-        SimpleAttributeSet.class,
-})
-final class Style {
+@XmlSeeAlso({Pair.class, Pattern.class, DummyAttributeSet.class, LinkedList.class})
+class Style {
+    @XmlElementWrapper(name = "pairs")
+    @XmlElement(name = "pair")
+    @XmlJavaTypeAdapter(AttributeSetAdapter.class)
     final List<Pair<Pattern, AttributeSet>> style;
 
     // constructor for JAXB
@@ -110,5 +113,24 @@ final class Style {
             if (pair.x == null || pair.y == null) { result[0] = false; return; }
         });
         return result[0];
+    }
+}
+
+class AttributeSetAdapter extends XmlAdapter<LinkedList<Pair<Pattern, DummyAttributeSet>>,
+        List<Pair<Pattern, AttributeSet>>> {
+    @Override
+    public List<Pair<Pattern, AttributeSet>> unmarshal(LinkedList<Pair<Pattern, DummyAttributeSet>> v) {
+        List<Pair<Pattern, AttributeSet>> result = new LinkedList<>();
+        for (Pair<Pattern, DummyAttributeSet> entry : v)
+            result.add(new Pair<>(entry.x, entry.y.toAttributeSet()));
+        return result;
+    }
+
+    @Override
+    public LinkedList<Pair<Pattern, DummyAttributeSet>> marshal(List<Pair<Pattern, AttributeSet>> v) {
+        LinkedList<Pair<Pattern, DummyAttributeSet>> result = new LinkedList<>();
+        for (Pair<Pattern, AttributeSet> entry : v)
+            result.add(new Pair<>(entry.x, new DummyAttributeSet(entry.y)));
+        return result;
     }
 }
