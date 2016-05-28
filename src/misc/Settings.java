@@ -16,7 +16,7 @@ public enum Settings {
     private Properties settings;
     private Properties defaults;
 
-    //ctors of enums are private by definition
+    //constructors of enums are private by definition
     Settings() {
         defaults = new Properties();
         settings = new Properties(defaults);
