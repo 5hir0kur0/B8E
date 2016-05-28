@@ -7,6 +7,7 @@ import controller.Project;
 import controller.TextFile;
 import emulator.RAM;
 import emulator.arc8051.MC8051;
+import javafx.scene.control.*;
 import misc.Pair;
 
 import javax.swing.*;
@@ -216,6 +217,23 @@ public class MainWindow extends JFrame {
         final String VIEW_MENU_TEXT = "View";
         final String PROJECT_MENU_TEXT = "Project";
 
+        class SyntaxThemeAction extends AbstractAction {
+            private final String name;
+            SyntaxThemeAction(String name) {
+                super(name);
+                if (Objects.requireNonNull(name, "syntax theme name must not be null").trim().isEmpty())
+                    throw new IllegalArgumentException("syntax theme name must not be emtpy");
+                if (!SyntaxThemes.INSTANCE.getAvailableThemes().contains(name) && !"DEFAULT".equals(name))
+                    throw new IllegalArgumentException(name + " is not a valid theme name");
+                this.name = name;
+            }
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SyntaxThemes.INSTANCE.setCurrentTheme(this.name);
+                MainWindow.this.updateThemes();
+            }
+        }
+
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu(FILE_MENU_TEXT);
 
@@ -281,6 +299,14 @@ public class MainWindow extends JFrame {
         JMenuItem refreshTree = new JMenuItem(this.refreshTree);
         refreshTree.setMnemonic('f');
         viewMenu.add(refreshTree);
+        JMenu themeMenu = new JMenu("Select theme");
+        themeMenu.setMnemonic('s');
+        for (String themeName : SyntaxThemes.INSTANCE.getAvailableThemes()) {
+            JMenuItem tmp = new JMenuItem(new SyntaxThemeAction(themeName));
+            themeMenu.add(tmp);
+        }
+        viewMenu.addSeparator();
+        viewMenu.add(themeMenu);
         menuBar.add(viewMenu);
 
         JMenu projectMenu = new JMenu(PROJECT_MENU_TEXT);
@@ -312,6 +338,11 @@ public class MainWindow extends JFrame {
 
 
         return menuBar;
+    }
+
+    private void updateThemes() {
+        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles)
+            p.y.updateTheme();
     }
 
     private static String getFileExtension(Path path) {

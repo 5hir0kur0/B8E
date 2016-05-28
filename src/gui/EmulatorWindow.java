@@ -48,7 +48,7 @@ public class EmulatorWindow extends JFrame {
     private final static Font FONT = new Font(Font.MONOSPACED, Font.PLAIN, 11);
     private final static Font HEADER_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
 
-    private final static String REGISTER_NUMERAL_SYSTEM_SETTING = "gui.emulator.registerNumeralSystem";
+    private final static String REGISTER_NUMERAL_SYSTEM_SETTING = "gui.emulator.register-numeral-system";
     private final static String REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT = NumeralSystem.HEXADECIMAL.name();
     private final static Predicate<String> IS_VALID_NUMERAL_SYSTEM = s -> {
         try {
@@ -58,7 +58,7 @@ public class EmulatorWindow extends JFrame {
             return false;
         }
     };
-    private final static String MEMORY_NUMERAL_SYSTEM_SETTING = "gui.emulator.memoryNumeralSystem";
+    private final static String MEMORY_NUMERAL_SYSTEM_SETTING = "gui.emulator.memory-numeral-system";
     private final static String MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT = NumeralSystem.HEXADECIMAL.name();
     static {
         Settings.INSTANCE.setDefault(REGISTER_NUMERAL_SYSTEM_SETTING, REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT);

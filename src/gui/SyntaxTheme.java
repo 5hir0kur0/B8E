@@ -16,12 +16,12 @@ import java.util.regex.Pattern;
  */
 @XmlRootElement(namespace = "https://github.com/5hir0kur0/B8E/tree/master/src/gui")
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlSeeAlso(Style.class)
+@XmlSeeAlso({Style.class, HashMap.class, ColorAdapter.class, Color.class})
 final class SyntaxTheme {
     /**
      * This field associates file types (as {@link String} with their respective {@link Style}s.
      */
-    final Map<String, Style> styleMap;
+    final HashMap<String, Style> styleMap;
     @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultLineNumberBackground;
     @XmlJavaTypeAdapter(ColorAdapter.class)
@@ -31,7 +31,7 @@ final class SyntaxTheme {
     @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultCodeForeground;
 
-    SyntaxTheme(Map<String, Style> styleMap, Color defaultLineNumberBackground, Color defaultLineNumberForeground,
+    SyntaxTheme(HashMap<String, Style> styleMap, Color defaultLineNumberBackground, Color defaultLineNumberForeground,
                 Color defaultCodeBackground, Color defaultCodeForeground) {
         this.styleMap = Objects.requireNonNull(styleMap);
         this.defaultLineNumberBackground = Objects.requireNonNull(defaultLineNumberBackground);
@@ -43,7 +43,7 @@ final class SyntaxTheme {
     // constructor for JAXB
     @SuppressWarnings("unused")
     SyntaxTheme() {
-        this.styleMap = Collections.emptyMap();
+        this.styleMap = new HashMap<>();
         this.defaultLineNumberBackground = Color.WHITE;
         this.defaultLineNumberForeground = Color.BLACK;
         this.defaultCodeBackground = Color.WHITE;
@@ -85,16 +85,15 @@ final class SyntaxTheme {
 }
 
 
-@XmlRootElement(name = "style")
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlSeeAlso({Pair.class, Pattern.class, DummyAttributeSet.class, LinkedList.class})
 class Style {
     @XmlElement(name = "style")
-    final List<StylePair> style;
+    final LinkedList<StylePair> style;
 
     // constructor for JAXB
     Style() {
-        this.style = Collections.emptyList();
+        this.style = new LinkedList<>();
     }
 
     Style(List<Pair<Pattern, AttributeSet>> style) {
@@ -105,7 +104,7 @@ class Style {
 
     List<Pair<Pattern, AttributeSet>> getStyle() {
         List<Pair<Pattern, AttributeSet>> res =  new LinkedList<>();
-        this.style.forEach(e -> res.add(new Pair<>(Pattern.compile(e.pattern), (AttributeSet)e.attributes)));
+        this.style.forEach(e -> res.add(new Pair<>(Pattern.compile(e.pattern), e.attributes.toAttributeSet())));
         return res;
     }
 
