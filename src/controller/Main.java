@@ -39,6 +39,7 @@ public class Main {
             "gui.SyntaxThemes",
             "gui.SyntaxThemes",
             "gui.EmulatorWindow",
+            "gui.MainWindow",
             "emulator.arc8051.State8051",
             "controller.Main",
             "assembler.util.AssemblerSettings"

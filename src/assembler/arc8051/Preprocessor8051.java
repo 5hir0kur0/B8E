@@ -117,10 +117,18 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("include", 1, 1, new String[]{"x\"\"", "x''", "i<>"}, false) {
+            new Directive("include", 1, 2, new String[]{"x\"\"", "x''", "i<>"}, false) {
                 @Override
                 public boolean perform(String[] args) {
-                    String targetFile = args[0];
+                    String targetFile = args.length == 1 ? args[0] : args[1];
+                    boolean internal = false;
+                    if (args.length == 2) {
+                        if (args[0].equals("-i") || args[0].equalsIgnoreCase("--internal"))
+                            internal = true;
+                        else
+                            problems.add(new PreprocessingProblem("Unknown option for 'include' directive.",
+                                    Problem.Type.ERROR, currentFile, line, args[0]));
+                    }
                     FileSystem zipFS = null; // File system here to be able to close it everywhere
                     try {
                         Path target = null;
@@ -128,25 +136,26 @@ public class Preprocessor8051 implements Preprocessor {
                             targetFile = targetFile.substring(1, targetFile.length()-1);
                             String[] dirs = Settings.INSTANCE.getProperty(AssemblerSettings.INCLUDE_PATH)
                                     .split("(?<!(?<!\\\\)\\\\);");
-                            for (String dir : dirs) {
+                            if (!internal)
+                                for (String dir : dirs) {
 
-                                dir = dir.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";");
+                                    dir = dir.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";");
 
-                                if (!Files.exists(Paths.get(dir))) {
-                                    final String message = "Include path does not exist!", finalDir = dir;
-                                    if (!problems.stream().anyMatch(p -> p.getMessage().equals(message) &&
-                                            p.getCause().equals(finalDir)))
-                                        problems.add(new PreprocessingProblem(message,
-                                                Problem.Type.ERROR, currentFile, -1, dir));
-                                    continue;
+                                    if (!Files.exists(Paths.get(dir))) {
+                                        final String message = "Include path does not exist!", finalDir = dir;
+                                        if (!problems.stream().anyMatch(p -> p.getMessage().equals(message) &&
+                                                p.getCause().equals(finalDir)))
+                                            problems.add(new PreprocessingProblem(message,
+                                                    Problem.Type.ERROR, currentFile, -1, dir));
+                                        continue;
+                                    }
+
+                                    target = Paths.get(dir, targetFile);
+                                    if (!Files.exists(target))
+                                        target = null;
+                                    else
+                                        break;
                                 }
-
-                                target = Paths.get(dir, targetFile);
-                                if (!Files.exists(target))
-                                    target = null;
-                                else
-                                    break;
-                            }
                             // Try to include from Jar
                             if (target == null) {
                                 try {
@@ -392,10 +401,10 @@ public class Preprocessor8051 implements Preprocessor {
                     boolean force = false;
                     Regex regex ;
                     if (args.length > 1) {
-                        if (args[0].equalsIgnoreCase("--force") || args[0].equals("-f"))
+                        if (args[0].equals("-f") || args[0].equalsIgnoreCase("--force"))
                             force = true;
                         else
-                            problems.add(new PreprocessingProblem("Unknown option of 'regex' directive.",
+                            problems.add(new PreprocessingProblem("Unknown option for 'regex' directive.",
                                     Problem.Type.ERROR, currentFile, line, args[0]));
                         regex = new Regex(args[1], currentFile, line, problems);
                     } else
@@ -1199,6 +1208,14 @@ public class Preprocessor8051 implements Preprocessor {
             final String file = settings.getProperty(AssemblerSettings.MCU_FILE);
             if (!file.isEmpty())
                 this.output.add(included++, "$include <"+file+">");
+        }
+        {
+            final String files = settings.getProperty(AssemblerSettings.AUTO_INCLUDES);
+            if (!files.isEmpty())
+                for (String file : files.split("(?!(?!\\\\)\\\\);")) {
+                    if (!file.isEmpty())
+                        this.output.add(included++, "$include <"+file+">");
+                }
         }
         return included;
     }
