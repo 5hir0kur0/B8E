@@ -7,20 +7,15 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.swing.text.StyleConstants;
-import javax.xml.bind.JAXB;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
+import javax.xml.bind.*;
 
 
 public enum SyntaxThemes {
@@ -42,25 +37,32 @@ public enum SyntaxThemes {
 
         this.themes = new HashMap<>();
         try {
-            final Path themePath = Paths.get(Settings.INSTANCE.getProperty(SYNTAX_THEMES_SETTING_NAME));
-            Files.newDirectoryStream(themePath).forEach(path -> {
-                if (Files.isReadable(themePath) && Files.isRegularFile(themePath))
-                    try (Reader in = Files.newBufferedReader(themePath)){
-                        final SyntaxTheme tmp = JAXB.unmarshal(in, SyntaxTheme.class);
-                        final String tmpName = getThemeName(themePath);
-                        if (tmpName.trim().isEmpty())
-                            throw new IllegalArgumentException("theme name must not be null or empty");
-                        if (tmp == null) throw new IllegalArgumentException("theme must not be null");
-                        themes.put(getThemeName(path), tmp);
-                    } catch (IOException|IndexOutOfBoundsException e) {
-                        System.err.println("An exception occurred while parsing the theme '" + themePath + "':");
-                        e.printStackTrace();
-                    }
-            });
-        } catch (InvalidPathException|IOException e) {
+            final String pathSetting = Settings.INSTANCE.getProperty(SYNTAX_THEMES_SETTING_NAME);
+            final Path themePath = Paths.get(".".equals(pathSetting) ? System.getProperty("user.dir") : pathSetting);
+            final JAXBContext jaxbContext = JAXBContext.newInstance(SyntaxTheme.class);
+            final Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(themePath)) {
+                for (Path path : stream) {
+                    if (Files.isReadable(path) && Files.isRegularFile(path) && path.toString().endsWith(".xml"))
+                        try (Reader in = Files.newBufferedReader(path)){
+                            final SyntaxTheme tmp = (SyntaxTheme)jaxbUnmarshaller.unmarshal(in);
+                            final String tmpName = getThemeName(themePath);
+                            if (tmpName.trim().isEmpty())
+                                throw new IllegalArgumentException("theme name must not be null or empty");
+                            if (tmp == null) throw new IllegalArgumentException("theme must not be null");
+                            themes.put(getThemeName(path), tmp);
+                        } catch (IOException|IndexOutOfBoundsException|ClassCastException|JAXBException e) {
+                            System.err.println("An exception occurred while parsing the theme '" + themePath + "':");
+                            e.printStackTrace();
+                        }
+                }
+            }
+        } catch (InvalidPathException|IOException|JAXBException e) {
             System.err.println("An exception occurred while reading the syntax themes:");
             e.printStackTrace();
         }
+
+        if (!this.themes.containsKey("DEFAULT")) this.themes.put("DEFAULT", makeFallbackTheme());
 
         this.currentThemeName = Settings.INSTANCE.getProperty(SYNTAX_THEME_NAME_SETTING_NAME);
     }
@@ -76,6 +78,10 @@ public enum SyntaxThemes {
     public void setCurrentTheme(String name) throws IllegalArgumentException {
         if (!this.themes.containsKey(name)) throw new IllegalArgumentException(name + " is not a valid theme name");
         this.currentThemeName = name;
+    }
+
+    public Set<String> getAvailableThemes() {
+        return Collections.unmodifiableSet(this.themes.keySet());
     }
 
     private static String getThemeName(Path p) {
@@ -133,13 +139,10 @@ enum FallbackSyntaxThemes {
             new Color(0xBA8BAF), // base0E
             new Color(0xA16946)) // base0F
     {
-        List<Pair<Pattern, AttributeSet>> hexTheme = null;
-        List<Pair<Pattern, AttributeSet>> propertiesTheme = null;
-        List<Pair<Pattern, AttributeSet>> asmTheme = null;
 
         @Override public SyntaxTheme getSyntaxTheme() {
             if (null == DEFAULT.syntaxTheme) {
-                final Map<String, Style> tmpMap = new HashMap<>();
+                final HashMap<String, Style> tmpMap = new HashMap<>();
                 final Style tmpAsmStyle = new Style(FallbackSyntaxThemes.createAsmSourceFileTheme(
                         DEFAULT.base0A, // to do foreground
                         DEFAULT.base06, // to do background
@@ -360,25 +363,18 @@ enum FallbackSyntaxThemes {
                                                                   Color eofBackgroundColor
                                                                  ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(HEX_IRRELEVANT, create(StyleConstants.Foreground, irrelevantColor)));
-        tmp.add(new Pair<>(HEX_ERROR, create(StyleConstants.Foreground, errorColor,
-                StyleConstants.StrikeThrough, true)));
-        tmp.add(new Pair<>(HEX_START_CODE, create(StyleConstants.Foreground, startCodeColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(StyleConstants.Foreground, dataByteCountColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_ADDRESS, create(StyleConstants.Foreground, addressColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(StyleConstants.Foreground, validRecordTypeColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_DATA, create(StyleConstants.Foreground, dataColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_CHECKSUM, create(StyleConstants.Foreground, checksumForegroundColor,
-                StyleConstants.Background, checksumBackgroundColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(HEX_EOF, create(StyleConstants.Foreground, eofForegroundColor,
-                StyleConstants.Background, eofBackgroundColor,
-                StyleConstants.StrikeThrough, false)));
+        tmp.add(new Pair<>(HEX_IRRELEVANT, create(DEFAULT.base07, false, irrelevantColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_ERROR, create(DEFAULT.base07, false, errorColor, false, true, false)));
+        tmp.add(new Pair<>(HEX_START_CODE, create(DEFAULT.base07, false, startCodeColor,false, false, false)));
+        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(DEFAULT.base07, false, dataByteCountColor, false, false,
+                false)));
+        tmp.add(new Pair<>(HEX_ADDRESS, create(DEFAULT.base07, false, addressColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(DEFAULT.base07, false, validRecordTypeColor, false, false,
+                false)));
+        tmp.add(new Pair<>(HEX_DATA, create(DEFAULT.base07, false, dataColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_CHECKSUM, create(checksumBackgroundColor, false, checksumForegroundColor, false, false,
+                false)));
+        tmp.add(new Pair<>(HEX_EOF, create(eofBackgroundColor, false, eofForegroundColor, false, false, false)));
         return tmp;
     }
 
@@ -410,58 +406,40 @@ enum FallbackSyntaxThemes {
                                                                               Color errorColor
                                                                              ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(ASM_ERRORS, create(StyleConstants.Foreground, errorColor,
-                StyleConstants.StrikeThrough, true)));
-        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(StyleConstants.Foreground, parenthesesContentColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_PARENTHESES, create(StyleConstants.Foreground, parenthesesColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(StyleConstants.Foreground, dotColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL, create(StyleConstants.Foreground, symbolColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(StyleConstants.Foreground, typePrefixColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(StyleConstants.Foreground, symbolReservedErrorColor,
-                StyleConstants.StrikeThrough, true)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(StyleConstants.Foreground, symbolReservedColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(StyleConstants.Foreground, symbolReservedIndirectColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(StyleConstants.Background, directiveBackgroundColor)));
+        tmp.add(new Pair<>(ASM_ERRORS, create(Color.WHITE, false, errorColor, false, true, false)));
+        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(Color.WHITE, false, parenthesesContentColor, false,
+                false, false)));
+        tmp.add(new Pair<>(ASM_PARENTHESES, create(Color.WHITE, false, parenthesesColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(Color.WHITE, false, dotColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL, create(Color.WHITE, false, symbolColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(Color.WHITE, false, typePrefixColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(Color.WHITE, false, symbolReservedErrorColor, false,
+                true, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(Color.WHITE, false, symbolReservedColor, false, false,
+                false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(Color.WHITE, false, symbolReservedIndirectColor,
+                false, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(directiveBackgroundColor, false, DEFAULT.base02, false,
+                false, false)));
                 // Do not disable error strike through because errors still could occur in the directive
-        tmp.add(new Pair<>(ASM_DIRECTIVE, create(StyleConstants.Foreground, directiveColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(StyleConstants.Foreground, includePathFileColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(StyleConstants.Foreground, includePathBracketsColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(StyleConstants.Foreground, symbolColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(StyleConstants.Foreground, numberErrorColor,
-                StyleConstants.Italic, true)));
-        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(StyleConstants.Foreground, numberHexadecimalColor,
-                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(StyleConstants.Foreground, numberOctalColor,
-                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(StyleConstants.Foreground, numberBinaryColor,
-                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(StyleConstants.Foreground, numberDecimalColor,
-                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(StyleConstants.Foreground, numberRadixColor,
-                StyleConstants.StrikeThrough, false, StyleConstants.Italic, false)));
-        tmp.add(new Pair<>(ASM_COMMAS, create(StyleConstants.Foreground, commaColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_MNEMONIC, create(StyleConstants.Foreground, mnemonicColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_LABEL,create(StyleConstants.Foreground, labelColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_STRING, create(StyleConstants.Foreground, stringColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_COMMENT, create(StyleConstants.Foreground, commentColor,
-                StyleConstants.StrikeThrough, false)));
-        tmp.add(new Pair<>(ASM_TODO, create( StyleConstants.StrikeThrough, false, StyleConstants.Italic, true,
-                StyleConstants.Foreground, todoForegroundColor, StyleConstants.Background, todoBackgroundColor)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE, create(Color.WHITE, false, directiveColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(Color.WHITE, false, includePathFileColor, false,
+                false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(Color.WHITE, false, includePathBracketsColor,
+                false, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(Color.WHITE, false, symbolColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(Color.WHITE, false, numberErrorColor, true, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(Color.WHITE, false, numberHexadecimalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(Color.WHITE, false, numberOctalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(Color.WHITE, false, numberBinaryColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(Color.WHITE, false, numberDecimalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(Color.WHITE, false, numberRadixColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_COMMAS, create(Color.WHITE, false, commaColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_MNEMONIC, create(Color.WHITE, false, mnemonicColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_LABEL,create(Color.WHITE, false, labelColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_STRING, create(Color.WHITE, false, stringColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_COMMENT, create(Color.WHITE, false, commentColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_TODO, create(todoBackgroundColor, false, todoForegroundColor, true, false, false)));
         return tmp;
     }
 
@@ -471,21 +449,25 @@ enum FallbackSyntaxThemes {
                                                                            Color endEscape,
                                                                            Color unicode) {
         LinkedList<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(PROP_VALUE, create(StyleConstants.Foreground, value)));
-        tmp.add(new Pair<>(PROP_KEY, create(StyleConstants.Foreground, key)));
-        tmp.add(new Pair<>(PROP_UNICODE, create(StyleConstants.Foreground, unicode)));
-        tmp.add(new Pair<>(PROP_END_ESCAPE, create(StyleConstants.Foreground, endEscape)));
-        tmp.add(new Pair<>(PROP_COMMENT, create(StyleConstants.Foreground, comment)));
+        tmp.add(new Pair<>(PROP_VALUE, create(DEFAULT.base07, false, value, false, false, false)));
+        tmp.add(new Pair<>(PROP_KEY, create(DEFAULT.base07, false, key, false, false, false)));
+        tmp.add(new Pair<>(PROP_UNICODE, create(DEFAULT.base07, false, unicode, false, false, false)));
+        tmp.add(new Pair<>(PROP_END_ESCAPE, create(DEFAULT.base07, false, endEscape, false, false, false)));
+        tmp.add(new Pair<>(PROP_COMMENT, create(DEFAULT.base07, false, comment, false, false, false)));
         return tmp;
     }
 
     public abstract SyntaxTheme getSyntaxTheme();
 
-    static AttributeSet create(Object... nameValuePairs) {
+    static AttributeSet create(Color background, boolean bold, Color foreground, boolean italic,
+                               boolean strikeThrough, boolean underline) {
         MutableAttributeSet result = StyleContext.getDefaultStyleContext().addStyle(null, null);
-        for (int i = 0; i < nameValuePairs.length-1; ++i) {
-            result.addAttribute(nameValuePairs[i], nameValuePairs[++i]);
-        }
+        StyleConstants.setBackground(result, background);
+        StyleConstants.setBold(result, bold);
+        StyleConstants.setForeground(result, foreground);
+        StyleConstants.setItalic(result, italic);
+        StyleConstants.setStrikeThrough(result, strikeThrough);
+        StyleConstants.setUnderline(result, underline);
         return result;
     }
 }
