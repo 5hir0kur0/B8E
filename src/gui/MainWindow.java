@@ -43,7 +43,13 @@ public class MainWindow extends JFrame {
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
             refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile, buildRunMain, buildRunCurrent,
             buildMain, buildCurrent, runMain, runCurrent, setMain;
+
+    private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
+    private final static String AUTOSAVE_SETTING_DEFAULT = "true";
+
+    static {Settings.INSTANCE.setDefault(AUTOSAVE_SETTING, AUTOSAVE_SETTING_DEFAULT);}
     { setUpActions(); }
+
     final static String UNDO_TEXT = "Undo";
     final static String REDO_TEXT = "Redo";
     final static String COPY_TEXT = "Copy";
@@ -899,6 +905,8 @@ public class MainWindow extends JFrame {
     }
 
     private void build(Path path) {
+        if (Settings.INSTANCE.getBoolProperty(AUTOSAVE_SETTING))
+            this.saveAll.actionPerformed(new ActionEvent(AUTOSAVE_SETTING, 0, "autosave"));
         try {
             Assembler a = this.project.getAssembler();
             List<Problem<?>> problems = new LinkedList<>();

@@ -13,30 +13,6 @@ import java.util.function.Predicate;
 public class AssemblerSettings {
 
     /**
-     * The assumed base if no prefix or postfix is given.<br>
-     * This setting has a higher weight than the user provided
-     * suffixes and postfixes. Because of that <code>0b1010</code>
-     * will always be recognised as a hexadecimal number instead
-     * of a binary number if the value of this setting is set to
-     * <code>16</code>.<br>
-     * A side effect of this behavior is that every valid number
-     * will be recognised as a hexadecimal number if <code>16</code>
-     * is used as a value and the notation is set to prefix.
-     * <br>
-     * Valid values: 2, 8, 10, 16, "auto"<br>
-     * Defaults to: 10
-     */
-    public static final String RADIX = "assembler.parsing.default-number-radix";
-    /**
-     * The used notations for numbers.<br>
-     * Can be either "prefix" (0, 0x or 0b) or
-     * "postfix"/"suffix" (b, o, q, d or h).<br>
-     * <br>
-     * Valid values: "prefix", "postfix", "suffix"<br>
-     * Defaults to: "postfix"
-     */
-    public static final String NOTATION = "assembler.parsing.notation";
-    /**
      * The behaviour if some "obvious" operands are encountered.<br>
      * Obvious operands are operands that aren't needed to specify the
      * mnemonic-operand combination.<br>
@@ -139,7 +115,7 @@ public class AssemblerSettings {
 
     /**
      * Determines whether the preprocessor searches recursively for a given file
-     * in the given path.<br>
+     * in the directory.<br>
      * <br>
      * Valid values: true, false<br>
      * Defaults to: false
@@ -154,6 +130,16 @@ public class AssemblerSettings {
      * Defaults to: true
      */
     public static final String INCLUDE_DEFAULT_FILE = "assembler.include-default-file";
+
+    /**
+     * The preprocessor tries to include every file specified. The files will be treated as path includes
+     * (<code>&lt;&gt;</code>).
+     * Multiple files can be separated with a ';'<br>
+     * <br>
+     * Valid values: Any valid path
+     * Defaults to: ""
+     */
+    public static final String AUTO_INCLUDES = "assembler.automatic-included-files";
 
     /**
      * The MCU file to include. If empty, the file will not be included. The file will be treated like
@@ -263,9 +249,6 @@ public class AssemblerSettings {
     static {
         Settings s = Settings.INSTANCE;
 
-        s.setDefault(RADIX, "10");
-        s.setDefault(NOTATION, "postfix");
-
         s.setDefault(OBVIOUS_OPERANDS, "error");
         s.setDefault(UNNECESSARY_OPERANDS, "error");
         s.setDefault(ADDRESS_OFFSET, "warn");
@@ -278,6 +261,7 @@ public class AssemblerSettings {
         s.setDefault(INCLUDE_DEPTH, "256");
         s.setDefault(INCLUDE_PATH, "");
         s.setDefault(MCU_FILE, "mcu/8051.mcu");
+        s.setDefault(AUTO_INCLUDES, "");
         s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
 
         s.setDefault(INCLUDE_DEFAULT_FILE, "true");
@@ -310,24 +294,4 @@ public class AssemblerSettings {
     public static final Predicate<String> VALID_FILE_EXTENSION = x -> MC8051Library.FILE_EXTENSION_PATTERN.matcher(x)
             .matches();
 
-    /**
-     * Whether the value is valid radix.<br>
-     * Valid radixes: 2: binary, 8: octal, 10: decimal and 16: hexadecimal
-     * @see #RADIX
-     */
-    private static final IntPredicate VALID_RADIX = x -> x == 2 || x == 8 || x == 10 || x == 16;
-
-    /**
-     * Gets the corresponding radix char from the radix setting.
-     * @see #RADIX
-     */
-    public static char getRadix() {
-        int radix = Settings.INSTANCE.getIntProperty(RADIX, 10, VALID_RADIX);
-        switch (radix) {
-            case  2: return 'b';
-            case  8: return 'o';
-            case 16: return 'h';
-            default: return 'd';
-        }
-    }
 }
