@@ -8,6 +8,8 @@ import misc.Settings;
 
 import javax.swing.*;
 import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -68,6 +70,8 @@ public class Main {
             System.out.println(" b8e --settings <setting>...");
             System.out.println("     set settings to specific values on startup; settings don't have to exist");
             System.out.println("      <setting>... setting in <key>=<value> format");
+            System.out.println(" b8e --settings-file FILE");
+            System.out.println("     load settings from a specified properties-file");
             System.exit(exit);
         }));
         CL_OPTIONS.add(new Pair<>("--list-default-settings", list -> {
@@ -120,6 +124,21 @@ public class Main {
                         System.err.println(" Expected <key>=<value>");
                     }
                 }
+            }
+        }));
+        CL_OPTIONS.add(new Pair<>("--settings-file", list -> {
+            if (list.size() != 1) {
+                System.err.println("Invalid syntax for '--settings-file': Expected exactly one argument.");
+                System.exit(13);
+            }
+            try {
+                final Path path = Paths.get(list.get(0));
+                try (Reader in = Files.newBufferedReader(path)) {
+                    Settings.INSTANCE.load(in);
+                }
+            } catch (Exception e) {
+                System.err.println("Reading the settings file (" + list.get(0) + ") failed");
+                System.exit(13);
             }
         }));
         CL_OPTIONS.add(new Pair<>("--assemble", list -> {
