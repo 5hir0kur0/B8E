@@ -424,11 +424,10 @@ public class MainWindow extends JFrame {
         this.mainSplit.setDividerLocation(0.75);
     }
 
-    private final void setUpProblemTable() {
+    private void setUpProblemTable() {
         this.problemTable = new JTable(new ProblemTableModel());
         this.problemTable.setDefaultRenderer(Object.class, new ProblemTableCellRenderer());
 
-        TableColumn tc;
         this.problemTable.getTableHeader().setReorderingAllowed(false);
         this.problemTable.getColumnModel().getColumn(0).setMaxWidth(70);
         this.problemTable.getColumnModel().getColumn(1).setWidth(30);
