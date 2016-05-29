@@ -70,7 +70,8 @@ public class Listing {
             for (byte b : codes) {
                 sb.append(String.format("%02x ", b & 0xFF).toUpperCase());
             }
-            sb.setLength(sb.length()-1);
+            if (codes.length > 0)
+                sb.setLength(sb.length()-1);
 
             this.codes =  sb.toString();
         }

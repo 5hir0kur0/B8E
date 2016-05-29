@@ -13,14 +13,14 @@ START: CJNE A, #01h, LES_OTHER_VERGLEICHS
               SHIFT_RIGHT: RR A ; Rotate A right
 
        OUT: LCALL LOOP ; LCALL FTW!
-            MOV P0, A  ; P0
+            MOV P0, A
             RL A
-            MOV P1, A  ; P1
+            MOV P1, A
             RL A
-            MOV P2, A ; P2
+            MOV P2, A
             RL A
-            MOV P3, A ; P3
-            MOV A, P0  ; P0
+            MOV P3, A
+            MOV A, P0
 
        LJMP START
 

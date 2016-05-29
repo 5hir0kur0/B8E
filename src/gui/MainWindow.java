@@ -3,6 +3,7 @@ package gui;
 import assembler.Assembler;
 import assembler.util.Listing;
 import assembler.util.problems.Problem;
+import controller.Main;
 import controller.Project;
 import controller.TextFile;
 import emulator.RAM;
@@ -13,6 +14,7 @@ import misc.Settings;
 
 import javax.swing.*;
 import javax.swing.event.TreeModelListener;
+import javax.swing.plaf.basic.BasicInternalFrameUI;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
 import javax.swing.table.*;
@@ -429,14 +431,42 @@ public class MainWindow extends JFrame {
         this.problemTable.setDefaultRenderer(Object.class, new ProblemTableCellRenderer());
 
         this.problemTable.getTableHeader().setReorderingAllowed(false);
-        this.problemTable.getColumnModel().getColumn(0).setMaxWidth(70);
-        this.problemTable.getColumnModel().getColumn(1).setWidth(30);
-        this.problemTable.getColumnModel().getColumn(2).setMaxWidth(40);
-        this.problemTable.getColumnModel().getColumn(4).setWidth(100);
+        TableColumnModel tcm = this.problemTable.getColumnModel();
+        tcm.getColumn(0).setWidth(70);
+        tcm.getColumn(1).setWidth(30);
+        tcm.getColumn(2).setWidth(40);
+        tcm.getColumn(4).setWidth(100);
 
         JScrollPane jsp = new JScrollPane(this.problemTable);
         jsp.setMinimumSize(new Dimension());
         this.problemsSplit.setBottomComponent(jsp);
+
+        this.problemTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() >= 2) { // Double left click
+                    JTable table = MainWindow.this.problemTable;
+                    Object val = table.getValueAt(table.getSelectedRow(), 1);
+                    Object line = table.getValueAt(table.getSelectedRow(), 2);
+
+                    if (val instanceof Path) {
+                        Path file = (Path) val;
+                        openOrSwitchToFile(file.toAbsolutePath());
+                        if (line instanceof Integer) {
+                            int i = (Integer) line;
+                            if (i > 0)
+                                try {
+                                    LineNumberSyntaxPane open = MainWindow.this.getCurrentFile().y;
+                                    open.setCaret(i - 1, 0);
+                                } catch (NotifyUserException ex) {
+                                    MainWindow.this.reportException(ex, false);
+                                }
+                        }
+                    }
+
+                }
+            }
+        });
     }
 
     private static class ProblemTableModel extends AbstractTableModel {
