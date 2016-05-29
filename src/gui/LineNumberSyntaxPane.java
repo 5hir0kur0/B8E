@@ -6,6 +6,7 @@ import misc.Settings;
 import javax.swing.*;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.io.Reader;
@@ -143,6 +144,25 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void cut() {
         this.code.cut();
+    }
+
+    public void setCaret(int line, int column) {
+        if (line < 0 || column < 0)
+            throw new IllegalArgumentException("'line' or column must not be negative!");
+
+        int offset = 0;
+        Element elements = this.code.getDocument().getDefaultRootElement();
+        Element ele = (line < elements.getElementCount()) ?
+                elements.getElement(line) : elements.getElement(elements.getElementCount()-1);
+
+        if (column < ele.getEndOffset() - ele.getStartOffset())
+            offset = ele.getStartOffset() + column;
+        else
+            offset = ele.getEndOffset();
+        this.code.setCaretPosition(offset);
+
+        this.requestFocusInWindow();
+        this.code.grabFocus();
     }
 
     private void addLines(int count) {
