@@ -113,7 +113,7 @@ class Style {
         boolean[] result = {true};
         this.style.forEach(pair -> {
             if (pair == null) { result[0] = false; return; }
-            if (pair.pattern == null || pair.attributes == null) { result[0] = false; return; }
+            if (pair.pattern == null || pair.attributes == null) { result[0] = false; }
         });
         return result[0];
     }
