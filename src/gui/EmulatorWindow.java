@@ -37,7 +37,6 @@ public class EmulatorWindow extends JFrame {
     private RegisterTableModel registerTableModel;
     private JSplitPane registerSplit;
     private JPanel registerTableArea;
-    private ByteRegister PCH, PCL;
 
     private final static String[] REGISTER_TABLE_HEADER = {"Register", "Value"};
     private final static String[] LISTING_TABLE_HEADER = {"Line", "Code"};
@@ -129,13 +128,6 @@ public class EmulatorWindow extends JFrame {
     }
 
     private void createAndShowGUI() {
-        for (Register r : this.emulator.getRegisters()) {
-            if (r.getName().equals("PCH")) this.PCH = (ByteRegister) r;
-            else if (r.getName().equals("PCL")) this.PCL = (ByteRegister) r;
-        }
-
-        if (this.PCH == null || this.PCL == null) throw new IllegalArgumentException("Couldn't get PCH or PCL");
-
         JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         mainSplit.setOneTouchExpandable(true);
         JPanel registersAndListing = new JPanel(new BorderLayout());
@@ -329,13 +321,41 @@ public class EmulatorWindow extends JFrame {
 
     private void updateListingTable() {
         if (this.listingTable == null || this.listing == null) return;
-        char pc = (char)((this.PCH.getValue() << 8) & 0xFF00 | this.PCL.getValue() & 0xFF);
-        Listing.ListingElement element = this.listing.getFromAddress(pc);
+        Listing.ListingElement element = this.listing.getFromAddress(this.emulator.getProgramCounter());
         if (element.getLine() >= this.listingTable.getRowCount() || element.getLine() < 0) {
             this.listingTable.setRowSelectionInterval(0, this.listingTable.getRowCount() - 1);
             return;
         }
         this.listingTable.setRowSelectionInterval(element.getLine(), element.getLine());
+        scrollToVisible(this.listingTable, element.getLine(), 1);
+    }
+
+    /**
+     * Taken from: <a href="https://stackoverflow.com/questions/853020/jtable-scrolling-to-a-specified-row-index">
+     *             https://stackoverflow.com/questions/853020/jtable-scrolling-to-a-specified-row-index</a>
+     */
+    private static void scrollToVisible(JTable table, int rowIndex, int vColIndex) {
+        if (!(table.getParent() instanceof JViewport)) {
+            return;
+        }
+        JViewport viewport = (JViewport)table.getParent();
+
+        // This rectangle is relative to the table where the
+        // northwest corner of cell (0,0) is always (0,0).
+        Rectangle rect = table.getCellRect(rowIndex, vColIndex, true);
+
+        // The location of the viewport relative to the table
+        Point pt = viewport.getViewPosition();
+
+        // Translate the cell location so that it is relative
+        // to the view, assuming the northwest corner of the
+        // view is (0,0)
+        rect.setLocation(rect.x-pt.x, rect.y-pt.y);
+
+        table.scrollRectToVisible(rect);
+
+        // Scroll the area into view
+        //viewport.scrollRectToVisible(rect);
     }
 
     private JScrollPane makeTable(AbstractTableModel model, boolean isMemory) {

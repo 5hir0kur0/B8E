@@ -233,8 +233,10 @@ enum FallbackSyntaxThemes {
     private static final Pattern HEX_DATA_BYTE_COUNT = Pattern.compile("^:([\\da-f]{2})", Pattern.CASE_INSENSITIVE);
     private static final Pattern HEX_ADDRESS = Pattern.compile("^:..([\\da-f]{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern HEX_VALID_RECORD_TYPE = Pattern.compile("^:.{6}(0[0-5])");
-    private static final Pattern HEX_DATA =Pattern.compile("^:.{8}((?:[\\da-f]{2}(?!$\\s*))*)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern HEX_CHECKSUM = Pattern.compile("^:.{8}(?:..)*?([\\da-f]{2})\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_DATA =Pattern.compile("^:.{8}((?:[\\da-f]{2}(?!$\\s*))*)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern HEX_CHECKSUM = Pattern.compile("^:.{8}(?:..)*?([\\da-f]{2})\\s*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern HEX_IRRELEVANT = Pattern.compile("^(.*?)\\s*$");
     private static final Pattern HEX_ERROR = Pattern.compile("^:(.*?)\\s*$");
 
@@ -254,8 +256,8 @@ enum FallbackSyntaxThemes {
     private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*:)";
     private static final Pattern ASM_LABEL = Pattern.compile("^\\s*("+ASM_LABEL_STRING+")");
     private static final String ASM_MNEMONIC_STRING =
-            "(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|" +
-            "nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\\b";
+            "(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|"
+                    + "nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\\b";
     private static final Pattern ASM_MNEMONIC =
             Pattern.compile("^(?:\\s*"+ASM_LABEL_STRING+")?\\s*("+ ASM_MNEMONIC_STRING +")", Pattern.CASE_INSENSITIVE);
     private static final String ASM_MNEMONIC_PREFIX = "^(?:\\s*"+ASM_LABEL_STRING+")?\\s*"+ ASM_MNEMONIC_STRING;
@@ -288,17 +290,19 @@ enum FallbackSyntaxThemes {
     private static final Pattern ASM_SYMBOL_RESERVED_INDIRECT =
             Pattern.compile("(?<=[\\w,])\\s*(@(?:a\\s*\\+\\s*dptr|a\\s*\\+\\s*pc|dptr|r[01]))\\b",
                     Pattern.CASE_INSENSITIVE);
-    private static final String ASM_SYMBOL_STRING = "(?:(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b([\\w&&[\\D]]\\w*)\\b)";
+    private static final String ASM_SYMBOL_STRING =
+            "(?:(?:(?<=\\w)\\.|(?<=[\\w,])\\s*[-+#/]?)\\b([\\w&&[\\D]]\\w*)\\b)";
     private static final Pattern ASM_SYMBOL = Pattern.compile(ASM_SYMBOL_STRING);
 
     private static final Pattern ASM_DOT_OPERATOR = Pattern.compile("\\w(\\.)\\w");
     private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<=[\\w,])\\s*+([/#+-])[\\w\"'\\(]+");
 
     private static final Pattern ASM_DIRECTIVE_LINE =
-            Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|regex|end|file|line|include|org|end|d[bws])\\s+.*?|" +
-                    "\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ASM_DIRECTIVE = Pattern.compile(
-            "^\\s*(?:([\\$#\\.]?\\s*(?:org|end|d[bws]|if|elif|else|regex|end|file|line|include|equ|set|bit|code|[ix]?data))" +
+            Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|regex|end|file|line|include|org|"
+                    + "end|d[bws])\\s+.*?|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))"
+                    + "\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_DIRECTIVE = Pattern.compile("^\\s*(?:([\\$#\\.]?\\s*(?:org|end|d[bws]|if|elif|"
+            + "else|regex|end|file|line|include|equ|set|bit|code|[ix]?data))" +
                     "|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE_SYMBOL = Pattern.compile(
             "^\\s*\\b([\\w&&[\\D]]\\w*)\\b\\s*(?:equ|set|bit|code|[ix]?data)\\s*", Pattern.CASE_INSENSITIVE);
@@ -306,8 +310,10 @@ enum FallbackSyntaxThemes {
             Pattern.compile("^\\s*[\\$#\\.]?\\s*?include\\s+(<).*?(>)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE_PATH_INCLUDE_FILE =
             Pattern.compile("^\\s*[\\$#\\.]\\s*?include\\s+?<(.*?)>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ASM_PARENTHESES = Pattern.compile("(\\().*(\\)),|(\\().*(\\))", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ASM_PARENTHESES_CONTENT = Pattern.compile("\\((.*)\\),|\\((.*)\\)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_PARENTHESES = Pattern.compile("(\\().*(\\)),|(\\().*(\\))",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern ASM_PARENTHESES_CONTENT = Pattern.compile("\\((.*)\\),|\\((.*)\\)",
+            Pattern.CASE_INSENSITIVE);
 
     private static final Pattern ASM_ERRORS = Pattern.compile("(\\S+)");
 

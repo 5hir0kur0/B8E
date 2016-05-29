@@ -389,6 +389,11 @@ public class MC8051 implements Emulator {
     }
 
     @Override
+    public long getProgramCounter() {
+        return ((this.state.PCH.getValue() << 8) & 0xFF00 | this.state.PCL.getValue() & 0xFF);
+    }
+
+    @Override
     public RAM getSecondaryMemory() throws UnsupportedOperationException {
         if (null == this.state.externalRAM) throw new UnsupportedOperationException("no external RAM");
         return this.state.externalRAM;
