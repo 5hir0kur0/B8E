@@ -38,6 +38,12 @@ public interface Emulator {
     RAM getMainMemory();
 
     /**
+     * Return the current program counter.
+     * @return a number in the range [0; {@code getCodeMemory().getSize()}[
+     */
+    long getProgramCounter();
+
+    /**
      * If there is a secondary {@code RAM} module this method should be overwritten to return it.
      * @return
      *     the CPU's secondary {@code RAM} module, if it has one
