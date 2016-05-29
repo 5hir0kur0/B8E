@@ -39,7 +39,7 @@ public class EmulatorWindow extends JFrame {
     private JPanel registerTableArea;
 
     private final static String[] REGISTER_TABLE_HEADER = {"Register", "Value"};
-    private final static String[] LISTING_TABLE_HEADER = {"Line", "Code"};
+    private final static String[] LISTING_TABLE_HEADER = {"Line", "Code", "Code Memory"};
     private final static String[] MEMORY_TABLE_HEADER = {"Address", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
             "A", "B", "C", "D", "E", "F"};
     private final static String[] SINGLE_REGISTER_TABLE_VERTICAL_HEADER = {"Bit", "Value"};
@@ -97,18 +97,16 @@ public class EmulatorWindow extends JFrame {
             }
         };
 
-        Thread.currentThread().setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                if (e instanceof Exception)
-                    EmulatorWindow.this.reportException("An (uncaught) exception occurred",
-                            "An (uncaught) exception occurred", (Exception) e);
-                else {
-                    System.err.println("An error occurred while executing the emulator:");
-                    e.printStackTrace();
+        Thread.currentThread().setUncaughtExceptionHandler( (t, e) -> {
+                    if (e instanceof Exception)
+                        EmulatorWindow.this.reportException("An (uncaught) exception occurred",
+                                "An (uncaught) exception occurred", (Exception) e);
+                    else {
+                        System.err.println("An error occurred while executing the emulator:");
+                        e.printStackTrace();
+                    }
                 }
-            }
-        });
+        );
 
         createAndShowGUI();
     }
@@ -196,6 +194,8 @@ public class EmulatorWindow extends JFrame {
 
         this.add(content);
 
+        this.updateListingTable();
+
         this.setTitle(WINDOW_TITLE);
         this.setVisible(true);
     }
@@ -274,6 +274,7 @@ public class EmulatorWindow extends JFrame {
     private void pauseProgram(ActionEvent e) {
         this.running = false;
         this.enableElements();
+        this.updateListingTable();
         super.revalidate();
         super.repaint();
     }
@@ -326,36 +327,9 @@ public class EmulatorWindow extends JFrame {
             this.listingTable.setRowSelectionInterval(0, this.listingTable.getRowCount() - 1);
             return;
         }
-        this.listingTable.setRowSelectionInterval(element.getLine(), element.getLine());
-        scrollToVisible(this.listingTable, element.getLine(), 1);
-    }
-
-    /**
-     * Taken from: <a href="https://stackoverflow.com/questions/853020/jtable-scrolling-to-a-specified-row-index">
-     *             https://stackoverflow.com/questions/853020/jtable-scrolling-to-a-specified-row-index</a>
-     */
-    private static void scrollToVisible(JTable table, int rowIndex, int vColIndex) {
-        if (!(table.getParent() instanceof JViewport)) {
-            return;
-        }
-        JViewport viewport = (JViewport)table.getParent();
-
-        // This rectangle is relative to the table where the
-        // northwest corner of cell (0,0) is always (0,0).
-        Rectangle rect = table.getCellRect(rowIndex, vColIndex, true);
-
-        // The location of the viewport relative to the table
-        Point pt = viewport.getViewPosition();
-
-        // Translate the cell location so that it is relative
-        // to the view, assuming the northwest corner of the
-        // view is (0,0)
-        rect.setLocation(rect.x-pt.x, rect.y-pt.y);
-
-        table.scrollRectToVisible(rect);
-
-        // Scroll the area into view
-        //viewport.scrollRectToVisible(rect);
+        int index = this.listing.getElements().indexOf(element);
+        this.listingTable.setRowSelectionInterval(index, index);
+        this.listingTable.scrollRectToVisible(this.listingTable.getCellRect(index, 1, true));
     }
 
     private JScrollPane makeTable(AbstractTableModel model, boolean isMemory) {
@@ -534,11 +508,9 @@ public class EmulatorWindow extends JFrame {
     }
 
     private class ListingModel extends AbstractTableModel {
-        private final Listing listing;
         private final List<Listing.ListingElement> data;
 
         ListingModel(Listing listing) {
-            this.listing = Objects.requireNonNull(listing, "listing must not be null");
             this.data = listing.getElements();
         }
 
@@ -549,7 +521,7 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public int getColumnCount() {
-            return 2;
+            return 3;
         }
 
         @Override
@@ -560,7 +532,9 @@ public class EmulatorWindow extends JFrame {
         @Override
         public Object getValueAt(int row, int col) {
             if (col == 0) return this.data.get(row).getLine();
-            else return this.data.get(row);
+            if (col == 1) return this.data.get(row).getLineString();
+            if (col == 2) return this.data.get(row).getAddress() + ": " + this.data.get(row).getCodes();
+            else return null;
         }
 
         @Override
