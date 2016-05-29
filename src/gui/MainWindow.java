@@ -6,9 +6,6 @@ import assembler.util.problems.Problem;
 import controller.Main;
 import controller.Project;
 import controller.TextFile;
-import emulator.RAM;
-import emulator.arc8051.MC8051;
-import javafx.scene.control.*;
 import misc.Pair;
 import misc.Settings;
 
@@ -1037,11 +1034,7 @@ public class MainWindow extends JFrame {
             listing = this.project.getAssembler().getListing();
         }
 
-
-        int i = 0;
-        RAM codeMemory = (RAM) this.project.getEmulator().getCodeMemory();
-        for (byte b : code) codeMemory.set(i++, b);
-        SwingUtilities.invokeLater(() -> new EmulatorWindow(this.project.getEmulator(), listing));
+        SwingUtilities.invokeLater(() -> new EmulatorWindow(this.project.makeEmulator(code), listing));
     }
 
     /**

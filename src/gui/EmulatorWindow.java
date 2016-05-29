@@ -88,7 +88,7 @@ public class EmulatorWindow extends JFrame {
                 while (EmulatorWindow.this.running) try {
                     EmulatorWindow.this.emulator.next();
                     EmulatorWindow.this.updateListingTable();
-                } catch (EmulatorException e) {
+                } catch (Exception e) {
                     EmulatorWindow.this.reportException("An Exception occurred while running the program",
                             e.getClass().getSimpleName() + ": " + e.getMessage(), e);
                     return null;
@@ -96,17 +96,6 @@ public class EmulatorWindow extends JFrame {
                 return null;
             }
         };
-
-        Thread.currentThread().setUncaughtExceptionHandler( (t, e) -> {
-                    if (e instanceof Exception)
-                        EmulatorWindow.this.reportException("An (uncaught) exception occurred",
-                                "An (uncaught) exception occurred", (Exception) e);
-                    else {
-                        System.err.println("An error occurred while executing the emulator:");
-                        e.printStackTrace();
-                    }
-                }
-        );
 
         createAndShowGUI();
     }
@@ -291,7 +280,6 @@ public class EmulatorWindow extends JFrame {
         try {
             this.emulator.next();
             this.updateListingTable();
-            super.repaint();
         } catch (EmulatorException e1) {
             EmulatorWindow.this.reportException("An Exception occurred while running the instruction",
                     e1.getClass().getSimpleName() + ": " + e1.getMessage(), e1);

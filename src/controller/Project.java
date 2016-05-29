@@ -21,7 +21,6 @@ public class Project implements AutoCloseable {
     private final Path projectPath;
     private final Path projectFile;
 
-    private Emulator emulator;
     private Assembler assembler;
 
     private final static String[] PROJECT_SETTINGS_NAMES = {".project.b8e", "project.b8e"};
@@ -66,9 +65,12 @@ public class Project implements AutoCloseable {
         return this.assembler;
     }
 
-    public Emulator getEmulator() {
-        if (this.emulator == null) this.emulator = new MC8051(new RAM(65_536), new RAM(65_536));
-        return this.emulator;
+    public Emulator makeEmulator(byte[] code) {
+        final RAM codeMemory = new RAM(65536);
+        final RAM externalMemory = new RAM(65536);
+        int i = 0;
+        for (byte b : code) codeMemory.set(i++, b);
+        return new MC8051(codeMemory, externalMemory);
     }
 
     public String getName() {
