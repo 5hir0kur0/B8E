@@ -46,21 +46,44 @@ public class Preprocessor8051 implements Preprocessor {
     private static final byte END_REACHED = 1;
     private static final byte END_PROBLEM_CREATED = 2;
 
-    private int conditionalDepth;
-    private byte conditionalState; // 0: Normal, 1: in If-block, 2: in Else-block
+    private boolean conditionInIf; // Push this on the stack
+    private byte conditionState;
+
+    private static byte COND_WILL_BE_ACTIVE = 0;
+    private static byte COND_IS_ACTIVE = 1;
+    private static byte COND_WAS_ACTIVE = 2;
+
+    private static final String[] CONDITION_RESISTANT = {"if", "elif", "else", "endif", "file", "line"};
+
+    private Stack<Boolean> conditionStack;
 
     private final Directive[] directives = {
-            new Directive("file", 1, 2, true) {
+            new Directive("file", 1, 3, true) {
                 @Override
                 public boolean perform(String[] args) {
-                    final String fileString = args[0];
+                    final String fileString = args.length == 1 ? args[0] : args[1];
+
+                    boolean conditionAffected = true;
+
+                    if (args.length > 1) {
+                        if (args[0].equals("-a") || args[0].equalsIgnoreCase("--always"))
+                            conditionAffected = false;
+                        else
+                            problems.add(new PreprocessingProblem("Unknown option for 'file' directive.",
+                                    Problem.Type.ERROR, currentFile, line, args[0]));
+                    }
+
+                    if (!conditionStack.isEmpty() && conditionState != COND_IS_ACTIVE && conditionAffected)
+                        return true;
+
                     try {
                         Path newPath = Paths.get(fileString);
                         line = 0;
 
 
                         if (args.length > 1)
-                            directives[1].perform(args[1], new PreprocessingProblem(currentFile, line, ""), problems);
+                            directives[1].perform(args[args.length-1], new PreprocessingProblem(currentFile, line, ""),
+                                    problems);
 
                         currentFile = newPath;
                         return true;
@@ -72,11 +95,25 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
-            new Directive("line", true) {
+            new Directive("line", 1, 2, true) {
                 @Override
                 public boolean perform(String[] args) {
 
-                    String number = args[0];
+                    String number = args.length == 1 ? args[0] : args[1];
+
+                    boolean conditionAffected = true;
+
+                    if (args.length == 2) {
+                        if (args[0].equals("-a") || args[0].equalsIgnoreCase("--always"))
+                            conditionAffected = false;
+                        else
+                            problems.add(new PreprocessingProblem("Unknown option for 'line' directive.",
+                                    Problem.Type.ERROR, currentFile, line, args[0]));
+                    }
+
+                    if (!conditionStack.isEmpty() && conditionState != COND_IS_ACTIVE && conditionAffected)
+                        return true;
+
                     try {
 
                         final boolean relative = number.charAt(0) == '+' || number.charAt(0) == '-';
@@ -248,7 +285,9 @@ public class Preprocessor8051 implements Preprocessor {
                             output.add(outputIndex + 1, "$file \"" + target.toString() + "\"");
                             output.addAll(outputIndex+2, fileContent);
                             output.add(outputIndex+fileContent.size()+2, null);
-                            output.add(outputIndex+fileContent.size()+3, "$file \"" + currentFile.toString() + "\" " + (line+1));
+                            output.add(outputIndex+fileContent.size()+3, "$file --always \"" + currentFile.toString() +
+                                    "\" " + (line+1)); // --always: force switching files to keep current file
+                                                       //           correct even if file contains an unclosed 'if'
 
                             if (zipFS != null) // Close FS
                                 zipFS.close();
@@ -563,6 +602,97 @@ public class Preprocessor8051 implements Preprocessor {
                 }
             },
 
+            new Directive("if", 1) {
+                @Override
+                protected boolean perform(String[] args) {
+
+                    Boolean result = evaluateCondition(args);
+                    if (result == null)
+                        return false;
+
+                    if (conditionStack.isEmpty())
+                        conditionStack.push(null);
+                    else
+                        conditionStack.push(conditionInIf);
+
+                    conditionInIf = true;
+
+                    if (result)
+                        conditionState = COND_IS_ACTIVE;
+                    else
+                        conditionState = COND_WILL_BE_ACTIVE;
+
+                    return false;
+                }
+            },
+
+            new Directive("elif", 1) {
+                @Override
+                protected boolean perform(String[] args) {
+                    if (conditionStack.isEmpty())
+                        problems.add(new PreprocessingProblem("'elif' without leading 'if' directive!",
+                                Problem.Type.ERROR, currentFile, line, "elif"));
+                    else if (conditionInIf) {
+                        if (conditionState == COND_WILL_BE_ACTIVE) {
+
+                            Boolean result = evaluateCondition(args);
+
+                            if (result == null)
+                                return false;
+                            else if (result)
+                                conditionState = COND_IS_ACTIVE;
+
+                        } else if (conditionState == COND_IS_ACTIVE)
+                            conditionState = COND_WAS_ACTIVE;
+                        return true;
+                    } else
+                        problems.add(new PreprocessingProblem("'elif' directive cannot be used after a 'then' " +
+                                "directive!", Problem.Type.ERROR, currentFile, line, "elif"));
+                    return false;
+                }
+            },
+
+            new Directive("else", 0, 0) {
+                @Override
+                protected boolean perform(String[] args) {
+                    if (conditionStack.isEmpty())
+                        problems.add(new PreprocessingProblem("'else' without leading 'if' directive!",
+                                Problem.Type.ERROR, currentFile, line, "else"));
+                    else if (conditionInIf) {
+                        conditionInIf = false;
+
+                        if (conditionState == COND_WILL_BE_ACTIVE)
+                            conditionState = COND_IS_ACTIVE;
+                        else if (conditionState == COND_IS_ACTIVE)
+                            conditionState = COND_WAS_ACTIVE;
+
+                        return  true;
+                    } else
+                        problems.add(new PreprocessingProblem("'else' directive cannot be after another 'then' " +
+                                "directive!", Problem.Type.ERROR, currentFile, line, "else"));
+                    return false;
+                }
+            },
+
+            new Directive("endif", 0, 0) {
+                @Override
+                protected boolean perform(String[] args) {
+                    if (conditionStack.isEmpty())
+                        problems.add(new PreprocessingProblem("No 'if' to be closed!",
+                                Problem.Type.ERROR, currentFile, line, "endif"));
+                    else {
+                        Boolean old = conditionStack.pop();
+                        if (conditionStack.isEmpty()) {
+                            conditionInIf = false;
+                        } else {
+                            conditionInIf = old;
+                            conditionState = COND_IS_ACTIVE;
+                        }
+                    }
+
+                    return false;
+                }
+            },
     };
 
     public Preprocessor8051() {
@@ -599,7 +729,6 @@ public class Preprocessor8051 implements Preprocessor {
 
         line = -1;
         endState = RUNNING;
-        conditionalState = 0;
         includeDepth = 0;
 
         String lineString = null;
@@ -632,10 +761,14 @@ public class Preprocessor8051 implements Preprocessor {
 
                 if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
                     lineString = handleDirective(lineString); // Line is a directive: handle it
-                else
+                else if (conditionStack.isEmpty() || conditionState == COND_IS_ACTIVE) // Only output if no condition
+                                                                                       // active or in positive
+                                                                                       // condition
                     lineString = lineString.toLowerCase();    // Only convert lines to lowercase if they
                                                               // are not a directive because fallthrough
                                                               // directives may be case sensitive.
+                else
+                    lineString = "";
                 output.add(lineString);
             } else if (!lineString.split(";", 2)[0].trim().isEmpty() && endState == END_REACHED) {
                 this.line++;
@@ -648,7 +781,14 @@ public class Preprocessor8051 implements Preprocessor {
             }
 
         }
-
+        if (!conditionStack.isEmpty())
+            MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
+                    AssemblerSettings.UNCLOSED_IF,
+                    conditionStack.size() + " unclosed 'if' block" + (conditionStack.size() == 1 ? " " : "s ") +
+                            "must be closed!",
+                    conditionStack.size() + " unclosed 'if' block" + (conditionStack.size() == 1 ? " " : "s ") +
+                            "should be closed.",
+                    problems);
         if (endState == RUNNING)
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                     AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
@@ -674,17 +814,38 @@ public class Preprocessor8051 implements Preprocessor {
         Matcher m = MC8051Library.DIRECTIVE_PATTERN.matcher(line);
         if (m.matches()) {
             String name = m.group(1).toLowerCase();
-            for (Directive d : directives)
-                if (d.getName().equals(name)) {
-                    boolean result = d.perform(m.group(2) == null ? "" : m.group(2),
-                            new PreprocessingProblem(currentFile, this.line, line), problems);
-                    if (result && d.isFallthrough())
-                        return output.get(outputIndex); // Return the line of the directive in the output
-                                                        // if the directive modified its own line.
-                    else
-                        return "";                      // else clear line.
-                }
-            problems.add(new PreprocessingProblem("Unknown directive!", Problem.Type.ERROR, currentFile, this.line, name));
+            if (conditionStack.isEmpty() || conditionState == COND_IS_ACTIVE) {
+                for (Directive d : directives)
+                    if (d.getName().equals(name)) {
+                        boolean result = d.perform(m.group(2) == null ? "" : m.group(2),
+                                new PreprocessingProblem(currentFile, this.line, line), problems);
+                        if (result && d.isFallthrough())
+                            return output.get(outputIndex); // Return the line of the directive in the output
+                            // if the directive modified its own line.
+                        else
+                            return "";                      // else clear line.
+                    }
+                problems.add(new PreprocessingProblem("Unknown directive!", Problem.Type.ERROR,
+                        currentFile, this.line, name));
+            } else {
+                    for (Directive d : directives)
+                        if (d.getName().equals(name)) {
+                            for (String posName : CONDITION_RESISTANT) {
+                                if (!posName.equals(name))
+                                    continue;
+                                boolean result = d.perform(m.group(2) == null ? "" : m.group(2),
+                                        new PreprocessingProblem(currentFile, this.line, line), problems);
+                                if (result && d.isFallthrough())
+                                    return output.get(outputIndex); // Return the line of the directive in the output
+                                    // if the directive modified its own line.
+                                else
+                                    return "";                      // else clear line.
+                            }
+                            return "";      // Directive is not condition resistive so it will be cleared
+                        }
+                    problems.add(new PreprocessingProblem("Unknown directive!", Problem.Type.ERROR,
+                            currentFile, this.line, name));
+            }
             return "";
         } else
             return line;
@@ -1212,9 +1373,10 @@ public class Preprocessor8051 implements Preprocessor {
         {
             final String files = settings.getProperty(AssemblerSettings.AUTO_INCLUDES);
             if (!files.isEmpty())
-                for (String file : files.split("(?!(?!\\\\)\\\\);")) {
+                for (String file : files.split("(?<!(?<!\\\\)\\\\);")) {
                     if (!file.isEmpty())
-                        this.output.add(included++, "$include <"+file+">");
+                        this.output.add(included++, "$include <"+
+                                file.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";")+">");
                 }
         }
         return included;
@@ -1358,6 +1520,82 @@ public class Preprocessor8051 implements Preprocessor {
         regexes.add(regex);
         return true;
 
+    }
+
+    private Boolean evaluateCondition(String[] args) {
+        StringBuilder expression = new StringBuilder(42);
+
+        for (String arg : args)
+            switch (arg.toLowerCase()) {
+                case "-s":
+                case "--settings":
+                {
+
+                    break;
+                }
+                case "[":
+                {
+
+                    break;
+                }
+                case "]":
+                {
+
+                    break;
+                }
+                case "&":
+                case "&&":
+                case "and":
+                {
+
+                    break;
+                }
+                case "nand":
+                {
+
+                    break;
+                }
+                case "|":
+                case "||":
+                case "or":
+                {
+
+                    break;
+                }
+                case "nor":
+                {
+
+                    break;
+                }
+                case "^":
+                case "xor":
+                {
+
+                    break;
+                }
+                case "nxor":
+                case "xnor":
+                {
+
+                    break;
+                }
+                case "~":
+                case "!":
+                case "not":
+                {
+
+                    break;
+                }
+                default:
+                {
+
+                }
+
+
+            }
+        // TODO: Finish
+
+        return false;
     }
 
 }
