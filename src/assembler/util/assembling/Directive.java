@@ -71,7 +71,7 @@ public abstract class Directive {
                     "Minimum number of arguments must not be bigger than maximum number of arguments!");
 
         for (String quotePair : argQuote)
-            if (quotePair.toCharArray().length != 3) // Code point are not supported
+            if (quotePair.toCharArray().length != 3) // Code points are not supported
                 throw new IllegalArgumentException("Quote pair String is not 3 characters long.");
         else if (quotePair.charAt(0) != 'x' && quotePair.charAt(0) != 'i')
                 throw new IllegalArgumentException("First character is neither 'i' nor 'x'!");
@@ -153,7 +153,7 @@ public abstract class Directive {
      * @param name
      *      the name of the Directive.
      * @param minArgs
-     *      the maximum number of required arguments
+     *      the minimum number of required arguments
      */
     public Directive(String name, int minArgs) {
         this(name, minArgs, Integer.MAX_VALUE, DEFAULT_QUOTE_CHARS, false);

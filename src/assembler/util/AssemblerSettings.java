@@ -85,6 +85,14 @@ public class AssemblerSettings {
     public static final String END_MISSING = "assembler.errors.missing-end-directive";
 
     /**
+     * The behavior if some if blocks weren't closed.<br>
+     * <br>
+     * Valid values: "error", "warn", "ignore"<br>
+     * Defaults to: "error"
+     */
+    public static final String UNCLOSED_IF = "assembler.errors.unclosed-if-block";
+
+    /**
      * The default behaviour if an address offset operator is used.<br>
      * <br>
      * Valid values: "error", "warn", "ignore"<br>
@@ -253,6 +261,7 @@ public class AssemblerSettings {
         s.setDefault(UNNECESSARY_OPERANDS, "error");
         s.setDefault(ADDRESS_OFFSET, "warn");
         s.setDefault(END_MISSING, "warn");
+        s.setDefault(UNCLOSED_IF, "error");
         s.setDefault(MULTIPLE_SAME_MATCH_CASE, "error");
         s.setDefault(UNNECESSARY_SEGMENTS, "warn");
 
