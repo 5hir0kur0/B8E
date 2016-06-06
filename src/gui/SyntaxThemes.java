@@ -228,7 +228,7 @@ enum FallbackSyntaxThemes {
     static final List<Pair<Pattern, AttributeSet>> EMPTY_LIST = Collections.emptyList();
 
     //intel hex patterns
-    private static final Pattern HEX_EOF = Pattern.compile("^:(00000001)FF\\s*$");
+    private static final Pattern HEX_EOF = Pattern.compile("^:(00000001)ff\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern HEX_START_CODE = Pattern.compile("^(:)");
     private static final Pattern HEX_DATA_BYTE_COUNT = Pattern.compile("^:([\\da-f]{2})", Pattern.CASE_INSENSITIVE);
     private static final Pattern HEX_ADDRESS = Pattern.compile("^:..([\\da-f]{4})", Pattern.CASE_INSENSITIVE);
@@ -298,11 +298,11 @@ enum FallbackSyntaxThemes {
     private static final Pattern ASM_TYPE_PREFIX  = Pattern.compile("(?<=[\\w,])\\s*+([/#+-])[\\w\"'\\(]+");
 
     private static final Pattern ASM_DIRECTIVE_LINE =
-            Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|regex|end|file|line|include|org|"
+            Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|endif|regex|end|file|line|include|org|"
                     + "end|d[bws])\\s+.*?|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))"
                     + "\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE = Pattern.compile("^\\s*(?:([\\$#\\.]?\\s*(?:org|end|d[bws]|if|elif|"
-            + "else|regex|end|file|line|include|equ|set|bit|code|[ix]?data))" +
+            + "else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))" +
                     "|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE_SYMBOL = Pattern.compile(
             "^\\s*\\b([\\w&&[\\D]]\\w*)\\b\\s*(?:equ|set|bit|code|[ix]?data)\\s*", Pattern.CASE_INSENSITIVE);
