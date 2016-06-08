@@ -80,10 +80,17 @@ public class Preprocessor8051 implements Preprocessor {
                         Path newPath = Paths.get(fileString);
                         line = 0;
 
-
-                        if (args.length > 1)
-                            directives[1].perform(args[args.length-1], new PreprocessingProblem(currentFile, line, ""),
+                        if (args.length >= 3) {
+                            output.set(outputIndex, "$file \"" + args[1] + "\" " + args[2]); // Remove option for
+                                                                                                // Tokenizer
+                            directives[1].perform(args[2], new PreprocessingProblem(currentFile, line, ""),
                                     problems);
+                        } else if (args.length == 2)
+                            if (!args[0].startsWith("-"))
+                                directives[1].perform(args[1], new PreprocessingProblem(currentFile, line, ""),
+                                        problems);
+                            else
+                                output.set(outputIndex, "$file \"" + args[1] + "\"");
 
                         currentFile = newPath;
                         return true;
@@ -109,6 +116,7 @@ public class Preprocessor8051 implements Preprocessor {
                         else
                             problems.add(new PreprocessingProblem("Unknown option for 'line' directive.",
                                     Problem.Type.ERROR, currentFile, line, args[0]));
+                        output.set(outputIndex, "$line " + args[1]);
                     }
 
                     if (!conditionStack.isEmpty() && conditionState != COND_IS_ACTIVE && conditionAffected)
@@ -699,6 +707,7 @@ public class Preprocessor8051 implements Preprocessor {
         problems = new LinkedList<>();
         output = new ArrayList<>(50);
         regexes = new ArrayList<>(50);
+        conditionStack = new Stack<>();
     }
 
     @Override
@@ -729,6 +738,8 @@ public class Preprocessor8051 implements Preprocessor {
 
         line = -1;
         endState = RUNNING;
+        conditionState = COND_WILL_BE_ACTIVE;
+        conditionStack.clear();
         includeDepth = 0;
 
         String lineString = null;

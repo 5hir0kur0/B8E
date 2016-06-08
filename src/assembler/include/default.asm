@@ -24,5 +24,5 @@ $regex "s/\bacc\b/a/igSM"
 $regex "s/\b(?:mul|div)\b\s+a\s*,\s*b\s*$/lcall \g1/igSM"
 
 ; (Temporarily) replace jumps/calls that should be calculated by the assembler with long jumps/calls.
-$regex "s/\bjmp\b\s+(\w+)\s*$/ljmp \g1/igSM"
-$regex "s/\bcall\b\s+(\w+)\s*$/lcall \g1/igSM"
+;$regex "s/\bjmp\b\s+(\w+)\s*$/ljmp \g1/igSM"
+;$regex "s/\bcall\b\s+(\w+)\s*$/lcall \g1/igSM"

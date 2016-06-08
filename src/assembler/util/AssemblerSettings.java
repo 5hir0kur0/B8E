@@ -5,6 +5,7 @@ import misc.Settings;
 
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 /**
  * A temporary class to store the assembler settings.
@@ -229,6 +230,16 @@ public class AssemblerSettings {
      */
     public static final String OUTPUT_BIN_NECESSARY = "assembler.output.binary.only-write-necessary";
 
+    public static final String OUTPUT_LST = "assembler.output.listing";
+
+    public static final String OUTPUT_LST_EXTENSION = "assembler.output.listing.extension";
+
+    public static final String OUTPUT_LST_ADDR_NR_SYSTEM = "assembler.output.listing.address-numeral-system";
+
+    public static final String OUTPUT_LST_CODES_NR_SYSTEM = "assembler.output.listing.codes-numeral-system";
+
+    public static final String OUTPUT_LST_LABELS_LB = "assembler.output.listing.labels-line-break";
+
     /**
      * If this value is set to <code>true</code>, the preprocessor will be skipped
      * (by stripping it down to a basic file reader).<br>
@@ -249,6 +260,9 @@ public class AssemblerSettings {
      * Defaults to: false
      */
     public static final String SKIP_PREPROCESSING = "assembler.skip-preprocessing";
+
+    public static final String OPTIMISE_JUMPS = "assembler.optimise-jumps";
+    public static final String OPTIMISE_JUMPS_FORCE = "assembler.optimise-jumps.force";
 
 
     /**
@@ -275,6 +289,8 @@ public class AssemblerSettings {
 
         s.setDefault(INCLUDE_DEFAULT_FILE, "true");
         s.setDefault(SKIP_PREPROCESSING, "false");
+        s.setDefault(OPTIMISE_JUMPS, "true");
+        s.setDefault(OPTIMISE_JUMPS_FORCE, "false");
 
         s.setDefault(OUTPUT_DIR, ".");
 
@@ -286,6 +302,14 @@ public class AssemblerSettings {
         s.setDefault(OUTPUT_BIN, "true");
         s.setDefault(OUTPUT_BIN_EXTENSION, ".bin");
         s.setDefault(OUTPUT_BIN_NECESSARY, "true");
+
+        s.setDefault(OUTPUT_LST, "true");
+        s.setDefault(OUTPUT_LST_EXTENSION, ".lst");
+        s.setDefault(OUTPUT_LST_ADDR_NR_SYSTEM, "HEXADECIMAL");
+        s.setDefault(OUTPUT_LST_CODES_NR_SYSTEM, "HEXADECIMAL");
+        s.setDefault(OUTPUT_LST_LABELS_LB, "false");
+
+
     }
 
     /**
@@ -303,4 +327,12 @@ public class AssemblerSettings {
     public static final Predicate<String> VALID_FILE_EXTENSION = x -> MC8051Library.FILE_EXTENSION_PATTERN.matcher(x)
             .matches();
 
+    public static final Predicate<String> VALID_NUMERICAL_SYSTEM = x -> {
+        try {
+            emulator.NumeralSystem.valueOf(x);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    };
 }
