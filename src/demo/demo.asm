@@ -22,7 +22,7 @@ START: CJNE A, #01h, LES_OTHER_VERGLEICHS
             MOV P3, A
             MOV A, P0
 
-       LJMP START
+       JMP START
 
 ENDLBL: LJMP ENDLBL
 

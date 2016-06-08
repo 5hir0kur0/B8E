@@ -12,6 +12,8 @@ import assembler.util.problems.Problem;
 import assembler.util.problems.TokenProblem;
 import misc.Settings;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -223,7 +225,7 @@ public class Assembler8051 implements Assembler {
         // Write Intel HEX
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_HEX))
             try (HexWriter hw = new HexWriter(Files.newBufferedWriter(getFile(directory, file,
-                    s.getProperty(AssemblerSettings.OUTPUT_HEX_EXTENSION) )),
+                    s.getProperty(AssemblerSettings.OUTPUT_HEX_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION))),
                     s.getIntProperty(AssemblerSettings.OUTPUT_HEX_BUFFER_LENGTH, i -> i > 0))) {
 
                 hw.writeAll(assembled, s.getBoolProperty(AssemblerSettings.OUTPUT_HEX_WRAP));
@@ -232,12 +234,24 @@ public class Assembler8051 implements Assembler {
                 problems.add(new ExceptionProblem("Could not write HEX file!", Problem.Type.ERROR, e));
             }
 
-        this.listing = new Listing(assembled);
+        this.listing = new Listing(assembled, 16);
+
+        // Write Listing
+        if (s.getBoolProperty(AssemblerSettings.OUTPUT_LST)) {
+            try (BufferedWriter bf = Files.newBufferedWriter(getFile(directory, file,
+                    s.getProperty(AssemblerSettings.OUTPUT_LST_EXTENSION)))) {
+
+                this.listing.writeAll(bf);
+
+            } catch (IOException e) {
+                problems.add(new ExceptionProblem("Could not write binary file!", Problem.Type.ERROR, e));
+            }
+        }
 
         // Write binary
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN)) {
            try (OutputStream os = Files.newOutputStream(getFile(directory, file,
-                   s.getProperty(AssemblerSettings.OUTPUT_BIN_EXTENSION)))){
+                   s.getProperty(AssemblerSettings.OUTPUT_BIN_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION)))) {
                if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN_NECESSARY))
                    os.write(result, 0 , actualBytes);
                else

@@ -1,7 +1,5 @@
 package emulator;
 
-import org.omg.PortableInterceptor.LOCATION_FORWARD;
-
 /**
  * This class represents a numeral system (binary, decimal or hexadecimal) and provides means of converting between
  * different numeral systems.<br>
@@ -20,7 +18,13 @@ public enum NumeralSystem {
             if (value.charAt(0) == '+') throw new NumberFormatException("No signs allowed in numbers.");
             return Long.parseUnsignedLong(value, 2);
         }
-    }, DECIMAL() {
+    }, OCTAL() {
+        @Override
+        public long getValue(String value) throws NumberFormatException {
+            if (value.charAt(0) == '+') throw new NumberFormatException("No signs allowed in numbers.");
+            return Long.parseUnsignedLong(value, 8);
+        }
+    },DECIMAL() {
         @Override
         public long getValue(String value) {
             if (value.charAt(0) == '+') throw new NumberFormatException("No signs allowed in numbers.");
@@ -47,6 +51,7 @@ public enum NumeralSystem {
     public static String toString(NumeralSystem target, long value) {
         switch (target) {
             case BINARY: return Long.toUnsignedString(value, 2);
+            case OCTAL: return Long.toUnsignedString(value, 8);
             case DECIMAL: return Long.toUnsignedString(value, 10);
             case HEXADECIMAL: return Long.toUnsignedString(value, 16).toUpperCase();
             default: throw new UnsupportedOperationException("Illegal numeral system: "+target);
@@ -71,6 +76,7 @@ public enum NumeralSystem {
     public static String toString(NumeralSystem target, long value, int length) {
         switch (target) {
             case BINARY: return Misc.zeroFill(Long.toUnsignedString(value, 2), length);
+            case OCTAL: return Misc.zeroFill(Long.toUnsignedString(value, 8), length);
             case DECIMAL: return Misc.zeroFill(Long.toUnsignedString(value, 10), length);
             case HEXADECIMAL: return Misc.zeroFill(Long.toUnsignedString(value, 16).toUpperCase(), length);
             default: throw new UnsupportedOperationException("Illegal numeral system: "+target);
