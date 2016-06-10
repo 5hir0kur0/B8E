@@ -303,7 +303,7 @@ public class AssemblerSettings {
         s.setDefault(OUTPUT_BIN_EXTENSION, ".bin");
         s.setDefault(OUTPUT_BIN_NECESSARY, "true");
 
-        s.setDefault(OUTPUT_LST, "true");
+        s.setDefault(OUTPUT_LST, "false");
         s.setDefault(OUTPUT_LST_EXTENSION, ".lst");
         s.setDefault(OUTPUT_LST_ADDR_NR_SYSTEM, "HEXADECIMAL");
         s.setDefault(OUTPUT_LST_CODES_NR_SYSTEM, "HEXADECIMAL");

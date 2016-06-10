@@ -17,6 +17,8 @@ import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -1536,77 +1538,394 @@ public class Preprocessor8051 implements Preprocessor {
     private Boolean evaluateCondition(String[] args) {
         StringBuilder expression = new StringBuilder(42);
 
+        final boolean[] sett = new boolean[1];
+
+        String left = null, right = null;
+
+        final Settings s = Settings.INSTANCE;
+        BiPredicate<String, String> operator = null;
+        // Operators
+        final Predicate<String> simple = (l) -> {
+            try {
+                if (sett[0]) return s.getBoolProperty(l);
+                else return Double.parseDouble(l) != 0;
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, l));
+                return false;
+            }
+        };
+        final BiPredicate<String, String> equals = (l, r) -> {
+            if (sett[0])
+                return s.getProperty(l).equals(r);
+            else {
+                double lNum = 0, rNum = 0;
+                try {
+                    lNum = Double.parseDouble(l);
+                } catch (NumberFormatException e) {
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
+                    return false;
+                }
+                try {
+                    rNum = Double.parseDouble(r);
+                } catch (NumberFormatException e) {
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
+                    return false;
+                }
+                return lNum == rNum;
+            }
+        };
+        final BiPredicate<String, String> unequals = (l, r) -> {
+            if (sett[0])
+                return !s.getProperty(l).equals(r);
+            else {
+                double lNum = 0, rNum = 0;
+                try {
+                    lNum = Double.parseDouble(l);
+                } catch (NumberFormatException e) {
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
+                    return false;
+                }
+                try {
+                    rNum = Double.parseDouble(r);
+                } catch (NumberFormatException e) {
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
+                    return false;
+                }
+                return lNum != rNum;
+            }
+        };
+        final BiPredicate<String, String> lessThan = (l, r) -> {
+            double lNum = 0, rNum = 0;
+            try {
+                if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
+                else lNum = Double.parseDouble(l);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, l));
+                return false;
+            } catch (NullPointerException e) {
+                problems.add(new PreprocessingProblem("Setting not defined!",
+                        Problem.Type.WARNING, currentFile, line, l));
+                lNum = Double.NaN;
+            }
+            try {
+                rNum = Double.parseDouble(r);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, r));
+                return false;
+            }
+            return lNum < rNum;
+        };
+        final BiPredicate<String, String> lessThanEqual = (l, r) -> {
+            double lNum = 0, rNum = 0;
+            try {
+                if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
+                else lNum = Double.parseDouble(l);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, l));
+                return false;
+            } catch (NullPointerException e) {
+                problems.add(new PreprocessingProblem("Setting not defined!",
+                        Problem.Type.WARNING, currentFile, line, l));
+                lNum = Double.NaN;
+            }
+            try {
+                rNum = Double.parseDouble(r);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, r));
+                return false;
+            }
+            return lNum <= rNum;
+        };
+        final BiPredicate<String, String> moreThan = (l, r) -> {
+            double lNum = 0, rNum = 0;
+            try {
+                if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
+                else lNum = Double.parseDouble(l);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, l));
+                return false;
+            } catch (NullPointerException e) {
+                problems.add(new PreprocessingProblem("Setting not defined!",
+                        Problem.Type.WARNING, currentFile, line, l));
+                lNum = Double.NaN;
+            }
+            try {
+                rNum = Double.parseDouble(r);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, r));
+                return false;
+            }
+            return lNum > rNum;
+        };
+        final BiPredicate<String, String> moreThanEqual = (l, r) -> {
+            double lNum = 0, rNum = 0;
+            try {
+                if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
+                else lNum = Double.parseDouble(l);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, l));
+                return false;
+            } catch (NullPointerException e) {
+                problems.add(new PreprocessingProblem("Setting not defined!",
+                        Problem.Type.WARNING, currentFile, line, l));
+                lNum = Double.NaN;
+            }
+            try {
+                rNum = Double.parseDouble(r);
+            } catch (NumberFormatException e) {
+                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                        Problem.Type.ERROR, currentFile, line, r));
+                return false;
+            }
+            return lNum >= rNum;
+        };
+
         for (String arg : args)
             switch (arg.toLowerCase()) {
                 case "-s":
                 case "--settings":
                 {
-
+                    if (left == null)
+                        sett[0] = true;
+                    else if (!sett[0])
+                        problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Duplicate option!",
+                                Problem.Type.WARNING, currentFile, line, arg));
+                    break;
+                }
+                case "=":
+                case "==":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = equals;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case "!=":
+                case "<>":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = unequals;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case "<":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = lessThan;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case "<=":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = lessThanEqual;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case ">":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = moreThan;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case ">=":
+                {
+                    if (left == null)
+                        problems.add(new PreprocessingProblem("Expected left side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    if (operator == null)
+                        operator = moreThanEqual;
+                    else if (right == null)
+                        problems.add(new PreprocessingProblem("Operator already defined!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                     break;
                 }
                 case "[":
                 {
-
+                    if (left == null)
+                        expression.append(" (");
+                    else
+                        problems.add(new PreprocessingProblem("Cannot use BRACKET inside a boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                     break;
                 }
                 case "]":
                 {
-
+                    if (left == null)
+                        expression.append(" )");
+                    else
+                        problems.add(new PreprocessingProblem("Cannot use BRACKET inside a boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                     break;
                 }
                 case "&":
                 case "&&":
                 case "and":
                 {
-
-                    break;
-                }
-                case "nand":
-                {
-
+                    if (left == null)
+                        if (sett[0])
+                            problems.add(new PreprocessingProblem("Expected key of a setting!",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                        else
+                            expression.append(" &");
+                    if (left != null && operator == null) {
+                        if (simple.test(left))
+                            expression.append(" 1 &");
+                        else
+                            expression.append(" 0 &");
+                    } else if (left != null && right == null)
+                        problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else {
+                        if (operator.test(left, right))
+                            expression.append(" 1 &");
+                        else
+                            expression.append(" 0 &");
+                    }
+                    left = right = null; operator = null;
+                    sett[0] = false;
                     break;
                 }
                 case "|":
                 case "||":
                 case "or":
                 {
-
-                    break;
-                }
-                case "nor":
-                {
-
-                    break;
-                }
-                case "^":
-                case "xor":
-                {
-
-                    break;
-                }
-                case "nxor":
-                case "xnor":
-                {
-
+                    if (left == null)
+                        if (sett[0])
+                            problems.add(new PreprocessingProblem("Expected key of a setting!",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                        else
+                            expression.append(" |");
+                    if (left != null && operator == null) {
+                        if (simple.test(left))
+                            expression.append(" 1 |");
+                        else
+                            expression.append(" 0 |");
+                    } else if (left != null && right == null)
+                        problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else {
+                        if (operator.test(left, right))
+                            expression.append(" 1 |");
+                        else
+                            expression.append(" 0 |");
+                    }
+                    left = right = null; operator = null;
+                    sett[0] = false;
                     break;
                 }
                 case "~":
                 case "!":
                 case "not":
                 {
-
+                    if (left == null)
+                        expression.append(" ~");
+                    else
+                        problems.add(new PreprocessingProblem("Cannot use NOT inside a boolean statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                     break;
                 }
+
                 default:
                 {
-
+                    if (left == null)
+                        left = arg;
+                    else if (operator == null)
+                        problems.add(new PreprocessingProblem("Expected an operator!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    else if (right == null)
+                        right = arg;
+                    else
+                        problems.add(new PreprocessingProblem("Expected NOT, a CONJUNCTION or BRACKET!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                 }
-
-
             }
-        // TODO: Finish
+        // Clean up
+        if (left == null)
+            if (sett[0])
+                problems.add(new PreprocessingProblem("Expected key of a setting!",
+                        Problem.Type.ERROR, currentFile, line, "<EOL>"));
+        if (left != null && operator == null) {
+            if (simple.test(left))
+                expression.append(" 1");
+            else
+                expression.append(" 0");
+        } else if (left != null && right == null)
+            problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
+                    Problem.Type.ERROR, currentFile, line, "<EOL>"));
+        else {
+            if (operator.test(left, right))
+                expression.append(" 1");
+            else
+                expression.append(" 0");
+        }
 
-        return false;
+        try {
+            return SimpleMath.evaluate(expression.toString()) != 0;
+        } catch (RuntimeException e) {
+            problems.add(new PreprocessingProblem("Cannot evaluate condition!",
+                    Problem.Type.ERROR, currentFile, line, e.getMessage()));
+            return false;
+        }
     }
 
 }
