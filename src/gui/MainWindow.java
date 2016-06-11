@@ -21,6 +21,10 @@ import javax.swing.table.*;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -443,27 +447,76 @@ public class MainWindow extends JFrame {
 
         this.problemTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() >= 2) { // Double left click
-                    JTable table = MainWindow.this.problemTable;
-                    Object val = table.getValueAt(table.getSelectedRow(), 1);
-                    Object line = table.getValueAt(table.getSelectedRow(), 2);
+            public void mouseClicked(MouseEvent me) {
+                JPopupMenu menu = new JPopupMenu("ProblemMenu");
+                JTable table = MainWindow.this.problemTable;
+                Action copy, goTo, copyProblem;
 
-                    if (val instanceof Path) {
-                        Path file = (Path) val;
-                        openOrSwitchToFile(file.toAbsolutePath());
-                        if (line instanceof Integer) {
-                            int i = (Integer) line;
-                            if (i > 0)
-                                try {
-                                    LineNumberSyntaxPane open = MainWindow.this.getCurrentFile().y;
-                                    open.setCaret(i - 1, 0);
-                                } catch (NotifyUserException ex) {
-                                    MainWindow.this.reportException(ex, false);
-                                }
+                copy = new AbstractAction("Copy cell") {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        int row = table.rowAtPoint(me.getPoint());
+                        int column = table.columnAtPoint(me.getPoint());
+                        if (row < 0 || column < 0)
+                            return;
+                        Object val = table.getValueAt(row, column);
+                        StringSelection selection = new StringSelection(val.toString());
+                        Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        clip.setContents(selection, (c, o) -> {});
+                    }
+                };
+                goTo = new AbstractAction("Show") {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        int row = table.rowAtPoint(me.getPoint());
+                        if (row < 0)
+                            return;
+                        Object val = table.getValueAt(row, 1);
+                        Object line = table.getValueAt(row, 2);
+
+                        if (val instanceof Path) {
+                            Path file = (Path) val;
+                            openOrSwitchToFile(file.toAbsolutePath());
+                            if (line instanceof Integer) {
+                                int i = (Integer) line;
+                                if (i > 0)
+                                    try {
+                                        LineNumberSyntaxPane open = MainWindow.this.getCurrentFile().y;
+                                        open.setCaret(i - 1, 0);
+                                    } catch (NotifyUserException ex) {
+                                        MainWindow.this.reportException(ex, false);
+                                    }
+                            }
                         }
                     }
+                };
+                copyProblem = new AbstractAction("Copy problem string") {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        int row = table.rowAtPoint(me.getPoint());
+                        if (row < 0)
+                            return;
+                        // Assuming rows and indices are synchronized... Nasty exceptions for the win.
+                        StringSelection selection = new StringSelection(problems.get(row).toString());
+                        Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        clip.setContents(selection, (c, o) -> {});
 
+                    }
+                };
+                JMenuItem copyMenu = new JMenuItem(copy);
+                copyMenu.setMnemonic('c');
+                JMenuItem goToMenu = new JMenuItem(goTo);
+                goToMenu.setMnemonic('s');
+                JMenuItem copyPMenu = new JMenuItem(copyProblem);
+                copyPMenu.setMnemonic('p');
+                menu.add(copyMenu);
+                menu.add(goToMenu);
+                menu.add(copyPMenu);
+
+                if (me.getButton() == MouseEvent.BUTTON1 && me.getClickCount() >= 2) { // Double left click
+                    goTo.actionPerformed(new ActionEvent(menu, 0, menu.getLabel()));
+                } else if (me.getButton() == MouseEvent.BUTTON3) {                     // Right click
+                    menu.show(me.getComponent(), me.getX(), me.getY());
                 }
             }
         });
@@ -933,7 +986,16 @@ public class MainWindow extends JFrame {
         });
     }
 
+    private void blockBuild(boolean enabled) {
+        enabled = !enabled;
+        this.buildMain.setEnabled(enabled);
+        this.buildRunMain.setEnabled(enabled);
+        this.buildCurrent.setEnabled(enabled);
+        this.buildRunCurrent.setEnabled(enabled);
+    }
+
     private void build(Path path) {
+        blockBuild(true);
         if (Settings.INSTANCE.getBoolProperty(AUTOSAVE_SETTING))
             this.saveAll.actionPerformed(new ActionEvent(AUTOSAVE_SETTING, 0, "autosave"));
         try {
@@ -947,6 +1009,7 @@ public class MainWindow extends JFrame {
             this.reportException("Could not build!", e, false);
         }
         this.refreshProblemTable();
+        blockBuild(false);
     }
 
     private void run(Path path) {
