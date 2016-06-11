@@ -17,12 +17,20 @@ $regex "s/^\s*([\S&&[^;]]+)\s+(equ|set|code|bit|[ix]?data)\s+(.*?)$/\$\g2 \g1 \g
 ; Make it possible to use ',' in data directives
 $regex "cs/\s*,\s*/\s*[\$#\.]\s*d[bws]\s.*?$/ /igSM"
 
+; Make it possible to write '$elseif' instead of '$elif'
+$regex "s/^(\s*[\$#\.]\s*)elseif/\g1elif/igSM"
+
 ; Replace all "acc" references to the accumulator with "a"
 $regex "s/\bacc\b/a/igSM"
 
 ; Make it possible to write "a, b" instead of "ab" in multiplicative operations
 $regex "s/\b(?:mul|div)\b\s+a\s*,\s*b\s*$/lcall \g1/igSM"
 
-; (Temporarily) replace jumps/calls that should be calculated by the assembler with long jumps/calls.
-;$regex "s/\bjmp\b\s+(\w+)\s*$/ljmp \g1/igSM"
-;$regex "s/\bcall\b\s+(\w+)\s*$/lcall \g1/igSM"
+; How to handle and optimize jumps/calls?
+$if NOT -s "assembler.optimise-jumps"                  ; Do not optimize jumps
+    $regex "s/\bjmp\b\s+(\w+)\s*$/ljmp \g1/igSM"
+    $regex "s/\bcall\b\s+(\w+)\s*$/lcall \g1/igSM"
+$elif -s "assembler.optimise-jumps.force"              ; Optimize every jump
+    $regex "s/\b[als]jmp\b\s+(\w+)\s*$/jmp \g1/igSM"
+    $regex "s/\b[al]call\b\s+(\w+)\s*$/call \g1/igSM"
+$endif

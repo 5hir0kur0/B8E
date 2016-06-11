@@ -746,7 +746,7 @@ public class Preprocessor8051 implements Preprocessor {
 
         String lineString = null;
         output.add(0, "$file \"" + currentFile.toString() + "\""); // Add directive for main source file
-                                                                   // for Tokenizer and Assembler_Old
+                                                                   // for Tokenizer and Assembler
         this.output.add(includeDefaults(), "$line 1");
 
         for (outputIndex = 0; outputIndex < this.output.size(); ++outputIndex) {
@@ -834,7 +834,7 @@ public class Preprocessor8051 implements Preprocessor {
                                 new PreprocessingProblem(currentFile, this.line, line), problems);
                         if (result && d.isFallthrough())
                             return output.get(outputIndex); // Return the line of the directive in the output
-                            // if the directive modified its own line.
+                                                            // if the directive modified its own line.
                         else
                             return "";                      // else clear line.
                     }
@@ -850,7 +850,7 @@ public class Preprocessor8051 implements Preprocessor {
                                         new PreprocessingProblem(currentFile, this.line, line), problems);
                                 if (result && d.isFallthrough())
                                     return output.get(outputIndex); // Return the line of the directive in the output
-                                    // if the directive modified its own line.
+                                                                    // if the directive modified its own line.
                                 else
                                     return "";                      // else clear line.
                             }
@@ -1036,7 +1036,7 @@ public class Preprocessor8051 implements Preprocessor {
         // Find possible mathematical expressions
         final Pattern p = MC8051Library.STRING_PATTERN;
         final Matcher m = p.matcher(source);
-        String[] outside = p.split(source);
+        String[] outside = p.split(source, -1);
         StringBuilder result = new StringBuilder(source.length());
 
         for (final String os : outside) {
@@ -1117,7 +1117,7 @@ public class Preprocessor8051 implements Preprocessor {
     private String resolveStrings(final String source) {
         final Pattern p = MC8051Library.STRING_PATTERN;
         final Matcher m = p.matcher(source);
-        String[] outside = p.split(source);
+        String[] outside = p.split(source, -1);
 
         StringBuilder result = new StringBuilder(source.length());
 
@@ -1201,7 +1201,7 @@ public class Preprocessor8051 implements Preprocessor {
     private String convertNumbers(final String source) {
         final Pattern p = MC8051Library.STRING_PATTERN;
         final Matcher m = p.matcher(source);
-        String[] outside = p.split(source);
+        String[] outside = p.split(source, -1);
 
         StringBuilder result = new StringBuilder(source.length());
 
@@ -1376,8 +1376,7 @@ public class Preprocessor8051 implements Preprocessor {
         if (settings.getBoolProperty(AssemblerSettings.INCLUDE_DEFAULT_FILE))
             this.output.add(included++, "$include <default.asm>");
 
-        this.output.add(included++, "$include <util.obvious-operands."+
-                settings.getProperty(AssemblerSettings.OBVIOUS_OPERANDS, AssemblerSettings.VALID_ERROR)+".asm>");
+        this.output.add(included++, "$include <util.obvious-operands.asm>");
         {
             final String file = settings.getProperty(AssemblerSettings.MCU_FILE);
             if (!file.isEmpty())
@@ -1463,7 +1462,7 @@ public class Preprocessor8051 implements Preprocessor {
      * </pre>
      *
      * The Regex cannot have the name of a mnemonic, directive or reserved
-     * assembler name (like <code>'a'</code>.
+     * assembler name (like <code>'a'</code>).
      *
      * @param symbol
      *      the symbol that should be replaced with the value.
@@ -1535,10 +1534,78 @@ public class Preprocessor8051 implements Preprocessor {
 
     }
 
+    /**
+     * Evaluate a boolean condition, for example of the 'if' directive.<br>
+     * <br>
+     * This method supports querying a setting by using the <code>'--setting'</code>
+     * or <code>'-s'</code> option in front of the left operand of a operation.<br>
+     * All non setting operands must be valid doubles.<br>
+     * <br>
+     * Supported evaluation operators:
+     * <table>
+     *     <tr><th>Operator</th><th>Description</th></tr>
+     *     <tr>
+     *         <td><code>'=', '=='</code></td>
+     *         <td>Equals <code>true</code> if both operands are equal.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'&lt;&gt;', '!='</code></td>
+     *         <td>Equals <code>true</code> if both operands are <i>not</i> equal.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'&lt;'</code></td>
+     *         <td>Equals <code>true</code> if the left operand is less than the right one.<br>
+     *             Tries to convert the right operand onto a number if the left operand is
+     *             a setting.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'&lt;='</code></td>
+     *         <td>Equals <code>true</code> if the left operand is less than or equal to the
+     *             right one.<br>
+     *             Tries to convert the right operand onto a number if the left operand is
+     *             a setting.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'&gt;'</code></td>
+     *         <td>Equals <code>true</code> if the left operand is grater than the right one.<br>
+     *             Tries to convert the right operand onto a number if the left operand is
+     *             a setting.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'&gt;='</code></td>
+     *         <td>Equals <code>true</code> if the left operand is grater than or equal to the
+     *             right one.<br>
+     *             Tries to convert the right operand onto a number if the left operand is
+     *             a setting.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code><i>No operator</i></code></td>
+     *         <td>Equals <code>true</code> if the operand is <i>unequal</i> to <code>0</code>.<br>
+     *             If the operand is a setting the value equals <code>true</code> if the value
+     *             of the setting equals <code>"true"</code>, <code>false</code> otherwise.</td>
+     *     </tr>
+     * </table>
+     * Boolean operations can be logically connected with these conjunctions:
+     * <ul>
+     *     <li><code>'AND', '&&', '&'</code> behave like a logical AND gate.</li>
+     *     <li><code>'OR', '||', '|'</code> behave like a logical OR gate.</li>
+     *     <li><code>'NOT', '!'</code> behave like a logical NOT gate.</li>
+     *     <li><code>'[', ']'</code> can be used to change the weight of a conjunction.</li>
+     * </ul>
+     *
+     * @param args
+     *      the arguments of the condition. Each argument must be either a valid operand, operator
+     *      or conjunction. It is not possible to combine them into one argument!
+     * @return
+     *      the boolean result of the evaluation.<br>
+     *      {@code null} if the expression could not be evaluated due to wrong syntax or other
+     *      problems.
+     */
     private Boolean evaluateCondition(String[] args) {
         StringBuilder expression = new StringBuilder(42);
 
         final boolean[] sett = new boolean[1];
+        boolean lastNot = false;
 
         String left = null, right = null;
 
@@ -1692,6 +1759,7 @@ public class Preprocessor8051 implements Preprocessor {
             return lNum >= rNum;
         };
 
+        // Evaluate
         for (String arg : args)
             switch (arg.toLowerCase()) {
                 case "-s":
@@ -1828,18 +1896,34 @@ public class Preprocessor8051 implements Preprocessor {
                         else
                             expression.append(" &");
                     if (left != null && operator == null) {
-                        if (simple.test(left))
-                            expression.append(" 1 &");
-                        else
-                            expression.append(" 0 &");
+                        if (lastNot) {
+                            if (simple.test(left))
+                                expression.append(" 1 ) &");
+                            else
+                                expression.append(" 0 ) &");
+                            lastNot = false;
+                        } else {
+                            if (simple.test(left))
+                                expression.append(" 1 &");
+                            else
+                                expression.append(" 0 &");
+                        }
                     } else if (left != null && right == null)
                         problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
                     else {
-                        if (operator.test(left, right))
-                            expression.append(" 1 &");
-                        else
-                            expression.append(" 0 &");
+                        if (lastNot) {
+                            if (operator.test(left, right))
+                                expression.append(" 1 ) |");
+                            else
+                                expression.append(" 0 ) |");
+                            lastNot = false;
+                        } else {
+                            if (operator.test(left, right))
+                                expression.append(" 1 |");
+                            else
+                                expression.append(" 0 |");
+                        }
                     }
                     left = right = null; operator = null;
                     sett[0] = false;
@@ -1856,18 +1940,34 @@ public class Preprocessor8051 implements Preprocessor {
                         else
                             expression.append(" |");
                     if (left != null && operator == null) {
-                        if (simple.test(left))
-                            expression.append(" 1 |");
-                        else
-                            expression.append(" 0 |");
+                        if (lastNot) {
+                            if (simple.test(left))
+                                expression.append(" 1 ) |");
+                            else
+                                expression.append(" 0 ) |");
+                            lastNot = false;
+                        } else  {
+                            if (simple.test(left))
+                                expression.append(" 1 |");
+                            else
+                                expression.append(" 0 |");
+                        }
                     } else if (left != null && right == null)
                         problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
                     else {
-                        if (operator.test(left, right))
-                            expression.append(" 1 |");
-                        else
-                            expression.append(" 0 |");
+                        if (lastNot) {
+                            if (operator.test(left, right))
+                                expression.append(" 1 ) |");
+                            else
+                                expression.append(" 0 ) |");
+                            lastNot = false;
+                        } else {
+                            if (operator.test(left, right))
+                                expression.append(" 1 |");
+                            else
+                                expression.append(" 0 |");
+                        }
                     }
                     left = right = null; operator = null;
                     sett[0] = false;
@@ -1877,9 +1977,13 @@ public class Preprocessor8051 implements Preprocessor {
                 case "!":
                 case "not":
                 {
-                    if (left == null)
-                        expression.append(" ~");
-                    else
+                    if (left == null) {
+                        if (lastNot)
+                            expression.setLength(expression.length()-8);
+                        else
+                            expression.append(" ( 1 & ~");
+                        lastNot = !lastNot;
+                    } else
                         problems.add(new PreprocessingProblem("Cannot use NOT inside a boolean statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
                     break;
@@ -1905,18 +2009,32 @@ public class Preprocessor8051 implements Preprocessor {
                 problems.add(new PreprocessingProblem("Expected key of a setting!",
                         Problem.Type.ERROR, currentFile, line, "<EOL>"));
         if (left != null && operator == null) {
-            if (simple.test(left))
-                expression.append(" 1");
-            else
-                expression.append(" 0");
+            if (lastNot) {
+                if (simple.test(left))
+                    expression.append(" 1 )");
+                else
+                    expression.append(" 0 )");
+            } else  {
+                if (simple.test(left))
+                    expression.append(" 1");
+                else
+                    expression.append(" 0");
+            }
         } else if (left != null && right == null)
             problems.add(new PreprocessingProblem("Expected right side of the boolean statement!",
                     Problem.Type.ERROR, currentFile, line, "<EOL>"));
         else {
-            if (operator.test(left, right))
-                expression.append(" 1");
-            else
-                expression.append(" 0");
+            if (lastNot) {
+                if (operator.test(left, right))
+                    expression.append(" 1 )");
+                else
+                    expression.append(" 0 )");
+            } else {
+                if (operator.test(left, right))
+                    expression.append(" 1");
+                else
+                    expression.append(" 0");
+            }
         }
 
         try {
@@ -1924,7 +2042,7 @@ public class Preprocessor8051 implements Preprocessor {
         } catch (RuntimeException e) {
             problems.add(new PreprocessingProblem("Cannot evaluate condition!",
                     Problem.Type.ERROR, currentFile, line, e.getMessage()));
-            return false;
+            return null;
         }
     }
 
