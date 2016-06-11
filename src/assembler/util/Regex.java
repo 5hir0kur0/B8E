@@ -257,7 +257,7 @@ public class Regex {
         conditions = new LinkedList<>();
         substitution = null;
 
-        String[] segments = format.split("(?<!(?<!\\\\)\\\\)/");
+        String[] segments = format.split("(?<!(?<!\\\\)\\\\)/", -1);
         for (int i = 0; i < segments.length; i++)
             segments[i] = segments[i].replaceAll("\\\\/", "/");
         compile(segments);
@@ -320,7 +320,7 @@ public class Regex {
         if (!compileModifiers(unprepared[0])) result = false;
         if (!compileRemainingSegments(unprepared)) result = false;
 
-        if (length >= 2 + modifier.length()) {
+        if (length > 2 + modifier.length()) {
             flags = true;
             if (!compileFlags(unprepared[2 + modifier.length()])) result = false;
         } if ((this.match = compilePattern(unprepared[1], true)) == null) result = false;
@@ -331,7 +331,12 @@ public class Regex {
                     AssemblerSettings.UNNECESSARY_SEGMENTS, "Too many segments!", "Unnecessary segments.", problems);
 
         StringBuilder temp = new StringBuilder(modifier).append('/').append(match);
-        for (String s : segments) temp.append('/').append(s);
+        int[] mods = modifier.codePoints().toArray();
+        for (int i = 0; i < segments.length; ++i)
+            if (mods[i] == 's')
+                temp.append('/').append(substitution);
+            else
+                temp.append('/').append(segments[i]);
         this.format = temp.append('/')
                 .append(global ? WHOLE_LINE_FLAG : ONLY_FIRST_FLAG)
                 .append(caseSensitive ? CASE_SENSITIVE_FLAG : CASE_INSENSITIVE_FLAG)
@@ -589,12 +594,14 @@ public class Regex {
         final int[] mods = modifier.codePoints().toArray();
 
         for (int i = 0; i < mods.length; ++i) {
-            if (2 + i > segments.length) {
+            if (2 + i >= segments.length) {
                 for (int j = i; j < mods.length; ++j)
-                    problems.add(new PreprocessingProblem(new StringBuilder("Missing segment for modifier '")
-                            .appendCodePoint(mods[j]).append("'!").toString(), Problem.Type.ERROR, problemFile,
+                    problems.add(new PreprocessingProblem("Missing segment for modifier! Expected " + (2 + mods.length)
+                            + " segments but only found " + segments.length + ".",
+                            Problem.Type.ERROR, problemFile,
                             problemFileLine, new String(Character.toChars(mods[j]))));
-                modifier.setLength(2 + i);
+                modifier.setLength(i);
+                this.segments = segs.toArray(new String[segs.size()]);
                 return false;
             }
 
@@ -652,7 +659,7 @@ public class Regex {
 
         Pattern p = MC8051Library.STRING_PATTERN;
         boolean matched = false;
-        String[] substrings = replaceString ? new String[]{target} : p.split(target);
+        String[] substrings = replaceString ? new String[]{target} : p.split(target, -1);
 
         for (int i = 0; i < substrings.length; ++i) {
             Matcher m = this.match.matcher(substrings[i]);
@@ -897,7 +904,7 @@ public class Regex {
         boolean found = m.find();
         if (found) {
             int group;
-            final Iterator<String> between = Arrays.asList(p.split(string)).listIterator();
+            final Iterator<String> between = Arrays.asList(p.split(string, -1)).listIterator();
 
             do {
                 if (m.group(1) != null)

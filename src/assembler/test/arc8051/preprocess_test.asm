@@ -1,6 +1,6 @@
 
 mov me, me
-$include <default.asm> ; Double inclusion to test multiple unmodifiable regexes
+;$include <default.asm> ; Double inclusion to test multiple unmodifiable regexes
 $db "Hello World!"
 $dw "Extra Large!"
 $ds 3 "Multi"
@@ -19,6 +19,12 @@ mov pi, pi
 pi set 168
 
 mov pi, pi
+
+if 42 == (21 + 22)
+
+mov 42, 42
+
+endif
 
 ;$include "test.asm"
 end

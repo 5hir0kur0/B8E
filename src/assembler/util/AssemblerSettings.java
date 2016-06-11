@@ -230,14 +230,59 @@ public class AssemblerSettings {
      */
     public static final String OUTPUT_BIN_NECESSARY = "assembler.output.binary.only-write-necessary";
 
+    /**
+     * Whether to write listing files to disk at all. <br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: false
+     */
     public static final String OUTPUT_LST = "assembler.output.listing";
 
+    /**
+     * The extension of listing files.<br>
+     * <br>
+     * Valid values: All values that start with a dot '.' and are then followed
+     *               by word characters.<br>
+     * Defaults to: ".lst"
+     */
     public static final String OUTPUT_LST_EXTENSION = "assembler.output.listing.extension";
 
+    /**
+     * The numeral system of displayed address in the listing.<br>
+     * Note: This will also affect the appearance of the address in the listing of
+     *       the {@link gui.EmulatorWindow}.<br>
+     * <br>
+     * Valid values: "BINARY", "OCTAL", "DECIMAL", "HEXADECIMAL"<br>
+     * Defaults to: "HEXADECIMAL"
+     */
     public static final String OUTPUT_LST_ADDR_NR_SYSTEM = "assembler.output.listing.address-numeral-system";
 
+    /**
+     * The numeral system of displayed codes in the listing.<br>
+     * Note: This will also affect the appearance of the codes in the listing of
+     *       the {@link gui.EmulatorWindow}.<br>
+     * <br>
+     * Valid values: "BINARY", "OCTAL", "DECIMAL", "HEXADECIMAL"<br>
+     * Defaults to: "HEXADECIMAL"
+     */
     public static final String OUTPUT_LST_CODES_NR_SYSTEM = "assembler.output.listing.codes-numeral-system";
 
+    /**
+     * Whether the outputted listing will insert a line break after the labels and continue
+     * the mnemonics and operands in the next line (with a slight indent)<br>
+     * <br>
+     * Example:
+     * <pre>
+     *     true:
+     *         20: 000C  80 F2      back:
+     *         *                      sjmp start
+     *     false:
+     *        20: 000C  80 F2       back:   sjmp start
+     * </pre>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: false
+     */
     public static final String OUTPUT_LST_LABELS_LB = "assembler.output.listing.labels-line-break";
 
     /**
@@ -255,13 +300,32 @@ public class AssemblerSettings {
      * <br>
      * A possible gain of deactivating the preprocessor is a potential gain of
      * disabling the potential gain of speed.<br>
-     *
+     * <br>
      * Valid values: true, false<br>
      * Defaults to: false
      */
     public static final String SKIP_PREPROCESSING = "assembler.skip-preprocessing";
 
+    /**
+     * Whether to use jump optimization (the assembler calculates the best jump to use
+     * if the <code>'jmp'</code> mnemonic is used).<br>
+     * If set to <code>false</code>, every <code>'jmp'</code> mnemonic will be replaced
+     * with a <code>'ljmp'</code> mnemonic.<br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: true
+     */
     public static final String OPTIMISE_JUMPS = "assembler.optimise-jumps";
+
+    /**
+     * Whether to force jump optimization for <i>every</i> jump mnemonic (short, long
+     * and absolute jumps).
+     * If set to <code>true</code>, every <code>'sjmp'</code>, <code>'ajmp'</code> and
+     * <code>'ljmp'</code> mnemonic will be replaced with a <code>'jmp'</code> mnemonic.<br>
+     * <br>
+     * Valid values: true, false<br>
+     * Defaults to: false
+     */
     public static final String OPTIMISE_JUMPS_FORCE = "assembler.optimise-jumps.force";
 
 
@@ -309,7 +373,6 @@ public class AssemblerSettings {
         s.setDefault(OUTPUT_LST_CODES_NR_SYSTEM, "HEXADECIMAL");
         s.setDefault(OUTPUT_LST_LABELS_LB, "false");
 
-
     }
 
     /**
@@ -324,9 +387,16 @@ public class AssemblerSettings {
     public static final Predicate<String> VALID_ERROR = x -> x.equalsIgnoreCase("error") || x.equalsIgnoreCase("warn")
             || x.equalsIgnoreCase("ignore");
 
+    /**
+     * Whether a String is a valid file extension (a <code>'.'</code> followed by string of word characters).
+     */
     public static final Predicate<String> VALID_FILE_EXTENSION = x -> MC8051Library.FILE_EXTENSION_PATTERN.matcher(x)
             .matches();
 
+    /**
+     * Whether the String is a valid numerical system.
+     * @see emulator.NumeralSystem
+     */
     public static final Predicate<String> VALID_NUMERICAL_SYSTEM = x -> {
         try {
             emulator.NumeralSystem.valueOf(x);

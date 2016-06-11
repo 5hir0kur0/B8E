@@ -3,7 +3,6 @@ package assembler.test.arc8051;
 import assembler.Preprocessor;
 import assembler.Tokenizer;
 import assembler.arc8051.Assembler8051;
-import assembler.arc8051.MC8051Library;
 import assembler.arc8051.Preprocessor8051;
 import assembler.arc8051.Tokenizer8051;
 import assembler.tokens.Token;
