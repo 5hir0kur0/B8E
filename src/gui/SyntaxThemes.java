@@ -94,7 +94,7 @@ public enum SyntaxThemes {
         return FallbackSyntaxThemes.DEFAULT.getSyntaxTheme();
     }
 
-    private void storeSyntaxTheme(Path path) throws JAXBException {
+    private void storeSyntaxTheme(Path path) throws JAXBException, IOException {
         //try (Writer out = Files.newBufferedWriter(path)) {
         //    JAXB.marshal(this.getCurrentTheme(), out);
         //} catch (IOException e) {
@@ -105,7 +105,7 @@ public enum SyntaxThemes {
 
         jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 
-        jaxbMarshaller.marshal(this.getCurrentTheme(), System.out);
+        jaxbMarshaller.marshal(this.getCurrentTheme(), Files.newBufferedWriter(path));
     }
 
     public static void main(String[] imaTest) {
@@ -142,7 +142,7 @@ enum FallbackSyntaxThemes {
 
         @Override public SyntaxTheme getSyntaxTheme() {
             if (null == DEFAULT.syntaxTheme) {
-                final HashMap<String, Style> tmpMap = new HashMap<>();
+                final LinkedHashMap<String, Style> tmpMap = new LinkedHashMap<>();
                 final Style tmpAsmStyle = new Style(FallbackSyntaxThemes.createAsmSourceFileTheme(
                         DEFAULT.base0A, // to do foreground
                         DEFAULT.base06, // to do background
@@ -369,15 +369,16 @@ enum FallbackSyntaxThemes {
                                                                   Color eofBackgroundColor
                                                                  ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(HEX_IRRELEVANT, create(DEFAULT.base07, false, irrelevantColor, false, false, false)));
-        tmp.add(new Pair<>(HEX_ERROR, create(DEFAULT.base07, false, errorColor, false, true, false)));
-        tmp.add(new Pair<>(HEX_START_CODE, create(DEFAULT.base07, false, startCodeColor,false, false, false)));
-        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(DEFAULT.base07, false, dataByteCountColor, false, false,
+        final Color TRANSPARENT = new Color(0, true);
+        tmp.add(new Pair<>(HEX_IRRELEVANT, create(TRANSPARENT, false, irrelevantColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_ERROR, create(TRANSPARENT, false, errorColor, false, true, false)));
+        tmp.add(new Pair<>(HEX_START_CODE, create(TRANSPARENT, false, startCodeColor,false, false, false)));
+        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(TRANSPARENT, false, dataByteCountColor, false, false,
                 false)));
-        tmp.add(new Pair<>(HEX_ADDRESS, create(DEFAULT.base07, false, addressColor, false, false, false)));
-        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(DEFAULT.base07, false, validRecordTypeColor, false, false,
+        tmp.add(new Pair<>(HEX_ADDRESS, create(TRANSPARENT, false, addressColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(TRANSPARENT, false, validRecordTypeColor, false, false,
                 false)));
-        tmp.add(new Pair<>(HEX_DATA, create(DEFAULT.base07, false, dataColor, false, false, false)));
+        tmp.add(new Pair<>(HEX_DATA, create(TRANSPARENT, false, dataColor, false, false, false)));
         tmp.add(new Pair<>(HEX_CHECKSUM, create(checksumBackgroundColor, false, checksumForegroundColor, false, false,
                 false)));
         tmp.add(new Pair<>(HEX_EOF, create(eofBackgroundColor, false, eofForegroundColor, false, false, false)));
@@ -412,39 +413,40 @@ enum FallbackSyntaxThemes {
                                                                               Color errorColor
                                                                              ) {
         List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(ASM_ERRORS, create(Color.WHITE, false, errorColor, false, true, false)));
-        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(Color.WHITE, false, parenthesesContentColor, false,
+        final Color TRANSPARENT = new Color(0, true);
+        tmp.add(new Pair<>(ASM_ERRORS, create(TRANSPARENT, false, errorColor, false, true, false)));
+        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(TRANSPARENT, false, parenthesesContentColor, false,
                 false, false)));
-        tmp.add(new Pair<>(ASM_PARENTHESES, create(Color.WHITE, false, parenthesesColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(Color.WHITE, false, dotColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL, create(Color.WHITE, false, symbolColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(Color.WHITE, false, typePrefixColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(Color.WHITE, false, symbolReservedErrorColor, false,
+        tmp.add(new Pair<>(ASM_PARENTHESES, create(TRANSPARENT, false, parenthesesColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(TRANSPARENT, false, dotColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL, create(TRANSPARENT, false, symbolColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(TRANSPARENT, false, typePrefixColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(TRANSPARENT, false, symbolReservedErrorColor, false,
                 true, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(Color.WHITE, false, symbolReservedColor, false, false,
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(TRANSPARENT, false, symbolReservedColor, false, false,
                 false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(Color.WHITE, false, symbolReservedIndirectColor,
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(TRANSPARENT, false, symbolReservedIndirectColor,
                 false, false, false)));
         tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(directiveBackgroundColor, false, DEFAULT.base02, false,
                 false, false)));
                 // Do not disable error strike through because errors still could occur in the directive
-        tmp.add(new Pair<>(ASM_DIRECTIVE, create(Color.WHITE, false, directiveColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(Color.WHITE, false, includePathFileColor, false,
+        tmp.add(new Pair<>(ASM_DIRECTIVE, create(TRANSPARENT, false, directiveColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(TRANSPARENT, false, includePathFileColor, false,
                 false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(Color.WHITE, false, includePathBracketsColor,
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(TRANSPARENT, false, includePathBracketsColor,
                 false, false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(Color.WHITE, false, symbolColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(Color.WHITE, false, numberErrorColor, true, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(Color.WHITE, false, numberHexadecimalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(Color.WHITE, false, numberOctalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(Color.WHITE, false, numberBinaryColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(Color.WHITE, false, numberDecimalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(Color.WHITE, false, numberRadixColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_COMMAS, create(Color.WHITE, false, commaColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_MNEMONIC, create(Color.WHITE, false, mnemonicColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_LABEL,create(Color.WHITE, false, labelColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_STRING, create(Color.WHITE, false, stringColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_COMMENT, create(Color.WHITE, false, commentColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(TRANSPARENT, false, symbolColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(TRANSPARENT, false, numberErrorColor, true, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(TRANSPARENT, false, numberHexadecimalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(TRANSPARENT, false, numberOctalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(TRANSPARENT, false, numberBinaryColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(TRANSPARENT, false, numberDecimalColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(TRANSPARENT, false, numberRadixColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_COMMAS, create(TRANSPARENT, false, commaColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_MNEMONIC, create(TRANSPARENT, false, mnemonicColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_LABEL,create(TRANSPARENT, false, labelColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_STRING, create(TRANSPARENT, false, stringColor, false, false, false)));
+        tmp.add(new Pair<>(ASM_COMMENT, create(TRANSPARENT, false, commentColor, false, false, false)));
         tmp.add(new Pair<>(ASM_TODO, create(todoBackgroundColor, false, todoForegroundColor, true, false, false)));
         return tmp;
     }
@@ -455,11 +457,12 @@ enum FallbackSyntaxThemes {
                                                                            Color endEscape,
                                                                            Color unicode) {
         LinkedList<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        tmp.add(new Pair<>(PROP_VALUE, create(DEFAULT.base07, false, value, false, false, false)));
-        tmp.add(new Pair<>(PROP_KEY, create(DEFAULT.base07, false, key, false, false, false)));
-        tmp.add(new Pair<>(PROP_UNICODE, create(DEFAULT.base07, false, unicode, false, false, false)));
-        tmp.add(new Pair<>(PROP_END_ESCAPE, create(DEFAULT.base07, false, endEscape, false, false, false)));
-        tmp.add(new Pair<>(PROP_COMMENT, create(DEFAULT.base07, false, comment, false, false, false)));
+        final Color TRANSPARENT = new Color(0, true);
+        tmp.add(new Pair<>(PROP_VALUE, create(TRANSPARENT, false, value, false, false, false)));
+        tmp.add(new Pair<>(PROP_KEY, create(TRANSPARENT, false, key, false, false, false)));
+        tmp.add(new Pair<>(PROP_UNICODE, create(TRANSPARENT, false, unicode, false, false, false)));
+        tmp.add(new Pair<>(PROP_END_ESCAPE, create(TRANSPARENT, false, endEscape, false, false, false)));
+        tmp.add(new Pair<>(PROP_COMMENT, create(TRANSPARENT, false, comment, false, false, false)));
         return tmp;
     }
 

@@ -2,6 +2,7 @@ package gui;
 
 import javax.swing.text.AttributeSet;
 import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -16,15 +17,7 @@ import static javax.swing.text.StyleConstants.*;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class DummyAttributeSet {
     @SuppressWarnings("unused")
-    private DummyAttributeSet() {
-        // set stupid defaults, so the user notices something went wrong
-        this.background    = Color.CYAN;
-        this.bold          = true;
-        this.foreground    = Color.RED;
-        this.italic        = true;
-        this.strikeThrough = true;
-        this.underline     = true;
-    }
+    private DummyAttributeSet() {}
     @XmlJavaTypeAdapter(ColorAdapter.class)
     @XmlAttribute(required = true) private Color background;
     @XmlAttribute private Boolean bold;
