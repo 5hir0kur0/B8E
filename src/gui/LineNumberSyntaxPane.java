@@ -93,8 +93,17 @@ public class LineNumberSyntaxPane extends JPanel {
                         Integer.parseInt(FONT_SIZE_SETTING_DEFAULT), IS_VALID_FONT_SIZE));
         this.lineNumbers.setFont(f);
         this.code.setFont(f);
+
+        // fix a bug in the "Nimbus" theme (It ignores setBackground(...)).
+        // adapted from: https://stackoverflow.com/questions/22674575/jtextpane-background-color
+        final UIDefaults defaults = new UIDefaults();
+        final Color codeBackground = SyntaxThemes.INSTANCE.getCurrentTheme().getCodeBackground();
+        defaults.put("TextPane[Enabled].backgroundPainter", codeBackground);
+        this.code.putClientProperty("Nimbus.Overrides", defaults);
+        this.code.putClientProperty("Nimbus.Overrides.InheritDefaults", true);
+
         this.lineNumbers.setBackground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberBackground());
-        this.code.setBackground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeBackground());
+        this.code.setBackground(codeBackground);
         this.lineNumbers.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberForeground());
         this.code.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeForeground());
         this.style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme()

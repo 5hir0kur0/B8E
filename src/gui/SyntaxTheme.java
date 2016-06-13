@@ -21,7 +21,7 @@ final class SyntaxTheme {
     /**
      * This field associates file types (as {@link String} with their respective {@link Style}s.
      */
-    final HashMap<String, Style> styleMap;
+    final LinkedHashMap<String, Style> styleMap;
     @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultLineNumberBackground;
     @XmlJavaTypeAdapter(ColorAdapter.class)
@@ -31,8 +31,8 @@ final class SyntaxTheme {
     @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultCodeForeground;
 
-    SyntaxTheme(HashMap<String, Style> styleMap, Color defaultLineNumberBackground, Color defaultLineNumberForeground,
-                Color defaultCodeBackground, Color defaultCodeForeground) {
+    SyntaxTheme(LinkedHashMap<String, Style> styleMap, Color defaultLineNumberBackground,
+                Color defaultLineNumberForeground, Color defaultCodeBackground, Color defaultCodeForeground) {
         this.styleMap = Objects.requireNonNull(styleMap);
         this.defaultLineNumberBackground = Objects.requireNonNull(defaultLineNumberBackground);
         this.defaultLineNumberForeground = Objects.requireNonNull(defaultLineNumberForeground);
@@ -43,7 +43,7 @@ final class SyntaxTheme {
     // constructor for JAXB
     @SuppressWarnings("unused")
     SyntaxTheme() {
-        this.styleMap = new HashMap<>();
+        this.styleMap = new LinkedHashMap<>();
         this.defaultLineNumberBackground = Color.WHITE;
         this.defaultLineNumberForeground = Color.BLACK;
         this.defaultCodeBackground = Color.WHITE;
@@ -98,13 +98,15 @@ class Style {
 
     Style(List<Pair<Pattern, AttributeSet>> style) {
         this.style = new LinkedList<>();
-        style.forEach(e -> this.style.add(new StylePair(e.x.pattern(), new DummyAttributeSet(e.y))));
+        style.forEach(e -> this.style.add(
+                new StylePair(e.x.pattern(), e.x.flags(), new DummyAttributeSet(e.y))));
         if (!this.isValid()) throw new IllegalArgumentException("invalid style");
     }
 
     List<Pair<Pattern, AttributeSet>> getStyle() {
         List<Pair<Pattern, AttributeSet>> res =  new LinkedList<>();
-        this.style.forEach(e -> res.add(new Pair<>(Pattern.compile(e.pattern), e.attributes.toAttributeSet())));
+        this.style.forEach(e -> res.add(
+                new Pair<>(Pattern.compile(e.pattern, e.flags == null ? 0 : e.flags), e.attributes.toAttributeSet())));
         return res;
     }
 
@@ -122,12 +124,14 @@ class Style {
 @XmlRootElement
 class StylePair {
     @XmlAttribute String pattern;
+    @XmlAttribute Integer flags;
     @XmlElement DummyAttributeSet attributes;
 
     @SuppressWarnings("unused") private StylePair() { }
 
-    StylePair(String pattern, DummyAttributeSet attributes) {
+    StylePair(String pattern, int flags, DummyAttributeSet attributes) {
         this.pattern = Objects.requireNonNull(pattern);
         this.attributes = Objects.requireNonNull(attributes);
+        this.flags = flags == 0 ? null : flags;
     }
 }
