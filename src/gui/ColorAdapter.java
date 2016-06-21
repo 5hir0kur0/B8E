@@ -14,6 +14,6 @@ class ColorAdapter extends XmlAdapter<String, Color> {
         return new Color(Long.valueOf(s.substring(1), 16).intValue(), true);
     }
     public String marshal(Color c) {
-        return "#"+Integer.toHexString(c.getRGB()).toUpperCase();
+        return c == null ? null : "#"+Integer.toHexString(c.getRGB()).toUpperCase();
     }
 }

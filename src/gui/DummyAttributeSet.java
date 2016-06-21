@@ -35,14 +35,24 @@ public class DummyAttributeSet {
         this.underline     = isUnderline(as);
     }
 
+    DummyAttributeSet(Color background, Boolean bold, Color foreground, Boolean italic, Boolean strikeThrough,
+                      Boolean underline) {
+        this.background = background;
+        this.bold = bold;
+        this.foreground = foreground;
+        this.italic = italic;
+        this.strikeThrough = strikeThrough;
+        this.underline = underline;
+    }
+
     AttributeSet toAttributeSet() {
         MutableAttributeSet res = StyleContext.getDefaultStyleContext().addStyle(null, null);
-        setBackground(res, this.background);
-        setBold(res, this.bold);
-        setForeground(res, this.foreground);
-        setItalic(res, this.italic);
-        setStrikeThrough(res, this.strikeThrough);
-        setUnderline(res, this.underline);
+        if (this.background != null) setBackground(res, this.background);
+        if (this.bold != null) setBold(res, this.bold);
+        if (this.foreground != null) setForeground(res, this.foreground);
+        if (this.italic != null) setItalic(res, this.italic);
+        if (this.strikeThrough != null) setStrikeThrough(res, this.strikeThrough);
+        if (this.underline != null) setUnderline(res, this.underline);
         return res;
     }
 }

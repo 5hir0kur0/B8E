@@ -96,10 +96,9 @@ class Style {
         this.style = new LinkedList<>();
     }
 
-    Style(List<Pair<Pattern, AttributeSet>> style) {
+    Style(List<Pair<Pattern, DummyAttributeSet>> style) {
         this.style = new LinkedList<>();
-        style.forEach(e -> this.style.add(
-                new StylePair(e.x.pattern(), e.x.flags(), new DummyAttributeSet(e.y))));
+        style.forEach(e -> this.style.add(new StylePair(e.x.pattern(), e.x.flags(), e.y)));
         if (!this.isValid()) throw new IllegalArgumentException("invalid style");
     }
 
