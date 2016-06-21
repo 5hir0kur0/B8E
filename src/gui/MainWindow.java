@@ -80,7 +80,6 @@ public class MainWindow extends JFrame {
     final static String RUN_CURR_TEXT = "Run current file";
     final static String SET_MAIN_TEXT = "Set main file";
 
-    private final List<Pair<TextFile, LineNumberSyntaxPane>> openFiles;
     private Path lastBuilt;
     private List<Problem<?>> problems;
 
@@ -137,8 +136,6 @@ public class MainWindow extends JFrame {
 
         this.mainSplit.setResizeWeight(0.75);
         this.problemsSplit.setResizeWeight(0.75);
-
-        this.openFiles = new ArrayList<>(10);
 
         this.setUpKeyBindings();
 
@@ -206,10 +203,11 @@ public class MainWindow extends JFrame {
     }
 
     public void panic() {
-        for (Pair<TextFile, LineNumberSyntaxPane> file : this.openFiles) {
-            if (file == null || file.x == null) continue;
+        for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
+            if (pane.textFile == null || pane.child == null) continue;
             try {
-                file.y.store(file.x.getWriter());
+                pane.child.store(pane.textFile.getWriter());
             } catch (IOException e) {
                 System.err.println("error during panic-save:");
                 e.printStackTrace();
@@ -354,8 +352,10 @@ public class MainWindow extends JFrame {
     }
 
     private void updateThemes() {
-        for (Pair<TextFile, LineNumberSyntaxPane> p : this.openFiles)
-            p.y.updateTheme();
+        for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
+            final AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
+            pane.child.updateTheme();
+        }
     }
 
     private static String getFileExtension(Path path) {
@@ -367,7 +367,9 @@ public class MainWindow extends JFrame {
 
     private Pair<TextFile, LineNumberSyntaxPane> getCurrentFile() throws NotifyUserException {
         try {
-            return this.openFiles.get(this.jTabbedPane.getSelectedIndex());
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack)
+                    this.jTabbedPane.getComponentAt(this.jTabbedPane.getSelectedIndex());
+            return new Pair<>(pane.textFile, pane.child);
         } catch (IndexOutOfBoundsException e) {
             throw new NotifyUserException("Error: Couldn't get the current file (probably there are no open files)", e);
         }
@@ -375,7 +377,8 @@ public class MainWindow extends JFrame {
 
     private Pair<TextFile, LineNumberSyntaxPane> getFileAt(int index) throws NotifyUserException {
         try {
-            return this.openFiles.get(index);
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(index);
+            return new Pair<>(pane.textFile, pane.child);
         } catch (IndexOutOfBoundsException e) {
             throw new NotifyUserException("Error: Couldn't get the file at index #" + index, e);
         }
@@ -402,8 +405,15 @@ public class MainWindow extends JFrame {
                 file.y.store(file.x.getWriter());
                 file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
                 file.y.load(file.x.getReader());
-                this.jTabbedPane.setTitleAt(this.openFiles.indexOf(file), file.x.getPath().getFileName().toString());
-                this.refreshTree();
+                for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
+                    AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
+                    if (file.x.equals(pane.textFile)) {
+                        this.jTabbedPane.setTitleAt(i, file.x.getPath().getFileName().toString());
+                        this.refreshTree();
+                        return;
+                    }
+                }
+                this.reportException("This could never happen!", new IllegalArgumentException("tab not open"), false);
             } catch (IOException e1) {
                 this.reportException("Error: Saving the file \""
                         + file.x.getPath().getFileName() + "\" as \"" + path + "\" failed", e1, false);
@@ -628,8 +638,9 @@ public class MainWindow extends JFrame {
     }
 
     private void openOrSwitchToFile(Path path) {
-        for (int i = 0; i < this.openFiles.size(); ++i) {
-            final Path open = openFiles.get(i).x.getPath();
+        for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
+            final Path open = (pane.textFile == null) ? null : pane.textFile.getPath();
             if (open != null && open.equals(path)) {
                 this.jTabbedPane.setSelectedIndex(i);
                 return;
@@ -638,8 +649,8 @@ public class MainWindow extends JFrame {
         this.openFile(path);
     }
 
-    private void openTab(LineNumberSyntaxPane syntaxPane, String title) {
-        final JScrollPane scrollPane = new JScrollPane(syntaxPane);
+    private void openTab(LineNumberSyntaxPane syntaxPane, TextFile textFile, String title) {
+        final JScrollPane scrollPane = new AccessibleScrollPaneHack(syntaxPane, textFile);
         scrollPane.getVerticalScrollBar().setUnitIncrement(5);
         if (this.jTabbedPane.getTabCount() != 0) {
             this.jTabbedPane.add(scrollPane, this.jTabbedPane.getSelectedIndex() + 1);
@@ -654,8 +665,7 @@ public class MainWindow extends JFrame {
             final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(path));
             TextFile textFile = this.project.requestResource(path, false);
             syntaxPane.load(textFile.getReader());
-            this.openTab(syntaxPane, path.getFileName().toString());
-            this.openFiles.add(new Pair<>(textFile, syntaxPane));
+            this.openTab(syntaxPane, textFile, path.getFileName().toString());
         } catch (IOException e1) {
             this.reportException("Error: Opening the file \"" + path.getFileName() + "\" failed", e1, false);
         }
@@ -676,8 +686,7 @@ public class MainWindow extends JFrame {
         this.newFile = new AbstractAction(NEW_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(DEFAULT_FILE_EXTENSION);
-                mw.openTab(syntaxPane, "(untitled)");
-                mw.openFiles.add(new Pair<>(null, syntaxPane));
+                mw.openTab(syntaxPane, null, "(untitled)");
             }
         };
         this.saveFile = new AbstractAction(SAVE_FILE_TEXT) {
@@ -1151,7 +1160,6 @@ public class MainWindow extends JFrame {
 
             @Override
             public void valueForPathChanged(TreePath path, Object newValue) {
-                System.out.println("MainWindow.valueForPathChanged");
             }
 
             @Override
@@ -1167,5 +1175,15 @@ public class MainWindow extends JFrame {
             public void removeTreeModelListener(TreeModelListener l) {
             }
         };
+    }
+
+    private final static class AccessibleScrollPaneHack extends JScrollPane { // sorry
+        final LineNumberSyntaxPane child;
+        final TextFile textFile;
+        AccessibleScrollPaneHack(LineNumberSyntaxPane child, TextFile textFile) {
+            super(child);
+            this.child = child;
+            this.textFile = textFile;
+        }
     }
 }
