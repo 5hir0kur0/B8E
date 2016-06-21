@@ -4,17 +4,15 @@ import misc.Pair;
 import misc.Settings;
 
 import javax.swing.text.AttributeSet;
-import javax.swing.text.MutableAttributeSet;
-import javax.swing.text.StyleContext;
 import java.awt.*;
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
-import javax.swing.text.StyleConstants;
 import javax.xml.bind.*;
 
 
@@ -105,7 +103,9 @@ public enum SyntaxThemes {
 
         jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 
-        jaxbMarshaller.marshal(this.getCurrentTheme(), Files.newBufferedWriter(path));
+        try (BufferedWriter bw = Files.newBufferedWriter(path)) {
+            jaxbMarshaller.marshal(this.getCurrentTheme(), bw);
+        }
     }
 
     public static void main(String[] imaTest) {
@@ -355,128 +355,113 @@ enum FallbackSyntaxThemes {
     }
 
     /** creates the light intel hex theme */
-    private static List<Pair<Pattern, AttributeSet>> createIntelHexTheme(
-                                                                  Color irrelevantColor,
-                                                                  Color errorColor,
-                                                                  Color startCodeColor,
-                                                                  Color dataByteCountColor,
-                                                                  Color addressColor,
-                                                                  Color validRecordTypeColor,
-                                                                  Color dataColor,
-                                                                  Color checksumForegroundColor,
-                                                                  Color checksumBackgroundColor,
-                                                                  Color eofForegroundColor,
-                                                                  Color eofBackgroundColor
-                                                                 ) {
-        List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        final Color TRANSPARENT = new Color(0, true);
-        tmp.add(new Pair<>(HEX_IRRELEVANT, create(TRANSPARENT, false, irrelevantColor, false, false, false)));
-        tmp.add(new Pair<>(HEX_ERROR, create(TRANSPARENT, false, errorColor, false, true, false)));
-        tmp.add(new Pair<>(HEX_START_CODE, create(TRANSPARENT, false, startCodeColor,false, false, false)));
-        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(TRANSPARENT, false, dataByteCountColor, false, false,
-                false)));
-        tmp.add(new Pair<>(HEX_ADDRESS, create(TRANSPARENT, false, addressColor, false, false, false)));
-        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(TRANSPARENT, false, validRecordTypeColor, false, false,
-                false)));
-        tmp.add(new Pair<>(HEX_DATA, create(TRANSPARENT, false, dataColor, false, false, false)));
-        tmp.add(new Pair<>(HEX_CHECKSUM, create(checksumBackgroundColor, false, checksumForegroundColor, false, false,
-                false)));
-        tmp.add(new Pair<>(HEX_EOF, create(eofBackgroundColor, false, eofForegroundColor, false, false, false)));
+    private static List<Pair<Pattern, DummyAttributeSet>> createIntelHexTheme(
+            Color irrelevantColor,
+            Color errorColor,
+            Color startCodeColor,
+            Color dataByteCountColor,
+            Color addressColor,
+            Color validRecordTypeColor,
+            Color dataColor,
+            Color checksumForegroundColor,
+            Color checksumBackgroundColor,
+            Color eofForegroundColor,
+            Color eofBackgroundColor
+    ) {
+        final List<Pair<Pattern, DummyAttributeSet>> tmp = new LinkedList<>();
+        tmp.add(new Pair<>(HEX_IRRELEVANT, create(null, null, irrelevantColor, null, null, null)));
+        tmp.add(new Pair<>(HEX_ERROR, create(null, null, errorColor, null, true, null)));
+        tmp.add(new Pair<>(HEX_START_CODE, create(null, null, startCodeColor, null, false, null)));
+        tmp.add(new Pair<>(HEX_DATA_BYTE_COUNT, create(null, null, dataByteCountColor, null, false, null)));
+        tmp.add(new Pair<>(HEX_ADDRESS, create(null, null, addressColor, null, false, null)));
+        tmp.add(new Pair<>(HEX_VALID_RECORD_TYPE, create(null, null, validRecordTypeColor, null, false, null)));
+        tmp.add(new Pair<>(HEX_DATA, create(null, null, dataColor, null, false, null)));
+        tmp.add(new Pair<>(HEX_CHECKSUM, create(checksumBackgroundColor, null, checksumForegroundColor, null, false,
+                null)));
+        tmp.add(new Pair<>(HEX_EOF, create(eofBackgroundColor, null, eofForegroundColor, null, false, null)));
         return tmp;
     }
 
-    private static List<Pair<Pattern, AttributeSet>> createAsmSourceFileTheme(Color todoForegroundColor,
-                                                                              Color todoBackgroundColor,
-                                                                              Color commentColor,
-                                                                              Color stringColor,
-                                                                              Color labelColor,
-                                                                              Color mnemonicColor,
-                                                                              Color commaColor,
-                                                                              Color numberRadixColor,
-                                                                              Color numberDecimalColor,
-                                                                              Color numberBinaryColor,
-                                                                              Color numberOctalColor,
-                                                                              Color numberHexadecimalColor,
-                                                                              Color numberErrorColor,
-                                                                              Color symbolReservedIndirectColor,
-                                                                              Color symbolReservedColor,
-                                                                              Color symbolReservedErrorColor,
-                                                                              Color typePrefixColor,
-                                                                              Color symbolColor,
-                                                                              Color dotColor,
-                                                                              Color directiveBackgroundColor,
-                                                                              Color directiveColor,
-                                                                              Color includePathFileColor,
-                                                                              Color includePathBracketsColor,
-                                                                              Color parenthesesContentColor,
-                                                                              Color parenthesesColor,
-                                                                              Color errorColor
-                                                                             ) {
-        List<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        final Color TRANSPARENT = new Color(0, true);
-        tmp.add(new Pair<>(ASM_ERRORS, create(TRANSPARENT, false, errorColor, false, true, false)));
-        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(TRANSPARENT, false, parenthesesContentColor, false,
-                false, false)));
-        tmp.add(new Pair<>(ASM_PARENTHESES, create(TRANSPARENT, false, parenthesesColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(TRANSPARENT, false, dotColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL, create(TRANSPARENT, false, symbolColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(TRANSPARENT, false, typePrefixColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(TRANSPARENT, false, symbolReservedErrorColor, false,
-                true, false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(TRANSPARENT, false, symbolReservedColor, false, false,
-                false)));
-        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(TRANSPARENT, false, symbolReservedIndirectColor,
-                false, false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(directiveBackgroundColor, false, DEFAULT.base02, false,
-                false, false)));
+    private static List<Pair<Pattern, DummyAttributeSet>> createAsmSourceFileTheme(
+            Color todoForegroundColor,
+            Color todoBackgroundColor,
+            Color commentColor,
+            Color stringColor,
+            Color labelColor,
+            Color mnemonicColor,
+            Color commaColor,
+            Color numberRadixColor,
+            Color numberDecimalColor,
+            Color numberBinaryColor,
+            Color numberOctalColor,
+            Color numberHexadecimalColor,
+            Color numberErrorColor,
+            Color symbolReservedIndirectColor,
+            Color symbolReservedColor,
+            Color symbolReservedErrorColor,
+            Color typePrefixColor,
+            Color symbolColor,
+            Color dotColor,
+            Color directiveBackgroundColor,
+            Color directiveColor,
+            Color includePathFileColor,
+            Color includePathBracketsColor,
+            Color parenthesesContentColor,
+            Color parenthesesColor,
+            Color errorColor
+    ) {
+        final List<Pair<Pattern, DummyAttributeSet>> tmp = new LinkedList<>();
+        tmp.add(new Pair<>(ASM_ERRORS, create(null, null, errorColor, null, true, null)));
+        tmp.add(new Pair<>(ASM_PARENTHESES_CONTENT, create(null, null, parenthesesContentColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_PARENTHESES, create(null, null, parenthesesColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_DOT_OPERATOR, create(null, null, dotColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_SYMBOL, create(null, null, symbolColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_TYPE_PREFIX, create(null, null, typePrefixColor, false, null, null)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_ERROR, create(null, null, symbolReservedErrorColor, null, true, null)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED, create(null, null, symbolReservedColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_SYMBOL_RESERVED_INDIRECT, create(null, null, symbolReservedIndirectColor,
+                null, false, null)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_LINE, create(directiveBackgroundColor, null, null, null, null, null)));
                 // Do not disable error strike through because errors still could occur in the directive
-        tmp.add(new Pair<>(ASM_DIRECTIVE, create(TRANSPARENT, false, directiveColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(TRANSPARENT, false, includePathFileColor, false,
-                false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(TRANSPARENT, false, includePathBracketsColor,
-                false, false, false)));
-        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(TRANSPARENT, false, symbolColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(TRANSPARENT, false, numberErrorColor, true, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(TRANSPARENT, false, numberHexadecimalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(TRANSPARENT, false, numberOctalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(TRANSPARENT, false, numberBinaryColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(TRANSPARENT, false, numberDecimalColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(TRANSPARENT, false, numberRadixColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_COMMAS, create(TRANSPARENT, false, commaColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_MNEMONIC, create(TRANSPARENT, false, mnemonicColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_LABEL,create(TRANSPARENT, false, labelColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_STRING, create(TRANSPARENT, false, stringColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_COMMENT, create(TRANSPARENT, false, commentColor, false, false, false)));
-        tmp.add(new Pair<>(ASM_TODO, create(todoBackgroundColor, false, todoForegroundColor, true, false, false)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE, create(null, null, directiveColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_FILE, create(null, null, includePathFileColor, null,
+                false, null)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS, create(null, null, includePathBracketsColor,
+                null, false, null)));
+        tmp.add(new Pair<>(ASM_DIRECTIVE_SYMBOL, create(null, null, symbolColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_ERROR, create(null, null, numberErrorColor, true, null, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_HEX, create(null, null, numberHexadecimalColor, false, false, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_OCTAL, create(null, null, numberOctalColor, false, false, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_BINARY, create(null, null, numberBinaryColor, false, false, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_DECIMAL, create(null, null, numberDecimalColor, false, false, null)));
+        tmp.add(new Pair<>(ASM_NUMBER_RADIX, create(null, null, numberRadixColor, false, false, null)));
+        tmp.add(new Pair<>(ASM_COMMAS, create(null, null, commaColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_MNEMONIC, create(null, null, mnemonicColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_LABEL,create(null, null, labelColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_STRING, create(null, null, stringColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_COMMENT, create(null, null, commentColor, null, false, null)));
+        tmp.add(new Pair<>(ASM_TODO, create(todoBackgroundColor, null, todoForegroundColor, true, false, null)));
         return tmp;
     }
 
-    private static List<Pair<Pattern, AttributeSet>> createPropertiesTheme(Color comment,
+    private static List<Pair<Pattern, DummyAttributeSet>> createPropertiesTheme(Color comment,
                                                                            Color key,
                                                                            Color value,
                                                                            Color endEscape,
                                                                            Color unicode) {
-        LinkedList<Pair<Pattern, AttributeSet>> tmp = new LinkedList<>();
-        final Color TRANSPARENT = new Color(0, true);
-        tmp.add(new Pair<>(PROP_VALUE, create(TRANSPARENT, false, value, false, false, false)));
-        tmp.add(new Pair<>(PROP_KEY, create(TRANSPARENT, false, key, false, false, false)));
-        tmp.add(new Pair<>(PROP_UNICODE, create(TRANSPARENT, false, unicode, false, false, false)));
-        tmp.add(new Pair<>(PROP_END_ESCAPE, create(TRANSPARENT, false, endEscape, false, false, false)));
-        tmp.add(new Pair<>(PROP_COMMENT, create(TRANSPARENT, false, comment, false, false, false)));
+        final LinkedList<Pair<Pattern, DummyAttributeSet>> tmp = new LinkedList<>();
+        tmp.add(new Pair<>(PROP_VALUE, create(null, null, value, null, null, null)));
+        tmp.add(new Pair<>(PROP_KEY, create(null, null, key, null, null, null)));
+        tmp.add(new Pair<>(PROP_UNICODE, create(null, null, unicode, null, null, null)));
+        tmp.add(new Pair<>(PROP_END_ESCAPE, create(null, null, endEscape, null, null, null)));
+        tmp.add(new Pair<>(PROP_COMMENT, create(null, null, comment, null, null, null)));
         return tmp;
     }
 
     public abstract SyntaxTheme getSyntaxTheme();
 
-    static AttributeSet create(Color background, boolean bold, Color foreground, boolean italic,
-                               boolean strikeThrough, boolean underline) {
-        MutableAttributeSet result = StyleContext.getDefaultStyleContext().addStyle(null, null);
-        StyleConstants.setBackground(result, background);
-        StyleConstants.setBold(result, bold);
-        StyleConstants.setForeground(result, foreground);
-        StyleConstants.setItalic(result, italic);
-        StyleConstants.setStrikeThrough(result, strikeThrough);
-        StyleConstants.setUnderline(result, underline);
-        return result;
+    static DummyAttributeSet create(Color background, Boolean bold, Color foreground, Boolean italic,
+                               Boolean strikeThrough, Boolean underline) {
+        return new DummyAttributeSet(background, bold, foreground, italic, strikeThrough, underline);
     }
 }

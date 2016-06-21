@@ -5,82 +5,82 @@
             <key>asm</key>
             <value>
                 <style pattern="(\S+)">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="false" strikeThrough="true" underline="false"/>
+                    <attributes foreground="#FFAB4642" strikeThrough="true"/>
                 </style>
                 <style pattern="\((.*)\),|\((.*)\)" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFB8B8B8" strikeThrough="false"/>
                 </style>
                 <style pattern="(\().*(\)),|(\().*(\))" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FF86C1B9" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF86C1B9" strikeThrough="false"/>
                 </style>
                 <style pattern="\w(\.)\w">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([\w&amp;&amp;[\D]]\w*)\b)">
-                    <attributes background="#0" bold="false" foreground="#FF86C1B9" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF86C1B9" strikeThrough="false"/>
                 </style>
                 <style pattern="(?&lt;=[\w,])\s*+([/#+-])[\w&quot;'\(]+">
-                    <attributes background="#0" bold="false" foreground="#FFA1B56C" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFA1B56C" italic="false"/>
                 </style>
                 <style pattern="(?&lt;=[\w,])\s*([#+-]\b(?:a(?:cc)?|c)|(?:[/#+-]\bab|dptr|r[0-7]))\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="false" strikeThrough="true" underline="false"/>
+                    <attributes foreground="#FFAB4642" strikeThrough="true"/>
                 </style>
                 <style pattern="(?&lt;=[\w,])\s*(?:/?\b(a(?:cc)?|c)|\b(ab|dptr|r[0-7]))\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFF7CA88" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFF7CA88" strikeThrough="false"/>
                 </style>
                 <style pattern="(?&lt;=[\w,])\s*(@(?:a\s*\+\s*dptr|a\s*\+\s*pc|dptr|r[01]))\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="^(\s*(?:[\$#\.].*?|[\$#\.]?(?:if|elif|else|regex|end|file|line|include|org|end|d[bws])\s+.*?|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(?:equ|set|bit|code|[ix]?data)\s+.*?))\s*(?:(?&lt;!\\);|$)" flags="2">
-                    <attributes background="#FFD8D8D8" bold="false" foreground="#FF383838" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes background="#FFD8D8D8"/>
                 </style>
                 <style pattern="^\s*(?:([\$#\.]?\s*(?:org|end|d[bws]|if|elif|else|regex|end|file|line|include|equ|set|bit|code|[ix]?data))|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(equ|set|bit|code|[ix]?data))" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*[\$#\.]\s*?include\s+?&lt;(.*?)&gt;" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*[\$#\.]?\s*?include\s+(&lt;).*?(&gt;)" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FF585858" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF585858" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*\b([\w&amp;&amp;[\D]]\w*)\b\s*(?:equ|set|bit|code|[ix]?data)\s*" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FF86C1B9" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF86C1B9" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(\d+\w*?)[boqdh]?\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="true" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFAB4642" italic="true"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(0x[\da-f]*|\d+[\da-f]*h)\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" italic="false" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([0-7]+[oq])\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" italic="false" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([01]+b)\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" italic="false" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(\d+d?)\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" italic="false" strikeThrough="false"/>
                 </style>
                 <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(?:(0x)\w*?|\d+\w*?([boqdh])?)\b" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FF585858" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF585858" italic="false" strikeThrough="false"/>
                 </style>
                 <style pattern="^(?:\s*(?:[\w&amp;&amp;[\D]]\w*:))?\s*(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b\s+[^\s]*?\s*(,)\s*[^\s,]+(?:(,)\s*[^\s,]+)?" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="^(?:\s*(?:[\w&amp;&amp;[\D]]\w*:))?\s*((?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*((?:[\w&amp;&amp;[\D]]\w*:))">
-                    <attributes background="#0" bold="false" foreground="#FFF7CA88" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFF7CA88" strikeThrough="false"/>
                 </style>
                 <style pattern="((?&lt;!\\)&quot;.*?(?&lt;!\\)&quot;|(?&lt;!\\)'.*?(?&lt;!\\)')">
-                    <attributes background="#0" bold="false" foreground="#FF7CAFC2" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF7CAFC2" strikeThrough="false"/>
                 </style>
                 <style pattern="\s*(;.*)$">
-                    <attributes background="#0" bold="false" foreground="#FFD8D8D8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFD8D8D8" strikeThrough="false"/>
                 </style>
                 <style pattern="\s*;.*?\b(TODO\b.*)$" flags="2">
-                    <attributes background="#FFE8E8E8" bold="false" foreground="#FFF7CA88" italic="true" strikeThrough="false" underline="false"/>
+                    <attributes background="#FFE8E8E8" foreground="#FFF7CA88" italic="true" strikeThrough="false"/>
                 </style>
             </value>
         </entry>
@@ -88,31 +88,31 @@
             <key>hex</key>
             <value>
                 <style pattern="^(.*?)\s*$">
-                    <attributes background="#0" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFB8B8B8"/>
                 </style>
                 <style pattern="^:(.*?)\s*$">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="false" strikeThrough="true" underline="false"/>
+                    <attributes foreground="#FFAB4642" strikeThrough="true"/>
                 </style>
                 <style pattern="^(:)">
-                    <attributes background="#0" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFB8B8B8" strikeThrough="false"/>
                 </style>
                 <style pattern="^:([\da-f]{2})" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFDC9656" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFDC9656" strikeThrough="false"/>
                 </style>
                 <style pattern="^:..([\da-f]{4})" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFB8B8B8" strikeThrough="false"/>
                 </style>
                 <style pattern="^:.{6}(0[0-5])">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFAB4642" strikeThrough="false"/>
                 </style>
                 <style pattern="^:.{8}((?:[\da-f]{2}(?!$\s*))*)" flags="2">
-                    <attributes background="#0" bold="false" foreground="#FFBA8BAF" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFBA8BAF" strikeThrough="false"/>
                 </style>
                 <style pattern="^:.{8}(?:..)*?([\da-f]{2})\s*$" flags="2">
-                    <attributes background="#FFF7CA88" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes background="#FFF7CA88" foreground="#FFB8B8B8" strikeThrough="false"/>
                 </style>
                 <style pattern="^:(00000001)FF\s*$">
-                    <attributes background="#FF86C1B9" bold="false" foreground="#FF282828" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes background="#FF86C1B9" foreground="#FF282828" strikeThrough="false"/>
                 </style>
             </value>
         </entry>
@@ -120,19 +120,19 @@
             <key>properties</key>
             <value>
                 <style pattern="^\s*(?:[\w\.\-]|\\\s)+\s*[=:]\s*([^\s].*)$|^\s*([^\s].*)\s*$">
-                    <attributes background="#0" bold="false" foreground="#FFA1B56C" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFA1B56C"/>
                 </style>
                 <style pattern="^\s*((?:[\w\.\-]|\\\s)+)\s*[=:]\s*">
-                    <attributes background="#0" bold="false" foreground="#FFAB4642" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFAB4642"/>
                 </style>
                 <style pattern="^\s*(?:[\w\.\-]|\\\s)+\s*[=:]\s*(\\u[\da-fA-F]{4})">
-                    <attributes background="#0" bold="false" foreground="#FFA16946" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFA16946"/>
                 </style>
                 <style pattern="(\\)$">
-                    <attributes background="#0" bold="false" foreground="#FF7CAFC2" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FF7CAFC2"/>
                 </style>
                 <style pattern="([#!].*)$">
-                    <attributes background="#0" bold="false" foreground="#FFB8B8B8" italic="false" strikeThrough="false" underline="false"/>
+                    <attributes foreground="#FFB8B8B8"/>
                 </style>
             </value>
         </entry>
