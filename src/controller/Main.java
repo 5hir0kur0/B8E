@@ -2,6 +2,10 @@ package controller;
 
 import assembler.Assembler;
 import assembler.util.problems.Problem;
+import emulator.Emulator;
+import emulator.RAM;
+import emulator.arc8051.MC8051;
+import gui.EmulatorWindow;
 import gui.MainWindow;
 import misc.Pair;
 import misc.Settings;
@@ -10,6 +14,7 @@ import javax.swing.*;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -25,6 +30,7 @@ public class Main {
     private static boolean PROJECT_PERMANENT;
     private static Project PROJECT;
     private static MainWindow MAIN_WINDOW;
+    private static boolean exitAfterOption = false;
 
     private static final String LOOK_AND_FEEL_SETTING = "gui.lookAndFeel";
     private static final String LOOK_AND_FEEL_SETTING_DEFAULT;
@@ -72,6 +78,10 @@ public class Main {
             System.out.println("      <setting>... setting in <key>=<value> format");
             System.out.println(" b8e --settings-file FILE");
             System.out.println("     load settings from a specified properties-file");
+            System.out.println(" b8e --open-state-dump FILE");
+            System.out.println("      open specified state dump in a new emulator window");
+            System.out.println(" b8e --emulate FILE");
+            System.out.println("      open specified binary file in a new emulator window");
             System.exit(exit);
         }));
         CL_OPTIONS.add(new Pair<>("--list-default-settings", list -> {
@@ -178,6 +188,53 @@ public class Main {
             }
 
         }));
+        CL_OPTIONS.add(new Pair<>("--open-state-dump", list -> {
+            if (list.size() != 1) {
+                System.err.println("Invalid syntax for '--open-state-dump': Expected exactly one argument");
+                System.exit(1);
+            }
+            try {
+                final Path path = Paths.get(list.get(0));
+                if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+                    System.err.println("Invalid syntax for '--open-state-dump': "
+                            + "Expected a path to a regular, readable file");
+                    System.exit(1);
+                }
+                Emulator emulator = new MC8051(path);
+                SwingUtilities.invokeLater(() -> new EmulatorWindow(emulator, null));
+                exitAfterOption = true;
+            } catch (InvalidPathException e) {
+                System.err.println("Invalid syntax for '--open-state-dump': Expected valid path");
+                System.exit(1);
+            } catch (IOException e) {
+                System.err.println("Error: Couldn't load path.");
+            }
+        }));
+        CL_OPTIONS.add(new Pair<>("--emulate", list -> {
+            if (list.size() != 1) {
+                System.err.println("Invalid syntax for '--emulate': Expected exactly one argument");
+                System.exit(1);
+            }
+            try {
+                final Path path = Paths.get(list.get(0));
+                if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+                    System.err.println("Invalid syntax for '--emulate': Expected a path to a regular, readable file");
+                    System.exit(1);
+                }
+                byte[] code = Files.readAllBytes(path);
+                RAM codeMemory = new RAM(65_536);
+                int i = 0;
+                for (byte b : code) codeMemory.set(i++, b);
+                Emulator emulator = new MC8051(codeMemory, new RAM(256));
+                SwingUtilities.invokeLater(() -> new EmulatorWindow(emulator, null));
+                exitAfterOption = true;
+            } catch (InvalidPathException e) {
+                System.err.println("Invalid syntax for '--emulate': Expected valid path");
+                System.exit(1);
+            } catch (IOException e) {
+                System.err.println("Error: Couldn't load path.");
+            }
+        }));
      }
 
     private static Thread.UncaughtExceptionHandler EXCEPTION_HANDLER = (thread, throwable) -> {
@@ -232,10 +289,10 @@ public class Main {
             }
         }
 
-        PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT);
-
-        setUpLookAndFeel();
-
-        SwingUtilities.invokeLater(() -> MAIN_WINDOW = new MainWindow("B8E: " + PROJECT.getName(), PROJECT));
+        if (!exitAfterOption) {
+            PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT);
+            setUpLookAndFeel();
+            SwingUtilities.invokeLater(() -> MAIN_WINDOW = new MainWindow("B8E: " + PROJECT.getName(), PROJECT));
+        }
     }
 }

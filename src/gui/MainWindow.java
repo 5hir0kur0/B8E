@@ -3,15 +3,14 @@ package gui;
 import assembler.Assembler;
 import assembler.util.Listing;
 import assembler.util.problems.Problem;
-import controller.Main;
 import controller.Project;
 import controller.TextFile;
+import emulator.RAM;
 import misc.Pair;
 import misc.Settings;
 
 import javax.swing.*;
 import javax.swing.event.TreeModelListener;
-import javax.swing.plaf.basic.BasicInternalFrameUI;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
 import javax.swing.table.*;
@@ -19,9 +18,7 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -659,6 +656,8 @@ public class MainWindow extends JFrame {
             this.jTabbedPane.setSelectedIndex(this.jTabbedPane.getSelectedIndex() + 1);
         } else
             this.jTabbedPane.add(scrollPane);
+        scrollPane.requestFocusInWindow();
+        syntaxPane.setCaret(0, 0);
         this.jTabbedPane.setTitleAt(this.jTabbedPane.getSelectedIndex(), title);
     }
 
@@ -725,19 +724,19 @@ public class MainWindow extends JFrame {
         };
         this.undo = new AbstractAction(UNDO_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    throw new UnsupportedOperationException("kill stuff");
-                    //TODO
+                try {
+                    mw.getCurrentFile().y.undo();
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Undo' failed", e1, false);
                 }
             }
         };
         this.redo = new AbstractAction(REDO_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                LineNumberSyntaxPane lnsp = (LineNumberSyntaxPane) mw.jTabbedPane.getSelectedComponent();
-                if (lnsp != null) {
-                    throw new UnsupportedOperationException("pill stuff");
-                    //TODO
+                try {
+                    mw.getCurrentFile().y.redo();
+                } catch (NotifyUserException e1) {
+                    mw.reportException("Error: 'Redo' failed", e1, false);
                 }
             }
         };
@@ -974,6 +973,8 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK), "resizeTreeRight");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK), "resizeProblemsUp");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.CTRL_DOWN_MASK), "resizeProblemsDown");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK), UNDO_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK), REDO_TEXT);
         ActionMap tmp = super.getRootPane().getActionMap();
         tmp.put("resizeTreeLeft", new AbstractAction() {
             @Override

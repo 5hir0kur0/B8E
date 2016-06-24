@@ -4,10 +4,9 @@ import misc.Pair;
 import misc.Settings;
 
 import javax.swing.*;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Element;
-import javax.swing.text.JTextComponent;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.text.*;
+import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.io.Reader;
 import java.io.Writer;
@@ -43,6 +42,7 @@ public class LineNumberSyntaxPane extends JPanel {
 
     private final JTextArea lineNumbers;
     private final JTextPane code;
+    private final UndoManager undoManager;
     //{ String tmp = System.getProperty("line.separator"); this.LINE_END = null == tmp || tmp.isEmpty() ? "\n" : tmp; }
     //Apparently, \n is always used at runtime --^
     //TODO: Test this on windows!
@@ -72,6 +72,16 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
         this.setFileExtension(fileExtension);
+        this.undoManager = new UndoManager() {
+            @Override
+            public void undoableEditHappened(UndoableEditEvent e) {
+                String pres = e.getEdit().getPresentationName();
+                if (pres.equals("addition") || pres.equals("deletion"))
+                    super.undoableEditHappened(e);
+            }
+        };
+        this.undoManager.setLimit(2958);
+        this.code.getDocument().addUndoableEditListener(undoManager);
     }
 
     public void setFontSize(int newSize) {
@@ -141,6 +151,8 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setCaretPosition(0);
         this.updateLineNumbers();
         this.updateTheme();
+        this.undoManager.discardAllEdits();
+        shDoc.addUndoableEditListener(this.undoManager);
     }
 
     public void copy() {
@@ -153,6 +165,20 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void cut() {
         this.code.cut();
+    }
+
+    public void undo() {
+        if (this.undoManager.canUndo()) {
+            this.undoManager.undo();
+            this.updateLineNumbers();
+        }
+    }
+
+    public void redo() {
+        if (this.undoManager.canRedo()) {
+            this.undoManager.redo();
+            this.updateLineNumbers();
+        }
     }
 
     public void setCaret(int line, int column) {
