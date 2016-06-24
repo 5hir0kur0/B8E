@@ -26,8 +26,20 @@ public class RAM implements ROM {
      */
     public RAM(int size) {
         if (size <= 0)
-            throw new IllegalArgumentException("Cannot create ROM of size smaller than or equal to 0");
+            throw new IllegalArgumentException("Cannot create RAM of size smaller than or equal to 0");
         this.memory = new byte[size];
+    }
+
+    /**
+     * Create a new {@code RAM} object.
+     *
+     * @param content
+     *     the content of the new object; must not be {@code null}; the size must be > 0
+     */
+    public RAM(byte[] content) {
+        if (null == content || content.length == 0)
+            throw new IllegalArgumentException("Cannot create RAM out of null or empty array");
+        this.memory = content;
     }
 
     /**
