@@ -548,12 +548,10 @@ public class EmulatorWindow extends JFrame {
         @Override
         public Object getValueAt(int row, int col) {
             if (col == 0) return this.data.get(row).getLine() +
-                        (EmulatorWindow.this.breakpoints.contains(this.data.get(row).getAddress()) ? "*" : "");
-            if (col == 1) return "<label>:"; //TODO insert label here
+                        (EmulatorWindow.this.breakpoints.contains(this.data.get(row).getAddressAsLong()) ? "*" : "");
+            if (col == 1) return this.data.get(row).getLabels();
             if (col == 2) return this.data.get(row).getLineString();
-            if (col == 3) return Misc.zeroFill(Long.toUnsignedString(this.data.get(row).getAddress(),
-                            LISTING_CODE_ADDRESS_RADIX).toUpperCase(), LISTING_CODE_ADDRESS_LENGTH)
-                    + ": " + this.data.get(row).getCodes();
+            if (col == 3) return this.data.get(row).getAddress() + ": " + this.data.get(row).getCodes();
             else return null;
         }
 
@@ -563,7 +561,7 @@ public class EmulatorWindow extends JFrame {
         }
 
         long getAddressOfRow(int row) {
-            return this.data.get(row).getAddress();
+            return this.data.get(row).getAddressAsLong();
         }
     }
 
