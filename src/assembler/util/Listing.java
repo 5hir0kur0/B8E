@@ -203,6 +203,10 @@ public class Listing {
             return addressStr;
         }
 
+        public long getAddressAsLong() {
+            return this.address;
+        }
+
         public String getLabels() {
             return labels;
         }
