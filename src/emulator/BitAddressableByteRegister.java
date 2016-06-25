@@ -40,4 +40,9 @@ public class BitAddressableByteRegister extends ByteRegister implements BitAddre
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("Index of out of range (setBit()).");
         this.setValue((byte)(newValue ? this.getValue() & 0xFF | 1 << index : this.getValue() & ~(1 << index)));
     }
+
+    @Override
+    public int getBitCount() {
+        return 8;
+    }
 }

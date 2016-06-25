@@ -67,5 +67,12 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-## Assembler binary files
+## Project specific
+# Assembler binary files
 *.bin
+
+# Assembler hex files
+*.hex
+
+# B8E Files
+*.b8e

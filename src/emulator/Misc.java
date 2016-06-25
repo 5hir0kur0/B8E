@@ -7,7 +7,7 @@ import java.util.Arrays;
  *
  * @author 5hir0kur0
  */
-class Misc {
+public class Misc {
     /**
      * Pads a string with '0's from the left.
      * @param length

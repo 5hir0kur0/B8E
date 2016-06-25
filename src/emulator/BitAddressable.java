@@ -27,4 +27,10 @@ public interface BitAddressable {
      *     if {@code index} is smaller than 0 or larger than the register's number of bits
      */
     void setBit(boolean value, int index) throws IndexOutOfBoundsException;
+
+    /**
+     * Get the number of bits that the register holds.
+     * @return the number of bits; must be > 0
+     */
+    int getBitCount();
 }

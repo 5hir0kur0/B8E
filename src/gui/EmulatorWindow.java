@@ -30,16 +30,17 @@ public class EmulatorWindow extends JFrame {
     private final NumeralSystem registerNumeralSystem;
     private final NumeralSystem memoryNumeralSystem;
     private boolean running;
-    private final SwingWorker<Void, Void> emulatorRunner;
+    private SwingWorker<Void, Void> emulatorRunner;
     private JButton nextButton, runButton, pauseButton, codeButton, loadButton, storeButton;
     private JTable listingTable;
     private JToolBar toolBar;
     private RegisterTableModel registerTableModel;
     private JSplitPane registerSplit;
     private JPanel registerTableArea;
+    private List<Long> breakpoints;
 
     private final static String[] REGISTER_TABLE_HEADER = {"Register", "Value"};
-    private final static String[] LISTING_TABLE_HEADER = {"Line", "Code", "Code Memory"};
+    private final static String[] LISTING_TABLE_HEADER = {"Line", "Label", "Code", "Code Memory"};
     private final static String[] MEMORY_TABLE_HEADER = {"Address", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
             "A", "B", "C", "D", "E", "F"};
     private final static String[] SINGLE_REGISTER_TABLE_VERTICAL_HEADER = {"Bit", "Value"};
@@ -64,6 +65,9 @@ public class EmulatorWindow extends JFrame {
         Settings.INSTANCE.setDefault(MEMORY_NUMERAL_SYSTEM_SETTING, MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT);
     }
 
+    private static final int LISTING_CODE_ADDRESS_RADIX = 16;
+    private static final int LISTING_CODE_ADDRESS_LENGTH = 4;
+
     /**
      * Create a new emulator window.
      * NOTE: The emulator window should be started in a separate thread.
@@ -79,23 +83,11 @@ public class EmulatorWindow extends JFrame {
         this.memoryNumeralSystem = NumeralSystem.valueOf(Settings.INSTANCE.getProperty(MEMORY_NUMERAL_SYSTEM_SETTING,
                 MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT, IS_VALID_NUMERAL_SYSTEM));
         this.running = false;
+        this.breakpoints = new ArrayList<>(10);
         this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         this.setSize(new Dimension(420, 420));
 
-        this.emulatorRunner = new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                while (EmulatorWindow.this.running) try {
-                    EmulatorWindow.this.emulator.next();
-                    EmulatorWindow.this.updateListingTable();
-                } catch (Exception e) {
-                    EmulatorWindow.this.reportException("An Exception occurred while running the program",
-                            e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-                    return null;
-                }
-                return null;
-            }
-        };
+        this.emulatorRunner = new EmulatorSwingWorker();
 
         createAndShowGUI();
     }
@@ -149,15 +141,17 @@ public class EmulatorWindow extends JFrame {
             tmp.setHorizontalAlignment(JLabel.RIGHT);
             tmp.setFont(EmulatorWindow.HEADER_FONT);
             tmpTable.getColumnModel().getColumn(0).setCellRenderer(tmp);
-            tmpTable.getColumnModel().getColumn(0).setPreferredWidth(32);
+            tmpTable.getColumnModel().getColumn(0).setPreferredWidth(42);
             tmpTable.getColumnModel().getColumn(0).setMaxWidth(42);
-            tmpTable.getColumnModel().getColumn(0).setMinWidth(10);
+            tmpTable.getColumnModel().getColumn(0).setMinWidth(21);
+            tmpTable.getColumnModel().getColumn(0).setPreferredWidth(84);
             this.listingTable = tmpTable;
             JSplitPane listingSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
             listingSplit.setLeftComponent(this.registerSplit);
             listingSplit.setRightComponent(listing);
             listingSplit.setResizeWeight(0.2);
             listingSplit.setDividerLocation(0.2);
+            tmpTable.addMouseListener(new ListingMouseListener());
             registersAndListing.add(listingSplit, BorderLayout.CENTER);
         } else registersAndListing.add(this.registerSplit, BorderLayout.CENTER);
 
@@ -199,6 +193,7 @@ public class EmulatorWindow extends JFrame {
         this.pauseButton = new JButton("Pause Program");
         this.pauseButton.setMnemonic('p');
         this.pauseButton.addActionListener(this::pauseProgram);
+        this.pauseButton.setEnabled(false);
         this.codeButton  = new JButton("Show Code Memory");
         this.codeButton.setMnemonic('c');
         this.codeButton.addActionListener(this::showCodeMemory);
@@ -262,8 +257,9 @@ public class EmulatorWindow extends JFrame {
 
     private void pauseProgram(ActionEvent e) {
         this.running = false;
-        this.enableElements();
+        this.enableElements(false);
         this.updateListingTable();
+        this.emulatorRunner = new EmulatorSwingWorker();
         super.revalidate();
         super.repaint();
     }
@@ -285,24 +281,24 @@ public class EmulatorWindow extends JFrame {
                     e1.getClass().getSimpleName() + ": " + e1.getMessage(), e1);
         }
         this.running = false;
-        this.enableElements();
+        this.enableElements(false);
         super.revalidate();
         super.repaint();
     }
 
     private void disableElements(boolean nextButton, boolean runButton, boolean pauseButton, boolean codeButton) {
-        if (nextButton) this.nextButton.setEnabled(false);
-        if (runButton) this.runButton.setEnabled(false);
-        if (pauseButton) this.pauseButton.setEnabled(false);
-        if (codeButton) this.codeButton.setEnabled(false);
+        this.nextButton.setEnabled(!nextButton);
+        this.runButton.setEnabled(!runButton);
+        this.pauseButton.setEnabled(!pauseButton);
+        this.codeButton.setEnabled(!codeButton);
         this.loadButton.setEnabled(false);
         this.storeButton.setEnabled(false);
     }
 
-    private void enableElements() {
+    private void enableElements(boolean enablePauseButton) {
         this.nextButton.setEnabled(true);
         this.runButton.setEnabled(true);
-        this.pauseButton.setEnabled(true);
+        this.pauseButton.setEnabled(enablePauseButton);
         this.codeButton.setEnabled(true);
         this.loadButton.setEnabled(true);
         this.storeButton.setEnabled(true);
@@ -333,11 +329,11 @@ public class EmulatorWindow extends JFrame {
             for (int i = 0; i < 17; ++i) {
                 TableColumn column = table.getColumnModel().getColumn(i);
                 if (i == 0) {
-                    column.setPreferredWidth(42);
-                    column.setMinWidth(30);
+                    column.setPreferredWidth(50);
+                    column.setMinWidth(42);
                 }
                 else {
-                    column.setPreferredWidth(21);
+                    column.setPreferredWidth(24);
                     column.setMinWidth(20);
                 }
             }
@@ -361,9 +357,9 @@ public class EmulatorWindow extends JFrame {
         return scrollPane;
     }
 
-    private List<FlagRegister> shownRegisters = new LinkedList<>();
+    private List<BitAddressable> shownRegisters = new LinkedList<>();
 
-    private void showRegisterBits(FlagRegister register) {
+    private void showRegisterBits(BitAddressable register) {
         if (this.shownRegisters.contains(register)) return;
         if (this.shownRegisters.isEmpty()) this.registerSplit.setBottomComponent(this.registerTableArea);
         this.shownRegisters.add(register);
@@ -386,7 +382,7 @@ public class EmulatorWindow extends JFrame {
         }
         tmp.getColumnModel().getColumn(0).setPreferredWidth(42);
         JPanel tmpPanel = new JPanel(new BorderLayout());
-        tmpPanel.add(new JLabel(register.getName()), BorderLayout.NORTH);
+        tmpPanel.add(new JLabel(((Register)register).getName()), BorderLayout.NORTH);
         tmpPanel.add(tmp, BorderLayout.CENTER);
         this.registerTableArea.add(tmpPanel);
         super.revalidate();
@@ -400,17 +396,49 @@ public class EmulatorWindow extends JFrame {
             final JTable table = (JTable) me.getSource();
             final int row = table.rowAtPoint(me.getPoint());
             final Register register = EmulatorWindow.this.registerTableModel.getRegisterAt(row);
-            if (!(register instanceof FlagRegister)) return;
-            EmulatorWindow.this.showRegisterBits((FlagRegister) register);
+            if (!(register instanceof BitAddressable)) return;
+            EmulatorWindow.this.showRegisterBits((BitAddressable) register);
+        }
+    }
+
+    private class ListingMouseListener extends MouseAdapter {
+        @Override
+        public void mousePressed(MouseEvent me) {
+            if (me.getClickCount() != 2) return;
+            final JTable table = (JTable) me.getSource();
+            final int row = table.rowAtPoint(me.getPoint());
+            final ListingModel model = (ListingModel) table.getModel();
+            EmulatorWindow.this.breakpoints.add(model.getAddressOfRow(row));
+            EmulatorWindow.super.revalidate();
+            EmulatorWindow.super.repaint();
+        }
+    }
+
+    private class EmulatorSwingWorker extends SwingWorker<Void, Void> {
+        @Override
+        protected Void doInBackground() throws Exception {
+            while (EmulatorWindow.this.running) try {
+                EmulatorWindow.this.emulator.next();
+                EmulatorWindow.this.updateListingTable();
+                if (EmulatorWindow.this.breakpoints.contains(EmulatorWindow.this.emulator.getProgramCounter()))
+                    EmulatorWindow.this.pauseProgram(null);
+            } catch (Exception e) {
+                EmulatorWindow.this.reportException("An Exception occurred while running the program",
+                        e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+                return null;
+            }
+            return null;
         }
     }
 
     private class SingleRegisterTableModel extends AbstractTableModel {
 
-        private final FlagRegister register;
+        private final BitAddressable register;
+        private final FlagRegister flagRegister;
 
-        SingleRegisterTableModel(FlagRegister register) {
+        SingleRegisterTableModel(BitAddressable register) {
             this.register = Objects.requireNonNull(register, "register must not be null");
+            this.flagRegister = register instanceof FlagRegister ? (FlagRegister) register : null;
         }
 
         @Override
@@ -420,13 +448,13 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public int getColumnCount() {
-            return this.register.getFlags().size() + 1;
+            return this.register.getBitCount() + 1;
         }
 
         @Override
         public Object getValueAt(int row, int col) {
             if (col == 0) return EmulatorWindow.SINGLE_REGISTER_TABLE_VERTICAL_HEADER[row];
-            if (row == 0) return this.register.getFlags().get(col - 1).name;
+            if (row == 0) return this.flagRegister != null ? this.flagRegister.getFlags().get(col - 1).name : col - 1;
             else return this.register.getBit(col - 1) ? "1" : "0";
         }
 
@@ -509,7 +537,7 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public int getColumnCount() {
-            return 3;
+            return 4;
         }
 
         @Override
@@ -519,15 +547,23 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public Object getValueAt(int row, int col) {
-            if (col == 0) return this.data.get(row).getLine();
-            if (col == 1) return this.data.get(row).getLineString();
-            if (col == 2) return this.data.get(row).getAddress() + ": " + this.data.get(row).getCodes();
+            if (col == 0) return this.data.get(row).getLine() +
+                        (EmulatorWindow.this.breakpoints.contains(this.data.get(row).getAddress()) ? "*" : "");
+            if (col == 1) return "<label>:"; //TODO insert label here
+            if (col == 2) return this.data.get(row).getLineString();
+            if (col == 3) return Misc.zeroFill(Long.toUnsignedString(this.data.get(row).getAddress(),
+                            LISTING_CODE_ADDRESS_RADIX).toUpperCase(), LISTING_CODE_ADDRESS_LENGTH)
+                    + ": " + this.data.get(row).getCodes();
             else return null;
         }
 
         @Override
         public boolean isCellEditable(int row, int col) {
             return false;
+        }
+
+        long getAddressOfRow(int row) {
+            return this.data.get(row).getAddress();
         }
     }
 
