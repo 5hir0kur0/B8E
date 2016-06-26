@@ -27,6 +27,8 @@ import java.lang.reflect.Field;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author T., Noxgrim, 5hir0kur0
@@ -46,6 +48,11 @@ public class MainWindow extends JFrame {
 
     private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
     private final static String AUTOSAVE_SETTING_DEFAULT = "true";
+
+    private static final Color ERROR_COLOR = new Color(0x990000); // Crimson red
+    private static final Color WARNING_COLOR = Color.ORANGE;
+    private static final Color INFO_COLOR = Color.LIGHT_GRAY;
+    private static final Color[] PROBLEM_COLORS = {ERROR_COLOR, WARNING_COLOR, INFO_COLOR};
 
     static {Settings.INSTANCE.setDefault(AUTOSAVE_SETTING, AUTOSAVE_SETTING_DEFAULT);}
     { setUpActions(); }
@@ -536,10 +543,6 @@ public class MainWindow extends JFrame {
         private static final String[] columns = {"Type", "File", "Line", "Message", "Cause"};
         private final ArrayList<Object[]> data;
 
-        private static final Color ERROR_COLOR = new Color(0x990000); // Crimson red
-        private static final Color WARNING_COLOR = Color.ORANGE;
-        private static final Color INFO_COLOR = Color.LIGHT_GRAY;
-
         private static final Color LIGHT_FOREGROUND = Color.LIGHT_GRAY;
         private static final Color DARK_FOREGROUND = Color.DARK_GRAY;
 
@@ -636,6 +639,23 @@ public class MainWindow extends JFrame {
         }
     }
 
+    private void highlightProblems(TextFile file, LineNumberSyntaxPane pane) {
+        if (problems == null)
+            return;
+        final Map<Integer, Color> lines = new HashMap<>();
+        List<Problem> relevant =
+                problems.stream().filter(p -> p.getPath().equals(file.getPath())).collect(Collectors.toList());
+        if (relevant.isEmpty())
+            return;
+        Problem.Type[] types = Problem.Type.values();
+        for (int i = types.length - 1; i >= 0; --i) {
+            Problem.Type type = types[i];
+            Color color = PROBLEM_COLORS[i];
+            relevant.stream().filter(p -> p.getType() == type).forEach(p -> lines.put(p.getLine() - 1, color));
+        }
+        pane.highlightLines(lines);
+    }
+
     private void openOrSwitchToFile(Path path) {
         for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
             AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
@@ -667,6 +687,7 @@ public class MainWindow extends JFrame {
             TextFile textFile = this.project.requestResource(path, false);
             syntaxPane.load(textFile.getReader());
             this.openTab(syntaxPane, textFile, path.getFileName().toString());
+            this.highlightProblems(textFile, syntaxPane);
         } catch (IOException e1) {
             this.reportException("Error: Opening the file \"" + path.getFileName() + "\" failed", e1, false);
         }
@@ -1027,6 +1048,10 @@ public class MainWindow extends JFrame {
             this.reportException("Could not build!", e, false);
         }
         this.refreshProblemTable();
+        for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
+            this.highlightProblems(pane.textFile, pane.child);
+        }
         blockBuild(false);
     }
 

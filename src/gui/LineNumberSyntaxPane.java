@@ -4,17 +4,20 @@ import misc.Pair;
 import misc.Settings;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
-import javax.swing.text.*;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
+import javax.swing.text.JTextComponent;
 import javax.swing.undo.UndoManager;
 import java.awt.*;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Objects;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -43,6 +46,7 @@ public class LineNumberSyntaxPane extends JPanel {
     private final JTextArea lineNumbers;
     private final JTextPane code;
     private final UndoManager undoManager;
+    private final Highlighter highlighter;
     //{ String tmp = System.getProperty("line.separator"); this.LINE_END = null == tmp || tmp.isEmpty() ? "\n" : tmp; }
     //Apparently, \n is always used at runtime --^
     //TODO: Test this on windows!
@@ -62,7 +66,7 @@ public class LineNumberSyntaxPane extends JPanel {
         this.lineNumbers.setMargin(new Insets(1, 4, 1, 4));
 
         this.code = new JTextPane();
-        this.code.setMargin(new Insets(1, 1, 1, 1));
+        this.highlighter = new Highlighter(this.code);
 
         this.add(lineNumbers, BorderLayout.LINE_START);
         this.add(code, BorderLayout.CENTER);
@@ -152,6 +156,8 @@ public class LineNumberSyntaxPane extends JPanel {
         this.updateLineNumbers();
         this.updateTheme();
         this.undoManager.discardAllEdits();
+
+        shDoc.addDocumentListener(this.highlighter);
         shDoc.addUndoableEditListener(this.undoManager);
     }
 
@@ -252,5 +258,111 @@ public class LineNumberSyntaxPane extends JPanel {
             if (p.x.matcher("").groupCount() < 1) throw new IllegalArgumentException("invalid style");
         });
         return style;
+    }
+
+    public void highlightLines(Map<Integer, Color> linesAndColors) {
+        this.highlighter.updateHighlightedLines(linesAndColors);
+    }
+
+    /**
+     * @author Noxgrim
+     *
+     * Partially inspired by: http://www.camick.com/java/source/LinePainter.java
+     */
+    private class Highlighter implements javax.swing.text.Highlighter.HighlightPainter, DocumentListener {
+
+        private final JTextComponent parent;
+        private Map<Pair<Integer, Element>, Color> highlights;
+
+        private Highlighter(JTextComponent parent) {
+            this.highlights = new HashMap<>();
+            this.parent = Objects.requireNonNull(parent, "Parent componet cannot be 'null'!");
+            reload();
+        }
+
+        final void reload() {
+            try {
+                parent.getDocument().addDocumentListener(this);
+                parent.getHighlighter().addHighlight(0, 0, this);
+                highlights.clear();
+            } catch (BadLocationException e) {}
+
+        }
+
+        @Override
+        public void paint(Graphics g, int p0, int p1, Shape bounds, JTextComponent c) {
+            for (Pair<Integer, Element> key : highlights.keySet())
+                try {
+                    Rectangle box =  c.modelToView(key.y.getStartOffset());
+                    g.setColor(highlights.get(key));
+                    g.drawRect(0, box.y, c.getWidth(), box.height); // Rectangle not filled for better visibility.
+
+                } catch (BadLocationException e) {e.printStackTrace();}
+        }
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            int lineCount = lineCount(code);
+            if (lineCount != lastLine) updateLines(
+                    e.getDocument().getDefaultRootElement().getElementIndex(e.getOffset()),
+                    lineCount - lastLine);
+
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            int lineCount = lineCount(code);
+            if (lineCount != lastLine) updateLines(
+                    e.getDocument().getDefaultRootElement().getElementIndex(e.getOffset()),
+                    lineCount - lastLine);
+
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+        }
+
+        void updateHighlightedLines(Map<Integer, Color> linesAndColors) {
+            highlights.clear();
+            final Element elements = parent.getDocument().getDefaultRootElement();
+            final int count = elements.getElementCount();
+            for (Integer key : linesAndColors.keySet()) {
+                if (key < 0)
+                    throw new IllegalArgumentException("Line cannot be negative!: " + key);
+                else if (key >= count)
+                    highlights.put(new Pair<>(count-1, elements.getElement(count-1)), linesAndColors.get(key));
+                else
+                    highlights.put(new Pair<>(key, elements.getElement(key)), linesAndColors.get(key));
+            }
+
+        }
+
+        private void updateLines(int atLine, int lineOffset) {
+            Map<Pair<Integer, Element>, Color> newLines = new HashMap<>(highlights.size());
+            final Element elements;
+            if (highlights.size() == 0)
+                return;
+            else
+                elements = parent.getDocument().getDefaultRootElement();
+
+            for (Pair<Integer, Element> key : highlights.keySet()) {
+                int line = key.x;
+                if (key.x > atLine)
+                    if (key.x + lineOffset < 0)
+                        line = 0;
+                    else if (key.x + lineOffset >= elements.getElementCount())
+                        line = elements.getElementCount() - 1;
+                    else
+                        line += lineOffset;
+
+                final Color value = highlights.get(key);
+                key.x = line;
+                key.y = elements.getElement(line);
+
+                newLines.put(key, value);
+            }
+
+            this.highlights = newLines;
+        }
     }
 }
