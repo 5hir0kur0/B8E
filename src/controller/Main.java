@@ -36,7 +36,7 @@ public class Main {
         Settings.INSTANCE.setDefault(LOOK_AND_FEEL_SETTING, LOOK_AND_FEEL_SETTING_DEFAULT);
     }
 
-    private static final String[] CLASSES_WITH_SETTINGS = {
+    public static final String[] CLASSES_WITH_SETTINGS = {
             "gui.LineNumberSyntaxPane",
             "gui.SyntaxThemes",
             "gui.SyntaxThemes",

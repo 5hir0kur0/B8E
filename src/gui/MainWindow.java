@@ -45,7 +45,7 @@ public class MainWindow extends JFrame {
     private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
             refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile, buildRunMain, buildRunCurrent,
-            buildMain, buildCurrent, runMain, runCurrent, setMain;
+            buildMain, buildCurrent, runMain, runCurrent, setMain, settings;
 
     private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
     private final static String AUTOSAVE_SETTING_DEFAULT = "true";
@@ -76,6 +76,7 @@ public class MainWindow extends JFrame {
     final static String BUILD_CURR_TEXT = "Build current file";
     final static String RUN_CURR_TEXT = "Run current file";
     final static String SET_MAIN_TEXT = "Set main file";
+    final static String SETTINGS_TEXT = "Settings";
 
     private Path lastBuilt;
     private List<Problem<?>> problems;
@@ -256,6 +257,8 @@ public class MainWindow extends JFrame {
         saveFileAs.setMnemonic('v');
         JMenuItem saveAll = new JMenuItem(this.saveAll);
         saveAll.setMnemonic('a');
+        JMenuItem settings = new JMenuItem(this.settings);
+        settings.setMnemonic('t');
 
         fileMenu.add(newFile);
         fileMenu.add(openFile);
@@ -264,6 +267,8 @@ public class MainWindow extends JFrame {
         fileMenu.add(saveFile);
         fileMenu.add(saveFileAs);
         fileMenu.add(saveAll);
+        fileMenu.addSeparator();
+        fileMenu.add(settings);
         fileMenu.setMnemonic('F');
         menuBar.add(fileMenu);
 
@@ -902,6 +907,12 @@ public class MainWindow extends JFrame {
                     Settings.INSTANCE.setProperty("project.main-file",
                             fileChooser.getSelectedFile().toPath().toAbsolutePath().toString());
                 }
+            }
+        };
+        this.settings = new AbstractAction(SETTINGS_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SwingUtilities.invokeLater(SettingsWindow::new);
             }
         };
 
