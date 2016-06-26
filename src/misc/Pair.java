@@ -20,4 +20,9 @@ public class Pair<X, Y> {
         this.y = y;
     }
     @SuppressWarnings("unused") private Pair() { } // for JAXB
+
+    @Override
+    public String toString() {
+        return getClass().getName() + "<" + x.toString() + ", " + y.toString() + ">@" + Integer.toHexString(hashCode());
+    }
 }
