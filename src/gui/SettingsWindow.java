@@ -33,6 +33,7 @@ class SettingsWindow extends JFrame {
         super.setVisible(true);
         super.setPreferredSize(new Dimension(400, 600));
         super.setSize(400, 600);
+        super.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 
     private class SettingsTableModel extends AbstractTableModel {
