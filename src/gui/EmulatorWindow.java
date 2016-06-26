@@ -118,14 +118,12 @@ public class EmulatorWindow extends JFrame {
         //registerSplit.setBottomComponent(new JScrollPane(this.registerTableArea));
         this.registerSplit.setDividerLocation(1.0);
         this.registerSplit.setResizeWeight(0.6);
-        JTable tmpRegTable = ((JTable)((BorderLayout)((JPanel) registers.getViewport().getView()).getLayout())
-                .getLayoutComponent(BorderLayout.CENTER)); // sorry...
+        JTable tmpRegTable = (JTable) registers.getViewport().getView(); // sorry
         tmpRegTable.addMouseListener(new RegisterMouseListener());
 
         if (this.listing != null) {
             JScrollPane listing = this.makeTable(new ListingModel(this.listing), false);
-            JTable tmpTable = ((JTable)((BorderLayout)((JPanel) listing.getViewport().getView()).getLayout())
-                    .getLayoutComponent(BorderLayout.CENTER)); // sorry...
+            JTable tmpTable = (JTable)listing.getViewport().getView(); // sorry
             DefaultTableCellRenderer tmp = new DefaultTableCellRenderer() {
                 @Override
                 public Component getTableCellRendererComponent(JTable table,
@@ -317,11 +315,8 @@ public class EmulatorWindow extends JFrame {
     }
 
     private JScrollPane makeTable(AbstractTableModel model, boolean isMemory) {
-        JTable table = new JTable(model);
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(table.getTableHeader(), BorderLayout.NORTH);
-        panel.add(table, BorderLayout.CENTER);
-        JScrollPane scrollPane = new JScrollPane(panel);
+        final JTable table = new JTable(model);
+        JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.getVerticalScrollBar().setUnitIncrement(10);
         table.setFont(EmulatorWindow.FONT);
         table.getTableHeader().setFont(EmulatorWindow.HEADER_FONT);
