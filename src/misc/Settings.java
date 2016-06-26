@@ -1,9 +1,10 @@
 package misc;
 
 import java.io.*;
-import java.util.Properties;
+import java.util.*;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * A very simple class to store settings as key-value pairs.
@@ -178,5 +179,12 @@ public enum Settings {
     /** @see java.util.Properties#list(PrintStream) */
     public void listDefaults(PrintStream out) {
         this.defaults.list(out);
+    }
+
+    public Set<String> getKeys() {
+        final Set<Object> tmp = new HashSet<>();
+        tmp.addAll(this.defaults.keySet());
+        tmp.addAll(this.settings.keySet());
+        return tmp.stream().map(Object::toString).collect(Collectors.toSet());
     }
 }
