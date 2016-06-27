@@ -37,7 +37,7 @@ public class EmulatorWindow extends JFrame {
     private RegisterTableModel registerTableModel;
     private JSplitPane registerSplit;
     private JPanel registerTableArea;
-    private List<Long> breakpoints;
+    private final List<Long> breakpoints;
 
     private final static String[] REGISTER_TABLE_HEADER = {"Register", "Value"};
     private final static String[] LISTING_TABLE_HEADER = {"Line", "Label", "Code", "Code Memory"};
@@ -64,9 +64,6 @@ public class EmulatorWindow extends JFrame {
         Settings.INSTANCE.setDefault(REGISTER_NUMERAL_SYSTEM_SETTING, REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT);
         Settings.INSTANCE.setDefault(MEMORY_NUMERAL_SYSTEM_SETTING, MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT);
     }
-
-    private static final int LISTING_CODE_ADDRESS_RADIX = 16;
-    private static final int LISTING_CODE_ADDRESS_LENGTH = 4;
 
     /**
      * Create a new emulator window.
@@ -305,13 +302,17 @@ public class EmulatorWindow extends JFrame {
     private void updateListingTable() {
         if (this.listingTable == null || this.listing == null) return;
         Listing.ListingElement element = this.listing.getFromAddress(this.emulator.getProgramCounter());
-        if (element.getLine() >= this.listingTable.getRowCount() || element.getLine() < 0) {
+        if (element == null || element.getLine() >= this.listingTable.getRowCount() || element.getLine() < 0) {
             this.listingTable.setRowSelectionInterval(0, this.listingTable.getRowCount() - 1);
             return;
         }
-        int index = this.listing.getElements().indexOf(element);
-        this.listingTable.setRowSelectionInterval(index, index);
-        this.listingTable.scrollRectToVisible(this.listingTable.getCellRect(index, 1, true));
+        try {
+            int index = this.listing.getElements().indexOf(element);
+            this.listingTable.setRowSelectionInterval(index, index);
+            this.listingTable.scrollRectToVisible(this.listingTable.getCellRect(index, 1, true));
+        } catch (Exception ignored) { // there are sometimes random NPEs and ClassCastExceptions
+            ignored.printStackTrace();
+        }
     }
 
     private JScrollPane makeTable(AbstractTableModel model, boolean isMemory) {
@@ -399,11 +400,13 @@ public class EmulatorWindow extends JFrame {
     private class ListingMouseListener extends MouseAdapter {
         @Override
         public void mousePressed(MouseEvent me) {
-            if (me.getClickCount() != 2) return;
+            if (me.getClickCount() != 2 || EmulatorWindow.this.running) return;
             final JTable table = (JTable) me.getSource();
             final int row = table.rowAtPoint(me.getPoint());
             final ListingModel model = (ListingModel) table.getModel();
-            EmulatorWindow.this.breakpoints.add(model.getAddressOfRow(row));
+            final long address = model.getAddressOfRow(row);
+            if (!EmulatorWindow.this.breakpoints.remove(address)) // remove if address present; add if not present
+                EmulatorWindow.this.breakpoints.add(address);
             EmulatorWindow.super.revalidate();
             EmulatorWindow.super.repaint();
         }
@@ -414,12 +417,14 @@ public class EmulatorWindow extends JFrame {
         protected Void doInBackground() throws Exception {
             while (EmulatorWindow.this.running) try {
                 EmulatorWindow.this.emulator.next();
-                EmulatorWindow.this.updateListingTable();
+                // this causes weird exceptions "sometimes"... (not reliably reproducible)
+                //EmulatorWindow.this.updateListingTable();
                 if (EmulatorWindow.this.breakpoints.contains(EmulatorWindow.this.emulator.getProgramCounter()))
                     EmulatorWindow.this.pauseProgram(null);
             } catch (Exception e) {
                 EmulatorWindow.this.reportException("An Exception occurred while running the program",
                         e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+                e.printStackTrace();
                 return null;
             }
             return null;
