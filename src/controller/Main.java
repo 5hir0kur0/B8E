@@ -32,7 +32,7 @@ public class Main {
     private static MainWindow MAIN_WINDOW;
     private static boolean exitAfterOption = false;
 
-    private static final String LOOK_AND_FEEL_SETTING = "gui.lookAndFeel";
+    private static final String LOOK_AND_FEEL_SETTING = "gui.look-and-feel";
     private static final String LOOK_AND_FEEL_SETTING_DEFAULT;
     static {
         if (System.getProperty("os.name").equalsIgnoreCase("linux"))

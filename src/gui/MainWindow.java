@@ -732,13 +732,13 @@ public class MainWindow extends JFrame {
         final Map<Integer, Color> lines = new HashMap<>();
         List<Problem> relevant =
                 problems.stream().filter(p -> p.getPath().equals(file.getPath())).collect(Collectors.toList());
-        if (relevant.isEmpty())
-            return;
-        Problem.Type[] types = Problem.Type.values();
-        for (int i = types.length - 1; i >= 0; --i) {
-            Problem.Type type = types[i];
-            Color color = PROBLEM_COLORS[i];
-            relevant.stream().filter(p -> p.getType() == type).forEach(p -> lines.put(p.getLine() - 1, color));
+        if (!relevant.isEmpty()) {
+            Problem.Type[] types = Problem.Type.values();
+            for (int i = types.length - 1; i >= 0; --i) {
+                Problem.Type type = types[i];
+                Color color = PROBLEM_COLORS[i];
+                relevant.stream().filter(p -> p.getType() == type).forEach(p -> lines.put(p.getLine() - 1, color));
+            }
         }
         pane.highlightLines(lines);
     }
@@ -1146,6 +1146,10 @@ public class MainWindow extends JFrame {
             code = this.project.getAssembler().getResult();
             if (code == null) {
                 JOptionPane.showMessageDialog(this, "File not yet build!", "Cannot run!", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            } else if (!this.project.getAssembler().wasSuccessful()) {
+                JOptionPane.showMessageDialog(this, "The last assembling was not successful!", "Cannot run!",
+                        JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             listing = this.project.getAssembler().getListing();

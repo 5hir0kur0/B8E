@@ -15,50 +15,6 @@ public class Problem<T> implements Comparable<Problem<?>> {
     private String message;
     private T cause;
 
-    @Override
-    public int compareTo(Problem<?> o) {
-        Objects.requireNonNull(o, "Object to be compared cannot be 'null'.");
-        if (type != o.type)
-            return type.compareTo(o.type);
-        else if (path != null && o.path != null && !path.equals(o.path))
-            return path.compareTo(o.path);
-        else if (line != o.line)
-            return line - o.line;
-        else
-            return message.compareTo(o.message);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Problem)) return false;
-
-        Problem<?> problem = (Problem<?>) o;
-
-        if (line != problem.line) return false;
-        if (path != null ? !path.equals(problem.path) : problem.path != null) return false;
-        if (type != problem.type) return false;
-        if (!message.equals(problem.message)) return false;
-        return !(cause != null ? !cause.equals(problem.cause) : problem.cause != null);
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = path != null ? path.hashCode() : 0;
-        result = 31 * result + line;
-        result = 31 * result + type.hashCode();
-        result = 31 * result + message.hashCode();
-        result = 31 * result + (cause != null ? cause.hashCode() : 0);
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getSimpleName() + "("+type+")["+(path == null ? "?":path.toString())+":"+
-                (line!=-1?line:"?")+"]:"+" \""+message+"\""+(cause != null ? " (Caused by: "+cause.toString()+")" : "");
-    }
-
     public enum Type {
         ERROR, WARNING, INFORMATION;
     }
@@ -118,6 +74,53 @@ public class Problem<T> implements Comparable<Problem<?>> {
     public void setMessage(String message) {
         if (message != null && !message.trim().isEmpty())
             this.message = message;
+    }
+
+    @Override
+    public int compareTo(Problem<?> o) {
+        Objects.requireNonNull(o, "Object to be compared cannot be 'null'.");
+        if (type != o.type)
+            return type.compareTo(o.type);
+        else if (path != null && o.path != null && !path.equals(o.path))
+            return path.compareTo(o.path);
+        else if (line != o.line)
+            return line - o.line;
+        else
+            return message.compareTo(o.message);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Problem)) return false;
+
+        Problem<?> problem = (Problem<?>) o;
+
+        if (line != problem.line) return false;
+        if (path != null ? !path.equals(problem.path) : problem.path != null) return false;
+        if (type != problem.type) return false;
+        if (!message.equals(problem.message)) return false;
+        return !(cause != null ? !cause.equals(problem.cause) : problem.cause != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = path != null ? path.hashCode() : 0;
+        result = 31 * result + line;
+        result = 31 * result + type.hashCode();
+        result = 31 * result + message.hashCode();
+        result = 31 * result + (cause != null ? cause.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        String name = this.getClass().getSimpleName();
+        if (name.equals(Problem.class.getSimpleName()))
+            name += "<" + cause.getClass().getSimpleName()+ ">";
+        return name + "("+type+")["+(path == null ? "?":path.toString())+":"+
+                (line!=-1?line:"?")+"]:"+" \""+message+"\""+(cause != null ? " (Caused by: "+cause.toString()+")" : "");
     }
 
     public T getCause() {

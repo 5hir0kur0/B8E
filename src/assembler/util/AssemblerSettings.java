@@ -1,11 +1,10 @@
 package assembler.util;
 
 import assembler.arc8051.MC8051Library;
+import assembler.util.problems.Problem;
 import misc.Settings;
 
-import java.util.function.IntPredicate;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 /**
  * A temporary class to store the assembler settings.
@@ -328,6 +327,33 @@ public class AssemblerSettings {
      */
     public static final String OPTIMISE_JUMPS_FORCE = "assembler.optimise-jumps.force";
 
+    /**
+     * Whether to stop the assembling process if the preprocessor has encountered
+     * a Problem of the specified type.
+     *
+     * Valid values: "ERROR", "WARNING", "INFORMATION", "NEVER"
+     * Defaults to: "ERROR"
+     */
+    public static final String STOP_PREPROCESSOR = "assembler.stop.preprocessor";
+
+    /**
+     * Whether to stop the assembling process if the tokenizer has encountered
+     * a Problem of the specified type.
+     *
+     * Valid values: "ERROR", "WARNING", "INFORMATION", "NEVER"
+     * Defaults to: "ERROR"
+     */
+    public static final String STOP_TOKENIZER = "assembler.stop.tokenizer";
+
+    /**
+     * Whether to flag the assembling process as unsuccessful if the assembler has
+     * encountered a Problem of the specified type.
+     *
+     * Valid values: "ERROR", "WARNING", "INFORMATION", "NEVER"
+     * Defaults to: "ERROR"
+     */
+    public static final String STOP_ASSEMBLER = "assembler.stop.assembler";
+
 
     /**
      * Initialize all settings that are used by the assembler.
@@ -350,6 +376,10 @@ public class AssemblerSettings {
         s.setDefault(MCU_FILE, "mcu/8051.mcu");
         s.setDefault(AUTO_INCLUDES, "");
         s.setDefault(INCLUDE_RECURSIVE_SEARCH, "false");
+
+        s.setDefault(STOP_PREPROCESSOR, "ERROR");
+        s.setDefault(STOP_TOKENIZER, "ERROR");
+        s.setDefault(STOP_ASSEMBLER, "ERROR");
 
         s.setDefault(INCLUDE_DEFAULT_FILE, "true");
         s.setDefault(SKIP_PREPROCESSING, "false");
@@ -403,6 +433,37 @@ public class AssemblerSettings {
             return true;
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    };
+
+    /**
+     * Whether the String is a valid stop point.
+     * @see #STOP_ASSEMBLER
+     * @see #STOP_TOKENIZER
+     * @see #STOP_PREPROCESSOR
+     */
+    public static final Predicate<String> VALID_STOP_POINT = x -> {
+        try {
+            Problem.Type.valueOf(x);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return x.equals("NEVER");
+        }
+    };
+
+    /**
+     * @return
+     *      a Problem Type derived from a String or else {@code null}.
+     *
+     * @see #STOP_ASSEMBLER
+     * @see #STOP_TOKENIZER
+     * @see #STOP_PREPROCESSOR
+     */
+    public static final Problem.Type getStopPoint(String x) {
+        try {
+            return Problem.Type.valueOf(x);
+        } catch (IllegalArgumentException e) {
+            return null; // Simulate "NEVER". Assume that a Problem always has a set Type
         }
     };
 }

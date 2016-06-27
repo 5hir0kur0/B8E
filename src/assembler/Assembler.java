@@ -15,10 +15,33 @@ import java.util.List;
  */
 public interface Assembler {
 
+    /**
+     * Assembles the given file.
+     *
+     * @param source
+     *      the file that should be assembled.
+     * @param directory
+     *      the reference directory.
+     * @param problems
+     *      occurring {@link Problem}s will be added to this {@link List}.
+     * @return
+     *      a resulting array of bytes representing the code memory.
+     */
     byte[] assemble(Path source, Path directory, List<Problem<?>> problems);
 
     Listing getListing();
 
+    /**
+     * @return
+     *      whether the last assembling was successful.
+     */
+    boolean wasSuccessful();
+
+    /**
+     * @return
+     *      the last result of the assembling process.
+     *      An array of bytes representing the code memory.
+     */
     byte[] getResult();
 
     static Assembler of(final String modelName) {
