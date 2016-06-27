@@ -253,7 +253,7 @@ enum FallbackSyntaxThemes {
     private static final Pattern ASM_COMMENT = Pattern.compile("\\s*(;.*)$");
     private static final Pattern ASM_TODO = Pattern.compile("\\s*;.*?\\b(TODO\\b.*)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_STRING = Pattern.compile("((?<!\\\\)\".*?(?<!\\\\)\"|(?<!\\\\)'.*?(?<!\\\\)')");
-    private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*:)";
+    private static final String ASM_LABEL_STRING = "(?:[\\w&&[\\D]]\\w*\\s*:\\s*)+";
     private static final Pattern ASM_LABEL = Pattern.compile("^\\s*("+ASM_LABEL_STRING+")");
     private static final String ASM_MNEMONIC_STRING =
             "(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|"

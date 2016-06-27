@@ -450,7 +450,6 @@ public class MainWindow extends JFrame {
         this.problemTable = new JTable(new ProblemTableModel());
         this.problemTable.setDefaultRenderer(Object.class, new ProblemTableCellRenderer());
 
-        this.problemTable.getTableHeader().setReorderingAllowed(false);
         TableColumnModel tcm = this.problemTable.getColumnModel();
         tcm.getColumn(0).setWidth(70);
         tcm.getColumn(1).setWidth(30);
@@ -487,13 +486,22 @@ public class MainWindow extends JFrame {
                         int row = table.rowAtPoint(me.getPoint());
                         if (row < 0)
                             return;
-                        Object val = table.getValueAt(row, 1);
-                        Object line = table.getValueAt(row, 2);
+                        Object val  = null;
+                        Object line = null;
+                        for (int i = 0, m = 0; m < 2 || i < table.getColumnCount(); ++i)
+                            if (table.getColumnName(i).equals("Line")) {
+                                line = table.getValueAt(row, i);
+                                ++m;
+                            } else if (table.getColumnName(i).equals("File")) {
+                                val = table.getValueAt(row, i);
+                                ++m;
+                            }
 
-                        if (val instanceof Path) {
+
+                        if (val != null && val instanceof Path) {
                             Path file = (Path) val;
                             openOrSwitchToFile(file.toAbsolutePath());
-                            if (line instanceof Integer) {
+                            if (line != null && line instanceof Integer) {
                                 int i = (Integer) line;
                                 if (i > 0)
                                     try {
@@ -587,12 +595,16 @@ public class MainWindow extends JFrame {
 
         public Pair<Color, Color> getRowColor(int row) {
             if (data.size() > row)
-                switch ((Problem.Type)data.get(row)[0]) {
-                    case ERROR:
-                        return new Pair<>(LIGHT_FOREGROUND, ERROR_COLOR);
-                    case WARNING:
-                        return new Pair<>(DARK_FOREGROUND, WARNING_COLOR);
-                }
+                for (int i = 0; i < columns.length; ++i)
+                    if (getValueAt(row, i) instanceof Problem.Type)
+                        switch ((Problem.Type)data.get(row)[i]) {
+                            case ERROR:
+                                return new Pair<>(LIGHT_FOREGROUND, ERROR_COLOR);
+                            case WARNING:
+                                return new Pair<>(DARK_FOREGROUND, WARNING_COLOR);
+                            default:
+                                return new Pair<>(DARK_FOREGROUND,  INFO_COLOR);
+                        }
             return new Pair<>(DARK_FOREGROUND, INFO_COLOR);
         }
     }
@@ -626,12 +638,28 @@ public class MainWindow extends JFrame {
 
             for (int row = 0; row < this.problems.size(); ++row) {
                 Problem<?> p = this.problems.get(row);
-                this.problemTable.setValueAt(p.getType(), row, 0);
-                this.problemTable.setValueAt(p.getPath() == null ? "-" :
-                        this.project.getProjectPath().relativize(p.getPath()), row, 1);
-                this.problemTable.setValueAt(p.getLine() == -1 ? "-" : p.getLine(), row, 2);
-                this.problemTable.setValueAt(p.getMessage(), row, 3);
-                this.problemTable.setValueAt(p.getCause(), row, 4);
+                for (int i = 0; i < this.problemTable.getColumnCount(); ++i)
+                    switch (this.problemTable.getColumnName(i)) {
+                        case "Type":
+                            this.problemTable.setValueAt(p.getType(), row, i);
+                            break;
+                        case "File":
+                            this.problemTable.setValueAt(p.getPath() == null ? "-" :
+                                    this.project.getProjectPath().relativize(p.getPath()), row, i);
+                            break;
+                        case "Line":
+                            this.problemTable.setValueAt(p.getLine() == -1 ? "-" : p.getLine(), row, i);
+                            break;
+                        case "Message":
+                            this.problemTable.setValueAt(p.getMessage(), row, i);
+                            break;
+                        case "Cause":
+                            this.problemTable.setValueAt(p.getCause(), row, 4);
+                            break;
+                        default:
+                            throw new IllegalStateException("Unknown table header name: " +
+                                    this.problemTable.getColumnName(i));
+                    }
             }
 
             this.problemTable.revalidate();
