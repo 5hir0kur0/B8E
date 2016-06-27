@@ -7,9 +7,7 @@ import assembler.util.AssemblerSettings;
 import assembler.util.HexWriter;
 import assembler.util.Listing;
 import assembler.util.assembling.Assembled;
-import assembler.util.problems.ExceptionProblem;
-import assembler.util.problems.Problem;
-import assembler.util.problems.TokenProblem;
+import assembler.util.problems.*;
 import misc.Settings;
 
 import java.io.BufferedWriter;
@@ -18,10 +16,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Noxgrim
@@ -32,6 +27,7 @@ public class Assembler8051 implements Assembler {
     private Tokenizer8051  tokenizer;
 
     private byte[] result;
+    private boolean successful;
     private Listing listing;
 
     static {
@@ -49,6 +45,11 @@ public class Assembler8051 implements Assembler {
     }
 
     @Override
+    public boolean wasSuccessful() {
+        return successful;
+    }
+
+    @Override
     public Listing getListing() {
         return listing;
     }
@@ -56,10 +57,13 @@ public class Assembler8051 implements Assembler {
     @Override
     public byte[] assemble(Path source, Path directory, List<Problem<?>> problems) {
         result = new byte[0xFFFF+1];
+        successful = true;
 
         List<LabelToken> labels = new LinkedList<>();
 
         List<Token> tokens = getTokens(source, directory, problems);
+        if (tokens == null)
+            return result;
 
         List<Assembled8051> assembled = toAssembled(tokens, labels, problems, source);
 
@@ -69,6 +73,9 @@ public class Assembler8051 implements Assembler {
 
         writeFiles(directory, source, actualBytes + 1, assembled, problems);
 
+        if (!checkErrors(AssemblerSettings.STOP_ASSEMBLER, problems, TokenProblem.class, "assembling"))
+            return result = new byte[0xFFFF+1];
+
         Collections.sort(problems);
 
         return result;
@@ -77,9 +84,13 @@ public class Assembler8051 implements Assembler {
     private List<Token> getTokens(Path source, Path directory, List<Problem<?>> problems) {
         List<String> inputOutput = new LinkedList<>();
         problems.addAll(preprocessor.preprocess(directory, source, inputOutput));
+        if (!checkErrors(AssemblerSettings.STOP_PREPROCESSOR, problems, PreprocessingProblem.class, "preprocessing"))
+            return null;
 
-
-        return tokenizer.tokenize(inputOutput, problems);
+        List<Token> output = tokenizer.tokenize(inputOutput, problems);
+        if (!checkErrors(AssemblerSettings.STOP_TOKENIZER, problems, TokenizingProblem.class, "tokenizing"))
+            return null;
+        return output;
     }
 
     private List<Assembled8051> toAssembled(List<Token> tokens, List<LabelToken> labels,
@@ -272,4 +283,19 @@ public class Assembler8051 implements Assembler {
             return Paths.get(directory.toString(), outDir, fileName.substring(0, fileName.lastIndexOf('.')) + extension);
 
     }
+     private boolean checkErrors(String setting, List<Problem<?>> problems, Class<? extends Problem> searchedType,
+                                 String workName) {
+         Problem.Type[] type = {AssemblerSettings.getStopPoint(
+                 Settings.INSTANCE.getProperty(setting, AssemblerSettings.VALID_STOP_POINT))};
+         Optional<Problem<?>> found = problems.stream().filter(
+                 p -> searchedType.isInstance(p) && p.getType() == type[0]).findFirst();
+         if (found.isPresent()) {
+             Problem cause = found.get();
+             problems.add(new Problem<Problem<?>>("Stopped assembling due to a Problem of type " + cause.getType() +
+                     " while " +  workName + " the file.", Problem.Type.INFORMATION,
+                     cause.getPath(), cause.getLine(), cause));
+             return this.successful = false;
+         }
+         return true;
+     }
 }

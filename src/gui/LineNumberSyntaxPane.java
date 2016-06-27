@@ -12,6 +12,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
 import javax.swing.undo.UndoManager;
+import javax.swing.undo.UndoableEdit;
 import java.awt.*;
 import java.io.IOException;
 import java.io.Reader;
@@ -50,7 +51,7 @@ public class LineNumberSyntaxPane extends JPanel {
     private int lastLine = 1;
 
     private String fileExtension;
-    private boolean changed = false;
+    private int savedHash = 0;
 
     /**
      * Create a new {@code LineNumberSyntaxPane}.
@@ -81,10 +82,19 @@ public class LineNumberSyntaxPane extends JPanel {
         this.undoManager = new UndoManager() {
             @Override
             public void undoableEditHappened(UndoableEditEvent e) {
-                LineNumberSyntaxPane.this.changed = true;
-                String pres = e.getEdit().getPresentationName();
-                if (pres.equals("addition") || pres.equals("deletion"))
-                    super.undoableEditHappened(e);
+                final UndoableEdit u = e.getEdit();
+                if (u instanceof DocumentEvent) {
+                    DocumentEvent de = (DocumentEvent) u;
+                    if (de.getType() == DocumentEvent.EventType.INSERT ||
+                        de.getType() == DocumentEvent.EventType.REMOVE) {
+                        super.undoableEditHappened(e);
+                    }
+                } else {
+                    String pres = u.getPresentationName();
+                    if (pres.equals(UIManager.getString("AbstractDocument.additionText")) ||
+                        pres.equals(UIManager.getString("AbstractDocument.deletionText")))
+                        super.undoableEditHappened(e);
+                }
             }
         };
         this.undoManager.setLimit(2958);
@@ -141,6 +151,7 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void store(Writer w) throws IOException {
         this.code.write(w);
+        this.savedHash = this.code.getText().hashCode();
     }
 
     public void load(Reader r) throws IOException {
@@ -159,8 +170,9 @@ public class LineNumberSyntaxPane extends JPanel {
         this.updateLineNumbers();
         this.updateTheme();
         this.undoManager.discardAllEdits();
+        this.savedHash = this.code.getText().hashCode();
 
-        shDoc.addDocumentListener(this.highlighter);
+        this.highlighter.reload();
         shDoc.addUndoableEditListener(this.undoManager);
     }
 
@@ -254,11 +266,7 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     public boolean isChanged() {
-        return this.changed;
-    }
-
-    public void setChanged(boolean changed) {
-        this.changed = changed;
+        return this.savedHash != this.code.getText().hashCode();
     }
 
     /**
