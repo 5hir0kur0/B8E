@@ -142,18 +142,11 @@ public class MainWindow extends JFrame {
         this.setUpKeyBindings();
 
         super.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent e) {
-                try {
-                    MainWindow.this.project.close();
-                } catch (IOException e1) {
-                    MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
-                    e1.printStackTrace();
-                }
-                System.exit(0);
+            @Override public void windowClosing(WindowEvent e) {
+                MainWindow.this.windowClosing();
             }
         });
-        super.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        super.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
         this.fileChooser = new JFileChooser(this.project.getProjectPath().toString());
 
@@ -162,14 +155,14 @@ public class MainWindow extends JFrame {
         // doesn't work when called directly
         SwingUtilities.invokeLater(() -> {
             try {
-                Thread.sleep(10);
+                Thread.sleep(15);
             } catch (InterruptedException ignored) { }
             toggleSplit(true, this.problemsSplit);
         });
         if (!this.project.isPermanent())
             SwingUtilities.invokeLater(() -> {
                 try {
-                    Thread.sleep(10);
+                    Thread.sleep(15);
                 } catch (InterruptedException ignored) { }
                 toggleSplit(true, this.mainSplit);
             });
@@ -221,6 +214,54 @@ public class MainWindow extends JFrame {
             System.err.println("error during panic-save:");
             e.printStackTrace();
         }
+    }
+
+    private void windowClosing() {
+        boolean unsavedFiles = false;
+        final StringBuilder dialogText = new StringBuilder();
+        for (int i = 0, all = MainWindow.this.jTabbedPane.getTabCount(); i < all; ++i) try {
+            final Pair<TextFile, LineNumberSyntaxPane> pair = MainWindow.this.getFileAt(i);
+            if (pair.y.isChanged()) {
+                unsavedFiles = true;
+                final String tmpName = pair.x == null ? "[untitled file]" : pair.x.getPath().getFileName().toString();
+                dialogText.append(tmpName).append('\n');
+            }
+        } catch (NotifyUserException ignored) {
+            ignored.printStackTrace();
+        }
+        if (!unsavedFiles) {
+            MainWindow.super.dispose();
+            return;
+        }
+        final JTextArea textArea = new JTextArea(dialogText.toString());
+        textArea.setEditable(false);
+        final JPanel panel = new JPanel(new BorderLayout());
+        panel.add(new JLabel("The following files have not been saved:"), BorderLayout.PAGE_START);
+        panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+        panel.add(new JLabel("Do you want to save them?"), BorderLayout.PAGE_END);
+        final int result = JOptionPane.showConfirmDialog(MainWindow.this,
+                panel,
+                "Do you want to save unsaved files?",
+                JOptionPane.YES_NO_CANCEL_OPTION);
+        switch (result) {
+            case JOptionPane.YES_OPTION:
+                MainWindow.this.saveAllFiles();
+                break;
+            case JOptionPane.NO_OPTION:
+                break;
+            case JOptionPane.CANCEL_OPTION:
+            case JOptionPane.CLOSED_OPTION:
+                return;
+        }
+
+        try {
+            MainWindow.this.project.close();
+        } catch (IOException e1) {
+            MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
+            e1.printStackTrace();
+        }
+
+        MainWindow.super.dispose();
     }
 
     private JMenuBar makeMenu() {
@@ -390,7 +431,14 @@ public class MainWindow extends JFrame {
         }
     }
 
-    private void saveFile(Pair<TextFile, LineNumberSyntaxPane> file) {
+    private void saveFile(int index) {
+        final Pair<TextFile, LineNumberSyntaxPane> file;
+        try {
+            file = this.getFileAt(index);
+        } catch (NotifyUserException e) {
+            this.reportException(e.getMessage(), e, false);
+            return;
+        }
         if (file != null)
             if (file.x != null)
                 try {
@@ -400,29 +448,40 @@ public class MainWindow extends JFrame {
                             + "\" failed", e1, false);
                 }
             else
-                saveFileAs(file);
+                saveFileAs(index);
     }
 
-    private void saveFileAs(Pair<TextFile, LineNumberSyntaxPane> file) {
+    private void saveFileAs(int index) {
         if (this.fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             final Path path = this.fileChooser.getSelectedFile().toPath();
+            final Pair<TextFile, LineNumberSyntaxPane> file;
+            try {
+                file = this.getFileAt(index);
+            } catch (NotifyUserException e) {
+                this.reportException(e.getMessage(), e, false);
+                return;
+            }
             try {
                 file.x = this.project.requestResource(path, true);
                 file.y.store(file.x.getWriter());
                 file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
                 file.y.load(file.x.getReader());
-                for (int i = 0; i < this.jTabbedPane.getTabCount(); ++i) {
-                    AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(i);
-                    if (file.x.equals(pane.textFile)) {
-                        this.jTabbedPane.setTitleAt(i, file.x.getPath().getFileName().toString());
-                        this.refreshTree();
-                        return;
-                    }
-                }
-                this.reportException("This could never happen!", new IllegalArgumentException("tab not open"), false);
+                this.jTabbedPane.setTitleAt(index, file.x.getPath().getFileName().toString());
+                this.refreshTree();
             } catch (IOException e1) {
                 this.reportException("Error: Saving the file \""
                         + file.x.getPath().getFileName() + "\" as \"" + path + "\" failed", e1, false);
+            }
+        }
+    }
+
+    private void saveAllFiles() {
+        for (int i = 0, all = this.jTabbedPane.getTabCount(); i < all; ++i) {
+            try {
+                this.saveFile(i);
+                this.refreshTree();
+            } catch (Exception e1) {
+                this.reportException(e1.getMessage(), e1, false);
             }
         }
     }
@@ -711,8 +770,8 @@ public class MainWindow extends JFrame {
 
     private void openFile(Path path) {
         try {
-            final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(path));
             TextFile textFile = this.project.requestResource(path, false);
+            final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(getFileExtension(path));
             syntaxPane.load(textFile.getReader());
             this.openTab(syntaxPane, textFile, path.getFileName().toString());
             this.highlightProblems(textFile, syntaxPane);
@@ -742,32 +801,25 @@ public class MainWindow extends JFrame {
         this.saveFile = new AbstractAction(SAVE_FILE_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 try {
-                    mw.saveFile(mw.getCurrentFile());
+                    mw.saveFile(mw.jTabbedPane.getSelectedIndex());
                     mw.refreshTree();
-                } catch (NotifyUserException e1) {
-                    mw.reportException(e1.getMessage(), e1, false);
+                } catch (Exception e1) {
+                    mw.reportException("Saving the file failed", e1, false);
                 }
             }
         };
         this.saveAll = new AbstractAction(SAVE_ALL_FILES_TEXT) {
             public void actionPerformed(ActionEvent e) {
-                for (int i = 0, all = mw.jTabbedPane.getTabCount(); i < all; ++i) {
-                    try {
-                        mw.saveFile(mw.getFileAt(i));
-                        mw.refreshTree();
-                    } catch (NotifyUserException e1) {
-                        mw.reportException(e1.getMessage(), e1, false);
-                    }
-                }
+                mw.saveAllFiles();
             }
         };
         this.saveAs = new AbstractAction(SAVE_FILE_AS_TEXT) {
             public void actionPerformed(ActionEvent e) {
                 try {
-                    mw.saveFileAs(mw.getCurrentFile());
+                    mw.saveFileAs(mw.jTabbedPane.getSelectedIndex());
                     mw.refreshTree();
-                } catch (NotifyUserException e1) {
-                    mw.reportException(e1.getMessage(), e1, false);
+                } catch (Exception e1) {
+                    mw.reportException("Saving the file failed", e1, false);
                 }
             }
         };

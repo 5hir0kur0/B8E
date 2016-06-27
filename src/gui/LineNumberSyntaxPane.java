@@ -47,22 +47,23 @@ public class LineNumberSyntaxPane extends JPanel {
     private final JTextPane code;
     private final UndoManager undoManager;
     private final Highlighter highlighter;
-    //{ String tmp = System.getProperty("line.separator"); this.LINE_END = null == tmp || tmp.isEmpty() ? "\n" : tmp; }
-    //Apparently, \n is always used at runtime --^
-    //TODO: Test this on windows!
     private int lastLine = 1;
 
-    private List<Pair<Pattern, AttributeSet>> style;
-
     private String fileExtension;
+    private boolean changed = false;
 
+    /**
+     * Create a new {@code LineNumberSyntaxPane}.
+     * NOTE: This component does not provide scrolling support. If you want scrolling, you have to add it to a
+     * {@link JScrollPane}.
+     * @param fileExtension the displayed file's extension; must not be {@code null}
+     */
     public LineNumberSyntaxPane(String fileExtension) {
         super(new BorderLayout());
 
         this.lineNumbers = new JTextArea("1");
         this.lineNumbers.setLineWrap(false);
         this.lineNumbers.setEditable(false);
-        //this.lineNumbers.setEnabled(false);
         this.lineNumbers.setMargin(new Insets(1, 4, 1, 4));
 
         this.code = new JTextPane();
@@ -76,9 +77,11 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
         this.setFileExtension(fileExtension);
+
         this.undoManager = new UndoManager() {
             @Override
             public void undoableEditHappened(UndoableEditEvent e) {
+                LineNumberSyntaxPane.this.changed = true;
                 String pres = e.getEdit().getPresentationName();
                 if (pres.equals("addition") || pres.equals("deletion"))
                     super.undoableEditHappened(e);
@@ -120,9 +123,9 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setBackground(codeBackground);
         this.lineNumbers.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberForeground());
         this.code.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeForeground());
-        this.style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme()
+        final List<Pair<Pattern, AttributeSet>> style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme()
                 .getStyleForType(this.fileExtension).getStyle());
-        ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(this.style);
+        ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(style);
         this.updateSyntaxHighlighting();
     }
 
@@ -191,7 +194,7 @@ public class LineNumberSyntaxPane extends JPanel {
         if (line < 0 || column < 0)
             throw new IllegalArgumentException("'line' or column must not be negative!");
 
-        int offset = 0;
+        int offset;
         Element elements = this.code.getDocument().getDefaultRootElement();
         Element ele = (line < elements.getElementCount()) ?
                 elements.getElement(line) : elements.getElement(elements.getElementCount()-1);
@@ -207,7 +210,6 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     private void addLines(int count) {
-        //final int columnsBefore = this.lineNumbers.getColumns();
         if (count == 0) return;
         if (count < 0) {
             if (lastLine + count <= 0) throw new IllegalArgumentException("Illegal remove count: " + count);
@@ -227,19 +229,6 @@ public class LineNumberSyntaxPane extends JPanel {
             }
         }
         this.lastLine += count;
-        //final int columnsAfter = Integer.toUnsignedString(this.lastLine).length();
-        //if (columnsBefore != columnsAfter)
-        //    this.lineNumbers.setColumns(columnsAfter);
-        //this.lineNumbers.setRows(this.lastLine);
-        //This turned out to be unnecessary --^
-    }
-
-    private static int numDigits(long number) {
-        if (!(number >= 0))
-            throw new IllegalArgumentException("Cannot calculate the number of digits of a negative number.");
-        int digits;
-        for (digits = 1; (number /= 10) != 0; ++digits) ;
-        return digits;
     }
 
     private void updateLineNumbers() {
@@ -264,6 +253,14 @@ public class LineNumberSyntaxPane extends JPanel {
         this.highlighter.updateHighlightedLines(linesAndColors);
     }
 
+    public boolean isChanged() {
+        return this.changed;
+    }
+
+    public void setChanged(boolean changed) {
+        this.changed = changed;
+    }
+
     /**
      * @author Noxgrim
      *
@@ -285,7 +282,9 @@ public class LineNumberSyntaxPane extends JPanel {
                 parent.getDocument().addDocumentListener(this);
                 parent.getHighlighter().addHighlight(0, 0, this);
                 highlights.clear();
-            } catch (BadLocationException e) {}
+            } catch (BadLocationException ignored) {
+                ignored.printStackTrace();
+            }
 
         }
 

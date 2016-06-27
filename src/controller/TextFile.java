@@ -12,7 +12,6 @@ import java.util.Optional;
  * @author 5hir0kur0, Noxgrim
  */
 public class TextFile {
-    private boolean changed = false;
     private final Path path;
 
     TextFile(Path path, boolean create) throws IOException {
@@ -35,13 +34,5 @@ public class TextFile {
 
     public boolean isWritable() {
         return Files.isWritable(this.path);
-    }
-
-    public void setChanged(boolean changed) {
-        this.changed = changed;
-    }
-
-    public boolean isChanged() {
-        return this.changed;
     }
 }
