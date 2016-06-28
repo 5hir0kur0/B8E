@@ -15,12 +15,14 @@ import java.util.stream.Collectors;
 public enum Settings {
     INSTANCE;
     private Properties settings;
+    private Properties settingsFile;
     private Properties defaults;
 
     //constructors of enums are private by definition
     Settings() {
-        defaults = new Properties();
-        settings = new Properties(defaults);
+        this.defaults = new Properties();
+        this.settingsFile = new Properties(this.defaults);
+        this.settings = new Properties(this.settingsFile);
     }
 
     /** @see java.util.Properties#getProperty(String) */
@@ -164,6 +166,11 @@ public enum Settings {
     /** @see java.util.Properties#load(Reader) */
     public void load(Reader r) throws IOException {
         this.settings.load(r);
+    }
+
+    /** @see java.util.Properties#load(Reader) */
+    public void loadSettingsFile(Reader r) throws IOException {
+        this.settingsFile.load(r);
     }
 
     /**
