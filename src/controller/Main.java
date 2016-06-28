@@ -144,7 +144,7 @@ public class Main {
             try {
                 final Path path = Paths.get(list.get(0));
                 try (Reader in = Files.newBufferedReader(path)) {
-                    Settings.INSTANCE.load(in);
+                    Settings.INSTANCE.loadSettingsFile(in);
                 }
             } catch (Exception e) {
                 System.err.println("Reading the settings file (" + list.get(0) + ") failed");
@@ -273,11 +273,11 @@ public class Main {
             PROJECT_PATH = Paths.get(args[0]);
             PROJECT_PERMANENT = true;
             ++i;
-        } else if (args.length == 0) {
+        } else {
             PROJECT_PATH = Paths.get(System.getProperty("user.dir"));
             PROJECT_PERMANENT = false;
         }
-        else outer: for (; i < args.length; ++i) {
+        outer: for (; i < args.length; ++i) {
             if (args[i].startsWith("--")) {
                 for (Pair<String, Consumer<List<String>>> pair : CL_OPTIONS)
                     if (pair.x.equals(args[i])) {
