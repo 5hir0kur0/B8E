@@ -7,6 +7,7 @@ import emulator.arc8051.MC8051;
 import misc.Settings;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,12 +34,18 @@ public class Project implements AutoCloseable {
         Path path = null;
         for (String name : PROJECT_SETTINGS_NAMES) {
             Path tmp = projectPath.resolve(name);
-            if (Files.exists(tmp)) path = tmp;
+            if (Files.exists(tmp)) {
+                path = tmp;
+                break;
+            }
         }
         if (null == path && this.isPermanent())
             this.projectFile = projectPath.resolve(PROJECT_SETTINGS_NAMES[0]);
         else this.projectFile = path;
-        if (projectFile != null) Settings.INSTANCE.load(Files.newBufferedReader(this.projectFile, CHARSET));
+        if (projectFile != null)
+            try (Reader r = Files.newBufferedReader(this.projectFile, CHARSET)) {
+                Settings.INSTANCE.load(r);
+            }
     }
 
     @Override
