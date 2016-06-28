@@ -268,14 +268,16 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(EXCEPTION_HANDLER);
 
-        if (args.length == 1 && !args[0].startsWith("--")) {
+        int i = 0; // argument loop counter
+        if (args.length >= 1 && !args[0].startsWith("--")) {
             PROJECT_PATH = Paths.get(args[0]);
             PROJECT_PERMANENT = true;
+            ++i;
         } else if (args.length == 0) {
             PROJECT_PATH = Paths.get(System.getProperty("user.dir"));
             PROJECT_PERMANENT = false;
         }
-        else outer: for (int i = 0; i < args.length; ++i) {
+        else outer: for (; i < args.length; ++i) {
             if (args[i].startsWith("--")) {
                 for (Pair<String, Consumer<List<String>>> pair : CL_OPTIONS)
                     if (pair.x.equals(args[i])) {

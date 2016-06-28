@@ -602,8 +602,8 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public Object getValueAt(int row, int col) {
-            if (col == 0) return this.numeralSystem.toString(row, 3) + "0";
-            return this.numeralSystem.toString(this.rom.get(row * 16 + col - 1) & 0xFF, 2);
+            if (col == 0) return NumeralSystem.HEXADECIMAL.toString(row, 3) + "0";
+            return Misc.getByteDisplayValue(this.numeralSystem, this.rom.get(row * 16 + col - 1) & 0xFF);
         }
 
         @Override

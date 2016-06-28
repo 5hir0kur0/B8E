@@ -229,36 +229,40 @@ public class MainWindow extends JFrame {
         } catch (NotifyUserException ignored) {
             ignored.printStackTrace();
         }
-        if (!unsavedFiles) {
-            MainWindow.super.dispose();
-            return;
-        }
-        final JTextArea textArea = new JTextArea(dialogText.toString());
-        textArea.setEditable(false);
-        final JPanel panel = new JPanel(new BorderLayout());
-        panel.add(new JLabel("The following files have not been saved:"), BorderLayout.PAGE_START);
-        panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
-        panel.add(new JLabel("Do you want to save them?"), BorderLayout.PAGE_END);
-        final int result = JOptionPane.showConfirmDialog(MainWindow.this,
-                panel,
-                "Do you want to save unsaved files?",
-                JOptionPane.YES_NO_CANCEL_OPTION);
-        switch (result) {
-            case JOptionPane.YES_OPTION:
-                MainWindow.this.saveAllFiles();
-                break;
-            case JOptionPane.NO_OPTION:
-                break;
-            case JOptionPane.CANCEL_OPTION:
-            case JOptionPane.CLOSED_OPTION:
-                return;
+        if (unsavedFiles) {
+            final JTextArea textArea = new JTextArea(dialogText.toString());
+            textArea.setEditable(false);
+            final JPanel panel = new JPanel(new BorderLayout());
+            panel.add(new JLabel("The following files have not been saved:"), BorderLayout.PAGE_START);
+            panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+            panel.add(new JLabel("Do you want to save them?"), BorderLayout.PAGE_END);
+            final int result = JOptionPane.showConfirmDialog(MainWindow.this,
+                    panel,
+                    "Do you want to save unsaved files?",
+                    JOptionPane.YES_NO_CANCEL_OPTION);
+            switch (result) {
+                case JOptionPane.YES_OPTION:
+                    MainWindow.this.saveAllFiles();
+                    break;
+                case JOptionPane.NO_OPTION:
+                    break;
+                case JOptionPane.CANCEL_OPTION:
+                case JOptionPane.CLOSED_OPTION:
+                    return;
+            }
+
+            try {
+                MainWindow.this.project.close();
+            } catch (IOException e1) {
+                MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
+                e1.printStackTrace();
+            }
         }
 
         try {
-            MainWindow.this.project.close();
-        } catch (IOException e1) {
-            MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
-            e1.printStackTrace();
+            this.project.close();
+        } catch (IOException e) {
+            this.reportException("An error occurred while closing the project", e, false);
         }
 
         MainWindow.super.dispose();

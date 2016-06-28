@@ -66,12 +66,7 @@ public class ByteRegister implements Register {
 
     @Override
     public String getDisplayValue(NumeralSystem target) {
-        switch (target) {
-            case BINARY: return target.toString(Byte.toUnsignedLong(getValue()), 8);
-            case DECIMAL: return target.toString(Byte.toUnsignedLong(getValue()), 3);
-            case HEXADECIMAL: return target.toString(Byte.toUnsignedLong(getValue()), 2);
-            default: throw new IllegalArgumentException("Invalid numeral system.");
-        }
+        return Misc.getByteDisplayValue(target, this.getValue() & 0xFF);
     }
 
     @Override
