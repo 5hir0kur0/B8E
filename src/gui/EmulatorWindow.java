@@ -29,6 +29,7 @@ public class EmulatorWindow extends JFrame {
     private final Listing listing;
     private final NumeralSystem registerNumeralSystem;
     private final NumeralSystem memoryNumeralSystem;
+    private final boolean updateWhileRunning;
     private boolean running;
     private SwingWorker<Void, Void> emulatorRunner;
     private JButton nextButton, runButton, pauseButton, codeButton, loadButton, storeButton;
@@ -60,9 +61,12 @@ public class EmulatorWindow extends JFrame {
     };
     private final static String MEMORY_NUMERAL_SYSTEM_SETTING = "gui.emulator.memory-numeral-system";
     private final static String MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT = NumeralSystem.HEXADECIMAL.name();
+    private final static String UPDATE_WHILE_RUNNING_SETTING = "gui.emulator.update-while-running";
+    private final static String UPDATE_WHILE_RUNNING_SETTING_DEFAULT = "true";
     static {
         Settings.INSTANCE.setDefault(REGISTER_NUMERAL_SYSTEM_SETTING, REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT);
         Settings.INSTANCE.setDefault(MEMORY_NUMERAL_SYSTEM_SETTING, MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT);
+        Settings.INSTANCE.setDefault(UPDATE_WHILE_RUNNING_SETTING, UPDATE_WHILE_RUNNING_SETTING_DEFAULT);
     }
 
     /**
@@ -79,6 +83,7 @@ public class EmulatorWindow extends JFrame {
                 REGISTER_NUMERAL_SYSTEM_SETTING_DEFAULT, IS_VALID_NUMERAL_SYSTEM));
         this.memoryNumeralSystem = NumeralSystem.valueOf(Settings.INSTANCE.getProperty(MEMORY_NUMERAL_SYSTEM_SETTING,
                 MEMORY_NUMERAL_SYSTEM_SETTING_DEFAULT, IS_VALID_NUMERAL_SYSTEM));
+        this.updateWhileRunning = Settings.INSTANCE.getBoolProperty(UPDATE_WHILE_RUNNING_SETTING);
         this.running = false;
         this.breakpoints = new ArrayList<>(10);
         this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -253,8 +258,8 @@ public class EmulatorWindow extends JFrame {
     private void pauseProgram(ActionEvent e) {
         this.running = false;
         this.enableElements(false);
-        this.updateListingTable();
         this.emulatorRunner = new EmulatorSwingWorker();
+        this.updateListingTable();
         super.revalidate();
         super.repaint();
     }
@@ -417,8 +422,15 @@ public class EmulatorWindow extends JFrame {
         protected Void doInBackground() throws Exception {
             while (EmulatorWindow.this.running) try {
                 EmulatorWindow.this.emulator.next();
-                // this causes weird exceptions "sometimes"... (not reliably reproducible)
-                //EmulatorWindow.this.updateListingTable();
+                if (EmulatorWindow.this.updateWhileRunning) try {
+                    EmulatorWindow.this.updateListingTable();
+                    // calling revalidate() repeatedly causes NPEs in some Swing thread that I cannot catch
+                    // easily here
+                    // it seems to work with just repaint though
+                    EmulatorWindow.super.repaint();
+                } catch (RuntimeException ignored) {
+                    ignored.printStackTrace();
+                }
                 if (EmulatorWindow.this.breakpoints.contains(EmulatorWindow.this.emulator.getProgramCounter()))
                     EmulatorWindow.this.pauseProgram(null);
             } catch (Exception e) {
