@@ -198,9 +198,16 @@ enum FallbackSyntaxThemes {
                 final Color tmpLineNumberForeground = DEFAULT.base04;
                 final Color tmpCodeBackground = DEFAULT.base07;
                 final Color tmpCodeForeground = DEFAULT.base02;
+                final Color tmpCaretColor = DEFAULT.base02;
+                final Color tmpSelectionColor = DEFAULT.base0D;
+                final Color tmpSelectedTextColor = DEFAULT.base06;
+                final Color tmpErrorColor = DEFAULT.base08;
+                final Color tmpWarningColor = DEFAULT.base09;
+                final Color tmpInformationColor = DEFAULT.base03;
 
                 DEFAULT.syntaxTheme = new SyntaxTheme(tmpMap, tmpLineNumberBackground, tmpLineNumberForeground,
-                        tmpCodeBackground, tmpCodeForeground);
+                        tmpCodeBackground, tmpCodeForeground, tmpCaretColor, tmpSelectionColor, tmpSelectedTextColor,
+                        tmpErrorColor, tmpWarningColor, tmpInformationColor);
             }
             return DEFAULT.syntaxTheme;
         }

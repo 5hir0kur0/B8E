@@ -30,14 +30,35 @@ final class SyntaxTheme {
     final Color defaultCodeBackground;
     @XmlJavaTypeAdapter(ColorAdapter.class)
     final Color defaultCodeForeground;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultCaretColor;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultSelectionColor;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultSelectedTextColor;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultErrorColor;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultWarningColor;
+    @XmlJavaTypeAdapter(ColorAdapter.class)
+    final Color defaultInformationColor;
+
 
     SyntaxTheme(LinkedHashMap<String, Style> styleMap, Color defaultLineNumberBackground,
-                Color defaultLineNumberForeground, Color defaultCodeBackground, Color defaultCodeForeground) {
+                Color defaultLineNumberForeground, Color defaultCodeBackground, Color defaultCodeForeground,
+                Color defaultCaretColor, Color defaultSelectionColor, Color defaultSelectedTextColor,
+                Color defaultErrorColor, Color defaultWarningColor, Color defaultInformationColor) {
         this.styleMap = Objects.requireNonNull(styleMap);
         this.defaultLineNumberBackground = Objects.requireNonNull(defaultLineNumberBackground);
         this.defaultLineNumberForeground = Objects.requireNonNull(defaultLineNumberForeground);
         this.defaultCodeBackground = Objects.requireNonNull(defaultCodeBackground);
         this.defaultCodeForeground = Objects.requireNonNull(defaultCodeForeground);
+        this.defaultCaretColor = Objects.requireNonNull(defaultCaretColor);
+        this.defaultSelectionColor = Objects.requireNonNull(defaultSelectionColor);
+        this.defaultSelectedTextColor = Objects.requireNonNull(defaultSelectedTextColor);
+        this.defaultErrorColor = Objects.requireNonNull(defaultErrorColor);
+        this.defaultWarningColor = Objects.requireNonNull(defaultWarningColor);
+        this.defaultInformationColor = Objects.requireNonNull(defaultInformationColor);
     }
 
     // constructor for JAXB
@@ -48,6 +69,12 @@ final class SyntaxTheme {
         this.defaultLineNumberForeground = Color.BLACK;
         this.defaultCodeBackground = Color.WHITE;
         this.defaultCodeForeground = Color.BLACK;
+        this.defaultCaretColor = Color.BLACK;
+        this.defaultSelectionColor = Color.CYAN;
+        this.defaultSelectedTextColor = Color.WHITE;
+        this.defaultErrorColor = Color.RED;
+        this.defaultWarningColor = Color.ORANGE;
+        this.defaultInformationColor = Color.LIGHT_GRAY;
     }
 
     Color getLineNumberBackground() {
@@ -66,6 +93,30 @@ final class SyntaxTheme {
         return this.defaultCodeForeground;
     }
 
+    public Color getWarningColor() {
+        return defaultWarningColor;
+    }
+
+    public Color getInformationColor() {
+        return defaultInformationColor;
+    }
+
+    public Color getErrorColor() {
+        return defaultErrorColor;
+    }
+
+    public Color getSelectionColor() {
+        return defaultSelectionColor;
+    }
+
+    public Color getSelectedTextColor() {
+        return defaultSelectedTextColor;
+    }
+
+    public Color getCaretColor() {
+        return defaultCaretColor;
+    }
+
     Style getStyleForType(String type) {
         Style result = this.styleMap.get(type);
         if (result == null) return new Style();
@@ -75,7 +126,9 @@ final class SyntaxTheme {
     boolean isValid() {
         if (this.styleMap == null || this.defaultLineNumberBackground == null
                 || this.defaultLineNumberForeground == null || this.defaultCodeBackground == null
-                || this.defaultCodeForeground == null) return false;
+                || this.defaultCodeForeground == null || this.defaultCaretColor == null
+                || this.defaultSelectionColor == null || this.defaultErrorColor == null
+                || this.defaultWarningColor == null || this.defaultInformationColor == null) return false;
         for (Map.Entry<String, Style> entry : this.styleMap.entrySet()) {
             if (entry.getKey() == null || entry.getKey().trim().isEmpty()) return false;
             if (entry.getValue() == null || !entry.getValue().isValid()) return false;

@@ -133,6 +133,9 @@ public class LineNumberSyntaxPane extends JPanel {
         this.code.setBackground(codeBackground);
         this.lineNumbers.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getLineNumberForeground());
         this.code.setForeground(SyntaxThemes.INSTANCE.getCurrentTheme().getCodeForeground());
+        this.code.setCaretColor(SyntaxThemes.INSTANCE.getCurrentTheme().getCaretColor());
+        this.code.setSelectionColor(SyntaxThemes.INSTANCE.getCurrentTheme().getSelectionColor());
+        this.code.setSelectedTextColor(SyntaxThemes.INSTANCE.getCurrentTheme().getSelectedTextColor());
         final List<Pair<Pattern, AttributeSet>> style = verifyStyle(SyntaxThemes.INSTANCE.getCurrentTheme()
                 .getStyleForType(this.fileExtension).getStyle());
         ((SyntaxHighlightedDocument)this.code.getDocument()).setStyle(style);
