@@ -1483,7 +1483,8 @@ public class MC8051Library {
             if (type == OperandType8051.ADDRESS_OFFSET) {
                 jump = getFromOffset(codePoint, jump, 3, operands[0], file, problems);
                 getErrorSetting(operands[0], AssemblerSettings.ADDRESS_OFFSET, "Using of address offsets" +
-                        "is deactivated!", "Address offset has been used! This can result in non-opcode jump targets.", file, problems);
+                        "is deactivated!", "Address offset has been used! This can result in non-opcode jump targets.",
+                        "Address offset used.", file, problems);
             }
 
             result = new byte[] { opc1,
@@ -1581,7 +1582,8 @@ public class MC8051Library {
             else {
                 i = Long.parseLong(op.getValue());
                 getErrorSetting(op, AssemblerSettings.ADDRESS_OFFSET, "Using of address offsets is " +
-                        "deactivated!", "Address offset has been used! This can result in non-opcode jump targets.", file, problems);
+                        "deactivated!", "Address offset has been used! This can result in non-opcode jump targets.",
+                        "Address offset used.", file, problems);
             }
 
             if (i >= -128 && i <= 127)
@@ -1657,7 +1659,7 @@ public class MC8051Library {
                 " operand" + (firstOperand == 1 ? "" : "s") + ".";
         for (int i = firstOperand; i < operands.length; ++i)
             getErrorSetting(operands[i], AssemblerSettings.UNNECESSARY_OPERANDS,
-                    err, "Unnecessary operand.", file, problems);
+                    err, "Unnecessary operand should not be written.", "Unnecessary operand.", file, problems);
 
     }
 
@@ -1742,12 +1744,14 @@ public class MC8051Library {
      * @param settingName the setting (by name) that should be used for generating the Problem.
      * @param errorMessage the message String for the case of a generated error
      * @param warningMessage the message String for the case of an generated warning
+     * @param infoMessage the message String for the case of an generated information
      *
      * @param file the file of the mnemonic.
      * @param problems a List to that occurring Problems can be added to.
      */
     public static void getErrorSetting(Token cause, String settingName,
-                                       String errorMessage, String warningMessage, Path file, List<Problem<?>> problems) {
+                                       String errorMessage, String warningMessage, String infoMessage,
+                                       Path file, List<Problem<?>> problems) {
         String setting = Settings.INSTANCE.getProperty(settingName, AssemblerSettings.VALID_ERROR);
         switch (setting) {
             case "error":
@@ -1755,6 +1759,9 @@ public class MC8051Library {
                 break;
             case "warn":
                 problems.add(new TokenProblem(warningMessage, Type.WARNING, file, cause));
+                break;
+            case "info":
+                problems.add(new TokenProblem(warningMessage, Type.INFORMATION, file, cause));
                 break;
             case "ignore":
                 break;
@@ -1772,10 +1779,11 @@ public class MC8051Library {
      * @param settingName the setting (by name) that should be used for generating the Problem.
      * @param errorMessage the message String for the case of a generated Problem
      * @param warningMessage the message String for the case of an generated warning
+     * @param infoMessage the message String for the case of an generated information
      * @param problems the List the newly modified Problem will be added to
      */
-    public static void getGeneralErrorSetting(Problem p, String settingName,
-                                              String errorMessage, String warningMessage,
+    public static void getGeneralErrorSetting(Problem<?> p, String settingName,
+                                              String errorMessage, String warningMessage, String infoMessage,
                                               List<Problem<?>> problems) {
         String setting = Settings.INSTANCE.getProperty(settingName, AssemblerSettings.VALID_ERROR);
         switch (setting) {
@@ -1787,6 +1795,9 @@ public class MC8051Library {
                 p.setType(Type.WARNING);
                 p.setMessage(warningMessage);
                 break;
+            case "info":
+                p.setType(Type.INFORMATION);
+                p.setMessage(infoMessage);
             case "ignore":
                 break;
             default:

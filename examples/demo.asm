@@ -5,7 +5,7 @@ MOV A, #01h
 START: CJNE A, #01h, LES_OTHER_VERGLEICHS
        SETB MEM
        LES_OTHER_VERGLEICHS: CJNE A, #80h, SHIFT
-                             CLR MEM
+                             CLR MEML
 
        SHIFT: JNB MEM, SHIFT_RIGHT
               RL A ; Rotate A left

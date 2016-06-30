@@ -141,4 +141,10 @@
     <defaultLineNumberForeground>#FFB8B8B8</defaultLineNumberForeground>
     <defaultCodeBackground>#FFF8F8F8</defaultCodeBackground>
     <defaultCodeForeground>#FF383838</defaultCodeForeground>
+    <defaultCaretColor>#FF383838</defaultCaretColor>
+    <defaultSelectionColor>#FF7CAFC2</defaultSelectionColor>
+    <defaultSelectedTextColor>#FFE8E8E8</defaultSelectedTextColor>
+    <defaultErrorColor>#FFAB4642</defaultErrorColor>
+    <defaultWarningColor>#FFDC9656</defaultWarningColor>
+    <defaultInformationColor>#FF585858</defaultInformationColor>
 </ns2:syntaxTheme>

@@ -734,7 +734,8 @@ public class Preprocessor8051 implements Preprocessor {
 
             output.addAll(this.output);
             this.output.clear();
-
+            problems.add(new PreprocessingProblem("Skipped preprocessing.", Problem.Type.INFORMATION, currentFile,
+                    line, AssemblerSettings.SKIP_PREPROCESSING + "=true"));
             return problems;
         }
 
@@ -789,7 +790,8 @@ public class Preprocessor8051 implements Preprocessor {
                 // and no Problem has been created yet
                 MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                         AssemblerSettings.END_CODE_AFTER, "No code allowed after use of 'end' directive!",
-                        "All code after an 'end' directive will be ignored.", problems);
+                        "All code after an 'end' directive will be ignored.", "Found code after 'end' directive.",
+                        problems);
                 endState = END_PROBLEM_CREATED;
             }
 
@@ -801,10 +803,12 @@ public class Preprocessor8051 implements Preprocessor {
                             "must be closed!",
                     conditionStack.size() + " unclosed 'if' block" + (conditionStack.size() == 1 ? " " : "s ") +
                             "should be closed.",
+                    "Found " +conditionStack.size() + " unclosed 'if' block" + (conditionStack.size() == 1 ? "." : "s."),
                     problems);
         if (endState == RUNNING)
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(currentFile, this.line, lineString),
                     AssemblerSettings.END_MISSING, "'end' directive not found!", "Missing 'end' directive!",
+                    "Found no 'end' directive.",
                     problems);
 
         this.output.clear();
