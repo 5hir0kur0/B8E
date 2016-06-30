@@ -49,11 +49,6 @@ public class MainWindow extends JFrame {
     private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
     private final static String AUTOSAVE_SETTING_DEFAULT = "true";
 
-    private static final Color ERROR_COLOR = new Color(0x990000); // Crimson red
-    private static final Color WARNING_COLOR = Color.ORANGE;
-    private static final Color INFO_COLOR = Color.LIGHT_GRAY;
-    private static final Color[] PROBLEM_COLORS = {ERROR_COLOR, WARNING_COLOR, INFO_COLOR};
-
     static {Settings.INSTANCE.setDefault(AUTOSAVE_SETTING, AUTOSAVE_SETTING_DEFAULT);}
     { setUpActions(); }
 
@@ -279,7 +274,7 @@ public class MainWindow extends JFrame {
             SyntaxThemeAction(String name) {
                 super(name);
                 if (Objects.requireNonNull(name, "syntax theme name must not be null").trim().isEmpty())
-                    throw new IllegalArgumentException("syntax theme name must not be emtpy");
+                    throw new IllegalArgumentException("syntax theme name must not be empty");
                 if (!SyntaxThemes.INSTANCE.getAvailableThemes().contains(name) && !"DEFAULT".equals(name))
                     throw new IllegalArgumentException(name + " is not a valid theme name");
                 this.name = name;
@@ -614,6 +609,9 @@ public class MainWindow extends JFrame {
         private static final String[] columns = {"Type", "File", "Line", "Message", "Cause"};
         private final ArrayList<Object[]> data;
 
+        private static Color ERROR_COLOR = new Color(0x990000); // Crimson red
+        private static Color WARNING_COLOR = Color.ORANGE;
+        private static Color INFO_COLOR = Color.LIGHT_GRAY;
         private static final Color LIGHT_FOREGROUND = Color.LIGHT_GRAY;
         private static final Color DARK_FOREGROUND = Color.DARK_GRAY;
 
@@ -740,7 +738,12 @@ public class MainWindow extends JFrame {
             Problem.Type[] types = Problem.Type.values();
             for (int i = types.length - 1; i >= 0; --i) {
                 Problem.Type type = types[i];
-                Color color = PROBLEM_COLORS[i];
+                Color color;
+                switch (i) {
+                    case 0: color = SyntaxThemes.INSTANCE.getCurrentTheme().getErrorColor(); break;
+                    case 1: color = SyntaxThemes.INSTANCE.getCurrentTheme().getWarningColor(); break;
+                    default: color = SyntaxThemes.INSTANCE.getCurrentTheme().getInformationColor();
+                }
                 relevant.stream().filter(p -> p.getType() == type).forEach(p -> lines.put(p.getLine() - 1, color));
             }
         }

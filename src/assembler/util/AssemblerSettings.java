@@ -19,7 +19,7 @@ public class AssemblerSettings {
      *     E.g. in <code>add a, R1</code> does not need the <code>a</code>
      *     to be recognised so <code>add R1</code> is valid as well.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "error"
      */
     public static final String OBVIOUS_OPERANDS = "assembler.errors.obvious-operands";
@@ -27,7 +27,7 @@ public class AssemblerSettings {
      * The behavior if some "unnecessary" operands.<br>
      * Unnecessary operands are operands that aren't needed for mnemonic
      * encoding e.g operands for the <code>NOP</code> mnemonic.<br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "error"
      */
     public static final String UNNECESSARY_OPERANDS = "assembler.errors.unnecessary-operands";
@@ -38,7 +38,7 @@ public class AssemblerSettings {
      * Normally code isn't allowed the use of an end directive and will result in a
      * Problem. Also any code after an end directive will be ignored by the assembler.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "warn"
      */
     public static final String END_CODE_AFTER = "assembler.directives.end.code-after";
@@ -49,7 +49,7 @@ public class AssemblerSettings {
      * This setting defaults to "error" because a circumstance would generate two
      * different ProblemTypes what is hardly intended behaviour for the most time.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "error"
      */
     public static final String MULTIPLE_SAME_MATCH_CASE = "assembler.errors.regex.same-match-case";
@@ -58,7 +58,7 @@ public class AssemblerSettings {
      * The behaviour if a given <code>Regex</code> encounters segments that are not used.
      * All segments after the flags-segment count as unused and are ignored.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "warn"
      */
     public static final String UNNECESSARY_SEGMENTS = "assembler.errors.regex.unnecessary-segments";
@@ -79,7 +79,7 @@ public class AssemblerSettings {
     /**
      * The behavior if no end directive was found.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "warn"
      */
     public static final String END_MISSING = "assembler.errors.missing-end-directive";
@@ -87,7 +87,7 @@ public class AssemblerSettings {
     /**
      * The behavior if some if blocks weren't closed.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "error"
      */
     public static final String UNCLOSED_IF = "assembler.errors.unclosed-if-block";
@@ -95,7 +95,7 @@ public class AssemblerSettings {
     /**
      * The default behaviour if an address offset operator is used.<br>
      * <br>
-     * Valid values: "error", "warn", "ignore"<br>
+     * Valid values: "error", "warn", "info", "ignore"<br>
      * Defaults to: "warn"
      */
     public static final String ADDRESS_OFFSET = "assembler.errors.address-offset-used";
@@ -412,10 +412,10 @@ public class AssemblerSettings {
     public static void init() {}
 
     /**
-     * Whether a String is a valid error setting that only can have the values "error", "warn" or "ignore".
+     * Whether a String is a valid error setting that only can have the values "error", "warn", "info" or "ignore".
      */
     public static final Predicate<String> VALID_ERROR = x -> x.equalsIgnoreCase("error") || x.equalsIgnoreCase("warn")
-            || x.equalsIgnoreCase("ignore");
+            || x.equalsIgnoreCase("info") || x.equalsIgnoreCase("ignore");
 
     /**
      * Whether a String is a valid file extension (a <code>'.'</code> followed by string of word characters).

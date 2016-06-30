@@ -59,19 +59,19 @@ public class Regex {
     //Valid modifiers
     /** Adds a substitute segment which will be used to substitute a match. */
     public static final char SUBSTITUTE_MODIFIER          = 's';
-    /** Adds a segments that specifies a message of a ERROR that will be created if the pattern matches. */
+    /** Adds a segment that specifies a message of a ERROR that will be created if the pattern matches. */
     public static final char ERROR_ON_MATCH_MODIFIER      = 'e';
-    /** Adds a segments that specifies a message of a ERROR that will be created if the pattern mismatches. */
+    /** Adds a segment that specifies a message of a ERROR that will be created if the pattern mismatches. */
     public static final char ERROR_ON_MISMATCH_MODIFIER   = 'E';
-    /** Adds a segments that specifies a message of a WARNING that will be created if the pattern matches. */
+    /** Adds a segment that specifies a message of a WARNING that will be created if the pattern matches. */
     public static final char WARNING_ON_MATCH_MODIFIER    = 'w';
-    /** Adds a segments that specifies a message of a WARNING that will be created if the pattern mismatches. */
+    /** Adds a segment that specifies a message of a WARNING that will be created if the pattern mismatches. */
     public static final char WARNING_ON_MISMATCH_MODIFIER = 'W';
-    /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern matches. */
+    /** Adds a segment that specifies a message of a INFORMATION that will be created if the pattern matches. */
     public static final char INFO_ON_MATCH_MODIFIER       = 'i';
-    /** Adds a segments that specifies a message of a INFORMATION that will be created if the pattern mismatches. */
+    /** Adds a segment that specifies a message of a INFORMATION that will be created if the pattern mismatches. */
     public static final char INFO_ON_MISMATCH_MODIFIER    = 'I';
-
+    /** Adds a segment that contains a condition as a Pattern to be validated before the Regex takes any action.*/
     public static final char CONDITION_MODIFIER = 'c';
 
     //Valid flags
@@ -328,7 +328,8 @@ public class Regex {
             MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(problemFile, problemFileLine,
                             Arrays.toString(Arrays.copyOfRange(unprepared, 2 + (flags ? 1 : 0) + modifier.length(),
                             unprepared.length))),
-                    AssemblerSettings.UNNECESSARY_SEGMENTS, "Too many segments!", "Unnecessary segments.", problems);
+                    AssemblerSettings.UNNECESSARY_SEGMENTS,
+                    "Too many segments!", "Unnecessary segments.", "Unnecessary segments.", problems);
 
         StringBuilder temp = new StringBuilder(modifier).append('/').append(match);
         int[] mods = modifier.codePoints().toArray();
@@ -403,18 +404,20 @@ public class Regex {
             if (cp != SUBSTITUTE_MODIFIER && cp != CONDITION_MODIFIER) { // Must be a Problem modifier
                 if (Character.isUpperCase(cp)) {
                     if (++negativeMsgMod > 1) {
+                        String message = "More than one mismatch message";
                         MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(problemFile, problemFileLine,
                                  new String(Character.toChars(cp))),
                                 AssemblerSettings.MULTIPLE_SAME_MATCH_CASE,
-                                "More than one mismatch message!", "More than one mismatch message.", problems);
+                                message + "!", message + ".", message + ".", problems);
                         ret = false;
                     }
                 } else {
                     if (++positiveMsgMod > 1) {
+                        String message = "More than one match message";
                         MC8051Library.getGeneralErrorSetting(new PreprocessingProblem(problemFile, problemFileLine,
                                  new String(Character.toChars(cp))),
                                 AssemblerSettings.MULTIPLE_SAME_MATCH_CASE,
-                                "More than one match message!", "More than one match message.", problems);
+                                message + "!", message + ".", message + ".", problems);
                         ret = false;
                     }
                 }
