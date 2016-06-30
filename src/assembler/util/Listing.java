@@ -7,11 +7,12 @@ import assembler.util.assembling.Assembled;
 import emulator.NumeralSystem;
 import misc.Settings;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.lang.reflect.Array;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Noxgrim

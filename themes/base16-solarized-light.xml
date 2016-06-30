@@ -1,0 +1,153 @@
+<!-- B8E theme template -->
+<!-- Base16 Solarized Light, by Ethan Schoonover (http://ethanschoonover.com/solarized) -->
+<!-- template for base16-builder by Noxgrim -->
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns2:syntaxTheme xmlns:ns2="https://github.com/5hir0kur0/B8E/tree/master/src/gui">
+    <styleMap>
+        <entry>
+            <key>asm</key>
+            <value>
+                <style pattern="(\S+)">
+                    <attributes foreground="#FFdc322f" strikeThrough="true"/>
+                </style>
+                <style pattern="\((.*)\),|\((.*)\)" flags="2">
+                    <attributes foreground="#FF839496" strikeThrough="false"/>
+                </style>
+                <style pattern="(\().*(\)),|(\().*(\))" flags="2">
+                    <attributes foreground="#FF2aa198" strikeThrough="false"/>
+                </style>
+                <style pattern="\w(\.)\w">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([\w&amp;&amp;[\D]]\w*)\b)">
+                    <attributes foreground="#FF2aa198" strikeThrough="false"/>
+                </style>
+                <style pattern="(?&lt;=[\w,])\s*+([/#+-])[\w&quot;'\(]+">
+                    <attributes foreground="#FF859900" italic="false"/>
+                </style>
+                <style pattern="(?&lt;=[\w,])\s*([#+-]\b(?:a(?:cc)?|c)|(?:[/#+-]\bab|dptr|r[0-7]))\b" flags="2">
+                    <attributes foreground="#FFdc322f" strikeThrough="true"/>
+                </style>
+                <style pattern="(?&lt;=[\w,])\s*(?:/?\b(a(?:cc)?|c)|\b(ab|dptr|r[0-7]))\b" flags="2">
+                    <attributes foreground="#FFb58900" strikeThrough="false"/>
+                </style>
+                <style pattern="(?&lt;=[\w,])\s*(@(?:a\s*\+\s*dptr|a\s*\+\s*pc|dptr|r[01]))\b" flags="2">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="^(\s*(?:[\$#\.].*?|[\$#\.]?(?:if|elif|else|endif|regex|end|file|line|include|org|end|d[bws])\s+.*?|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(?:equ|set|bit|code|[ix]?data)\s+.*?))\s*(?:(?&lt;!\\);|$)" flags="2">
+                    <attributes background="#FF93a1a1"/>
+                </style>
+                <style pattern="^\s*(?:([\$#\.]?\s*(?:org|end|d[bws]|if|elif|else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(equ|set|bit|code|[ix]?data))" flags="2">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="^\s*[\$#\.]\s*?include\s+?&lt;(.*?)&gt;" flags="2">
+                    <attributes foreground="#FF6c71c4" strikeThrough="false"/>
+                </style>
+                <style pattern="^\s*[\$#\.]?\s*?include\s+(&lt;).*?(&gt;)" flags="2">
+                    <attributes foreground="#FF657b83" strikeThrough="false"/>
+                </style>
+                <style pattern="^\s*\b([\w&amp;&amp;[\D]]\w*)\b\s*(?:equ|set|bit|code|[ix]?data)\s*" flags="2">
+                    <attributes foreground="#FF2aa198" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(\d+\w*?)[boqdh]?\b" flags="2">
+                    <attributes foreground="#FFdc322f" italic="true"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(0x[\da-f]*|\d+[\da-f]*h)\b" flags="2">
+                    <attributes foreground="#FF6c71c4" italic="false" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([0-7]+[oq])\b" flags="2">
+                    <attributes foreground="#FF6c71c4" italic="false" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b([01]+b)\b" flags="2">
+                    <attributes foreground="#FF6c71c4" italic="false" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(\d+d?)\b" flags="2">
+                    <attributes foreground="#FF6c71c4" italic="false" strikeThrough="false"/>
+                </style>
+                <style pattern="(?:(?&lt;=\w)\.|(?&lt;=[\w,])\s*[-+#/]?)\b(?:(0x)\w*?|\d+\w*?([boqdh])?)\b" flags="2">
+                    <attributes foreground="#FF657b83" italic="false" strikeThrough="false"/>
+                </style>
+                <style pattern="^(?:\s*(?:[\w&amp;&amp;[\D]]\w*\s*:\s*)+)?\s*(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b\s+[^\s]*?\s*(,)\s*[^\s,]+(?:(,)\s*[^\s,]+)?" flags="2">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="^(?:\s*(?:[\w&amp;&amp;[\D]]\w*\s*:\s*)+)?\s*((?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)" flags="2">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="^\s*((?:[\w&amp;&amp;[\D]]\w*\s*:\s*)+)">
+                    <attributes foreground="#FFb58900" strikeThrough="false"/>
+                </style>
+                <style pattern="((?&lt;!\\)&quot;.*?(?&lt;!\\)&quot;|(?&lt;!\\)'.*?(?&lt;!\\)')">
+                    <attributes foreground="#FF268bd2" strikeThrough="false"/>
+                </style>
+                <style pattern="\s*(;.*)$">
+                    <attributes foreground="#FF93a1a1" strikeThrough="false"/>
+                </style>
+                <style pattern="\s*;.*?\b(TODO\b.*)$" flags="2">
+                    <attributes background="#FFeee8d5" foreground="#FFb58900" italic="true" strikeThrough="false"/>
+                </style>
+            </value>
+        </entry>
+        <entry>
+            <key>hex</key>
+            <value>
+                <style pattern="^(.*?)\s*$">
+                    <attributes foreground="#FF839496"/>
+                </style>
+                <style pattern="^:(.*?)\s*$">
+                    <attributes foreground="#FFdc322f" strikeThrough="true"/>
+                </style>
+                <style pattern="^(:)">
+                    <attributes foreground="#FF839496" strikeThrough="false"/>
+                </style>
+                <style pattern="^:([\da-f]{2})" flags="2">
+                    <attributes foreground="#FFcb4b16" strikeThrough="false"/>
+                </style>
+                <style pattern="^:..([\da-f]{4})" flags="2">
+                    <attributes foreground="#FF839496" strikeThrough="false"/>
+                </style>
+                <style pattern="^:.{6}(0[0-5])">
+                    <attributes foreground="#FFdc322f" strikeThrough="false"/>
+                </style>
+                <style pattern="^:.{8}((?:[\da-f]{2}(?!$\s*))*)" flags="2">
+                    <attributes foreground="#FF6c71c4" strikeThrough="false"/>
+                </style>
+                <style pattern="^:.{8}(?:..)*?([\da-f]{2})\s*$" flags="2">
+                    <attributes background="#FFb58900" foreground="#FF839496" strikeThrough="false"/>
+                </style>
+                <style pattern="^:(00000001)ff\s*$" flags="2">
+                    <attributes background="#FF2aa198" foreground="#FF073642" strikeThrough="false"/>
+                </style>
+            </value>
+        </entry>
+        <entry>
+            <key>properties</key>
+            <value>
+                <style pattern="^\s*(?:[\w\.\-]|\\\s)+\s*[=:]\s*([^\s].*)$|^\s*([^\s].*)\s*$">
+                    <attributes foreground="#FF859900"/>
+                </style>
+                <style pattern="^\s*((?:[\w\.\-]|\\\s)+)\s*[=:]\s*">
+                    <attributes foreground="#FFdc322f"/>
+                </style>
+                <style pattern="^\s*(?:[\w\.\-]|\\\s)+\s*[=:]\s*(\\u[\da-fA-F]{4})">
+                    <attributes foreground="#FFd33682"/>
+                </style>
+                <style pattern="(\\)$">
+                    <attributes foreground="#FF268bd2"/>
+                </style>
+                <style pattern="([#!].*)$">
+                    <attributes foreground="#FF839496"/>
+                </style>
+            </value>
+        </entry>
+    </styleMap>
+    <defaultLineNumberBackground>#FFeee8d5</defaultLineNumberBackground>
+    <defaultLineNumberForeground>#FF839496</defaultLineNumberForeground>
+    <defaultCodeBackground>#FFfdf6e3</defaultCodeBackground>
+    <defaultCodeForeground>#FF586e75</defaultCodeForeground>
+    <defaultCaretColor>#FF586e75</defaultCaretColor>
+    <defaultSelectionColor>#FF268bd2</defaultSelectionColor>
+    <defaultSelectedTextColor>#FFeee8d5</defaultSelectedTextColor>
+    <defaultErrorColor>#FFdc322f</defaultErrorColor>
+    <defaultWarningColor>#FFcb4b16</defaultWarningColor>
+    <defaultInformationColor>#FF657b83</defaultInformationColor>
+</ns2:syntaxTheme>

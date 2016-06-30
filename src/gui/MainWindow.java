@@ -1040,7 +1040,7 @@ public class MainWindow extends JFrame {
         map.put(BUILD_RUN_MAIN_TEXT, this.buildRunMain);
         map.put(BUILD_MAIN_TEXT, this.buildMain);
         map.put(RUN_MAIN_TEXT, this.runMain);
-        map.put(BUILD_RUN_CURR_TEXT, this.buildRunMain);
+        map.put(BUILD_RUN_CURR_TEXT, this.buildRunCurrent);
         map.put(BUILD_CURR_TEXT, this.buildCurrent);
         map.put(RUN_CURR_TEXT, this.runCurrent);
         map.put(SET_MAIN_TEXT, this.setMain);
@@ -1080,6 +1080,8 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.CTRL_DOWN_MASK), "resizeProblemsDown");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK), UNDO_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK), REDO_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                REDO_TEXT);
         ActionMap tmp = super.getRootPane().getActionMap();
         tmp.put("resizeTreeLeft", new AbstractAction() {
             @Override
