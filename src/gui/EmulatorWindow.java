@@ -307,14 +307,15 @@ public class EmulatorWindow extends JFrame {
     private void updateListingTable() {
         if (this.listingTable == null || this.listing == null) return;
         Listing.ListingElement element = this.listing.getFromAddress(this.emulator.getProgramCounter());
-        if (element == null || element.getLine() >= this.listingTable.getRowCount() || element.getLine() < 0) {
-            this.listingTable.setRowSelectionInterval(0, this.listingTable.getRowCount() - 1);
-            return;
-        }
+        if (element == null) return;
         try {
             int index = this.listing.getElements().indexOf(element);
-            this.listingTable.setRowSelectionInterval(index, index);
-            this.listingTable.scrollRectToVisible(this.listingTable.getCellRect(index, 1, true));
+            if (index >= this.listingTable.getRowCount() || index < 0)
+                this.listingTable.setRowSelectionInterval(0, this.listingTable.getRowCount() - 1);
+            else {
+                this.listingTable.setRowSelectionInterval(index, index);
+                this.listingTable.scrollRectToVisible(this.listingTable.getCellRect(index, 1, true));
+            }
         } catch (Exception ignored) { // there are sometimes random NPEs and ClassCastExceptions
             ignored.printStackTrace();
         }
