@@ -3,6 +3,7 @@ package misc;
 import gui.DummyAttributeSet;
 
 import javax.xml.bind.annotation.*;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -23,6 +24,7 @@ public class Pair<X, Y> {
 
     @Override
     public String toString() {
-        return getClass().getName() + "<" + x.toString() + ", " + y.toString() + ">@" + Integer.toHexString(hashCode());
+        return getClass().getName() + "<" + Objects.toString(x) + ", " + Objects.toString(y) + ">@" +
+                Integer.toHexString(hashCode());
     }
 }

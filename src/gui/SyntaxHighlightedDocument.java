@@ -4,7 +4,6 @@ import misc.Pair;
 
 import javax.swing.text.*;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Observer;
 import java.util.regex.Matcher;
@@ -42,7 +41,7 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
         this.style = Objects.requireNonNull(style);
     }
 
-    private void updateSyntaxHighlighting(int offset, int length) throws BadLocationException {
+    void updateSyntaxHighlighting(int offset, int length) throws BadLocationException {
         for (int currentOffset = offset, loopStop = offset + length; currentOffset < loopStop;) {
             final Element e = super.getParagraphElement(currentOffset);
             final int tmpStart = e.getStartOffset();
