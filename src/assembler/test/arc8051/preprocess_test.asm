@@ -13,6 +13,7 @@ mi: di: mov mi, di
 pi set 84
 
 mov (21 + 21), (pi / 1.9999)
+mov ((-2)^0.5), (2^1000000)
 
 mov pi, pi
 

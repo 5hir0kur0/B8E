@@ -1060,17 +1060,25 @@ public class Preprocessor8051 implements Preprocessor {
                             final double number = SimpleMath.evaluate(expression.toString());
 
                             if (number < 0) {
-                                problems.add(new PreprocessingProblem("Number cannot be negative!",
+                                problems.add(new PreprocessingProblem("Evaluated expression cannot be negative!",
                                         Problem.Type.ERROR, currentFile, this.line,
                                         expression.toString() + " = " + number));
                                 result.append("0");
+                            } else if (number != number) {
+                                problems.add(new PreprocessingProblem("Evaluated expression is NaN!",
+                                        Problem.Type.ERROR, currentFile, line, expression.toString() + " = NaN"));
+                                result.append("0");
                             } else {
-                                if ((int) number != number)
-                                    problems.add(new PreprocessingProblem("Any decimal places will be cut off!",
-                                            Problem.Type.INFORMATION, currentFile, this.line,
-                                            expression.toString() + " = " + number));
+                                if (number == Double.POSITIVE_INFINITY)
+                                    problems.add(new PreprocessingProblem("Evaluated expression is INFINITY!",
+                                            Problem.Type.WARNING, currentFile, line,
+                                            expression.toString() + " = INFINITY"));
+                                    else if ((int) number != number)
+                                        problems.add(new PreprocessingProblem("Any decimal places will be cut off!",
+                                                Problem.Type.INFORMATION, currentFile, this.line,
+                                                expression.toString() + " = " + number));
 
-                                result.append((int) number);
+                                    result.append((int) number);
                             }
 
                         } catch (NumberFormatException e) {

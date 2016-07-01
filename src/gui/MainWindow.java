@@ -430,6 +430,17 @@ public class MainWindow extends JFrame {
         }
     }
 
+    private void setFileAt(int index, TextFile file) throws NotifyUserException {
+        try {
+            AccessibleScrollPaneHack pane = (AccessibleScrollPaneHack) this.jTabbedPane.getComponentAt(index);
+            pane.textFile = file;
+
+        } catch (IndexOutOfBoundsException e) {
+            throw new NotifyUserException("Error: Couldn't set the file at index #" + index, e);
+        }
+
+    }
+
     private void saveFile(int index) {
         final Pair<TextFile, LineNumberSyntaxPane> file;
         try {
@@ -465,6 +476,12 @@ public class MainWindow extends JFrame {
                 file.y.store(file.x.getWriter());
                 file.y.setFileExtension(getFileExtension(path)); // update syntax highlighting
                 file.y.load(file.x.getReader());
+                try {
+                    this.setFileAt(index, file.x);
+                } catch (NotifyUserException e) {
+                    this.reportException(e.getMessage(), e, false);
+                    return;
+                }
                 this.jTabbedPane.setTitleAt(index, file.x.getPath().getFileName().toString());
                 this.refreshTree();
             } catch (IOException e1) {
@@ -478,10 +495,10 @@ public class MainWindow extends JFrame {
         for (int i = 0, all = this.jTabbedPane.getTabCount(); i < all; ++i) {
             try {
                 this.saveFile(i);
-                this.refreshTree();
             } catch (Exception e1) {
                 this.reportException(e1.getMessage(), e1, false);
             }
+            this.refreshTree();
         }
     }
 
@@ -974,8 +991,12 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
 
-                    mw.build(mw.getCurrentFile().x.getPath());
-                    mw.run(mw.getCurrentFile().x.getPath());
+                    if (mw.getCurrentFile().x == null)
+                        mw.saveFile.actionPerformed(new ActionEvent(this, 0, "savecurrent"));
+                    if (mw.getCurrentFile().x != null) {
+                        mw.build(mw.getCurrentFile().x.getPath());
+                        mw.run(mw.getCurrentFile().x.getPath());
+                    }
 
                 } catch (NotifyUserException e1) {
                     mw.reportException(e1.getMessage(), e1, false);
@@ -987,7 +1008,10 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
 
-                    mw.build(mw.getCurrentFile().x.getPath());
+                    if (mw.getCurrentFile().x == null)
+                        mw.saveFile.actionPerformed(new ActionEvent(this, 0, "savecurrent"));
+                    if (mw.getCurrentFile().x != null)
+                        mw.build(mw.getCurrentFile().x.getPath());
 
                 } catch (NotifyUserException e1) {
                     mw.reportException(e1.getMessage(), e1, false);
@@ -999,7 +1023,11 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
 
-                    mw.run(mw.getCurrentFile().x.getPath());
+                    if (mw.getCurrentFile().x == null)
+                        mw.saveFile.actionPerformed(new ActionEvent(this, 0, "savecurrent"));
+                    if (mw.getCurrentFile().x != null) {
+                        mw.run(mw.getCurrentFile().x.getPath());
+                    }
 
                 } catch (NotifyUserException e1) {
                     mw.reportException(e1.getMessage(), e1, false);
@@ -1302,7 +1330,7 @@ public class MainWindow extends JFrame {
 
     private final static class AccessibleScrollPaneHack extends JScrollPane { // sorry
         final LineNumberSyntaxPane child;
-        final TextFile textFile;
+        TextFile textFile;
         AccessibleScrollPaneHack(LineNumberSyntaxPane child, TextFile textFile) {
             super(child);
             this.child = child;

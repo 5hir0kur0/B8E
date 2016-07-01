@@ -11,6 +11,8 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 import javax.swing.undo.UndoableEdit;
 import java.awt.*;
@@ -95,6 +97,43 @@ public class LineNumberSyntaxPane extends JPanel {
                         pres.equals(UIManager.getString("AbstractDocument.deletionText")))
                         super.undoableEditHappened(e);
                 }
+            }
+
+            @Override
+            public synchronized void undo() throws CannotUndoException {
+                UndoableEdit e = editToBeUndone();
+                if (e != null && e instanceof DocumentEvent) {
+                    DocumentEvent de = (DocumentEvent) e;
+                    super.undo();
+                    try {
+                        ((SyntaxHighlightedDocument) LineNumberSyntaxPane.this.code.getDocument())
+                                .updateSyntaxHighlighting(de.getOffset(), de.getLength());
+                        // Do not update the whole document to save performance
+                    } catch (BadLocationException ex) {
+                        // TODO: Log exception
+                        ex.printStackTrace();
+                    }
+                } else
+                    super.undo();
+            }
+
+            @Override
+            public synchronized void redo() throws CannotRedoException {
+                UndoableEdit e = editToBeRedone();
+                if (e != null && e instanceof DocumentEvent) {
+                    DocumentEvent de = (DocumentEvent) e;
+                    super.redo();
+                    try {
+                        ((SyntaxHighlightedDocument) LineNumberSyntaxPane.this.code.getDocument())
+                                .updateSyntaxHighlighting(de.getOffset(), de.getLength());
+                        // Do not update the whole document to save performance
+                    } catch (BadLocationException ex) {
+                        // TODO: Log exception
+                        ex.printStackTrace();
+                    }
+                } else
+                    super.redo();
+
             }
         };
         this.undoManager.setLimit(2958);
