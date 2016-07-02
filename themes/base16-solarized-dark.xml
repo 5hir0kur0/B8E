@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <ns2:syntaxTheme xmlns:ns2="https://github.com/5hir0kur0/B8E/tree/master/src/gui">
+<!-- B8E theme template -->
+<!-- Base16 Solarized Dark, by Ethan Schoonover (http://ethanschoonover.com/solarized) -->
+<!-- template for base16-builder by Noxgrim -->
     <styleMap>
         <entry>
             <key>asm</key>
