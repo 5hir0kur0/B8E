@@ -41,9 +41,13 @@ public class Regex {
     /** Whether all occurrences (<code>true</code>) or only the first will be replaced by the substitution. */
     private boolean global = true;  // Only in substitution
     /** Whether the Pattern will be case sensitive. */
-    private boolean caseSensitive = false; // Only in Substitution
+    private boolean caseSensitive = false;
     /** If this variable is set the substitution will also be performed inside of '"' and '\'. */
-    private boolean replaceString = false;
+    private boolean replaceString = false; // Only in Substitution
+    /** Whether character classes should regard unicode characters instead of just ASCII. */
+    private boolean unicodeCharClasses = false;
+    /** Whether <i>ignore case</i> should regard lowercase/uppercase version of unicode characters. */
+    private boolean unicodeCase = false;
 
     /** If <code>false</code> this <code>Regex</code> shouldn't be modified. */
     private boolean modifiable = true;
@@ -94,15 +98,37 @@ public class Regex {
      */
     public static final char DO_NOT_REPLACE_IN_STRING_FLAG = 'S';
     /**
-     * Makes the <code>Regex</code>'s <code>Pattern</code> case insensitive by using the
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s case insensitive by using the
      * {@link Pattern#CASE_INSENSITIVE} flag.
      */
     public static final char CASE_INSENSITIVE_FLAG        = 'i';
     /**
-     * Makes the <code>Regex</code>'s <code>Pattern</code> case sensitive by not using the
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s case sensitive by not using the
      * {@link Pattern#CASE_INSENSITIVE} flag.
      */
     public static final char CASE_SENSITIVE_FLAG          = 'I';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s use the {@link Pattern#UNICODE_CASE}
+     * flag.
+     */
+    public static final char UNICODE_CASE_FLAG            = 'c';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s <i>do not</i> use the
+     * {@link Pattern#UNICODE_CASE} flag.
+     */
+    public static final char NO_UNICODE_CASE_FLAG         = 'C';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s use the {@link Pattern#UNICODE_CHARACTER_CLASS}
+     * flags. This makes it possible to use character classes like <code>'\w'</code> to match
+     * unicode characters instead of just ASCII characters.
+     */
+    public static final char UNICODE_CLASSES_FLAG = 'u';
+    /**
+     * Makes the <code>Regex</code>'s <code>Pattern</code>s <i>do not</i> use the
+     * {@link Pattern#UNICODE_CHARACTER_CLASS} flags. This deactivates the possibility to use character classes like
+     * <code>'\w'</code> to match unicode characters instead of just ASCII characters.
+     */
+    public static final char ASCII_CLASSES_FLAG = 'U';
 
 
     /**
@@ -204,15 +230,25 @@ public class Regex {
      * <h1>4 Flags:</h1>
      * The optional segment after the last modifier segment will be interpreted as the flag segment. This
      * segments may contain flag characters. A uppercase letter always is the negation of a lowercase one
-     * (<code>'I'</code> is the negation of <code>'i'</code>). The last flag character is always the one
-     * that affects the <code>Regex</code>, e.g.: in <code>"iIiIIi"</code> only <code>'i'</code> will affect
-     * the <code>Regex</code>.<table>
+     * (<code>'I'</code> is the negation of <code>'i'</code>). The last flag character (of the same type) is
+     * always the one that affects the <code>Regex</code>, e.g.: in <code>"iIiIIi"</code> only <code>'i'</code>
+     * will affect the <code>Regex</code>.<table>
      *     <tr><th>Char</th><th>Name</th><th>Function</th><th>Default</th></tr>
      *     <tr><td><code>i</code></td><td>Case Insensitive</td><td>
      *         The <code>Pattern</code> of will be compiled with the {@link Pattern#CASE_INSENSITIVE} flag.</td>
      *         <td>X</td></tr>
      *     <tr><td><code>I</code></td><td>Case Sensitive</td><td>
-     *     The <code>Pattern</code> of wont be compiled with the {@link Pattern#CASE_INSENSITIVE} flag.</td></tr>
+     *         The <code>Pattern</code> of wont be compiled with the {@link Pattern#CASE_INSENSITIVE} flag.</td></tr>
+     *     <tr><td><code>u</code></td><td>Unicode Character Classes</td><td>
+     *         The <code>Pattern</code> of will be compiled with the {@link Pattern#UNICODE_CHARACTER_CLASS} flag.</td>
+     *         </tr>
+     *     <tr><td><code>U</code></td><td>ASCII Character Classes</td><td>
+     *         The <code>Pattern</code> of wont be compiled with the {@link Pattern#UNICODE_CHARACTER_CLASS} flag.</td>
+     *     <td>X</td></tr>
+     *     <tr><td><code>c</code></td><td>Unicode Case</td><td>
+     *         The <code>Pattern</code> of will be compiled with the {@link Pattern#UNICODE_CASE} flag.</td></tr>
+     *     <tr><td><code>C</code></td><td>No Unicode Case</td><td>
+     *         The <code>Pattern</code> of wont be compiled with the {@link Pattern#UNICODE_CASE} flag.</td><td>X</td></tr>
      *     <tr><td><code>g</code></td><td>Replace all</td><td>
      *         Every occurrence of the pattern will be replaced with the substitution.
      *     </td><td>X</td></tr>
@@ -501,7 +537,10 @@ public class Regex {
                         "Unknown type name!", Problem.Type.ERROR, problemFile, problemFileLine, m.group(1)));
 
             if (setLowerCased) this.lowerCased = Regex.patternToLowercase(pattern);
-            return Pattern.compile(pattern, caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
+            return Pattern.compile(pattern,
+                    (caseSensitive      ? 0 : Pattern.CASE_INSENSITIVE) |
+                    (unicodeCharClasses ? 0 : Pattern.UNICODE_CHARACTER_CLASS) |
+                    (unicodeCase        ? 0 : Pattern.UNICODE_CASE) );
 
         } catch (PatternSyntaxException e) {
             problems.add(new PreprocessingProblem("Wrong regular expression syntax: " + e.getMessage(),
@@ -548,6 +587,18 @@ public class Regex {
                     break;
                 case CASE_INSENSITIVE_FLAG:
                     caseSensitive = false;
+                    break;
+                case UNICODE_CLASSES_FLAG:
+                    unicodeCharClasses = true;
+                    break;
+                case ASCII_CLASSES_FLAG:
+                    unicodeCharClasses =  false;
+                    break;
+                case UNICODE_CASE_FLAG:
+                    unicodeCase = true;
+                    break;
+                case NO_UNICODE_CASE_FLAG:
+                    unicodeCase = false;
                     break;
                 case REPLACE_IN_STRING_FLAG:
                     replaceString = true;
