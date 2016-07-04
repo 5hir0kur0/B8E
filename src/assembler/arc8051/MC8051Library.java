@@ -552,7 +552,8 @@ public class MC8051Library {
                                                     0x86)),                                   // address, @Ri
                                                     (byte) dest};
                                             break;
-                                        }
+                                        } else if (ord2 == -1)
+                                            break;
                                     }
                                     default:
                                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
@@ -603,7 +604,8 @@ public class MC8051Library {
                                                     | (type2 == OperandType8051.NAME ? 0xE8 : // a,  Rn
                                                     0xE6))};                                  // a, @Ri
                                             break;
-                                        }
+                                        } if (ord2 == -1)
+                                            break;
                                     }
                                     default:
                                         problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op2));
@@ -649,6 +651,8 @@ public class MC8051Library {
                         default:
                             problems.add(new TokenProblem("Incompatible operand!", Type.ERROR, file, op1));
                     }
+
+                    handleUnnecessaryOperands(this.getName(), 2, operands, file, problems);
 
                     return result;
                 }
