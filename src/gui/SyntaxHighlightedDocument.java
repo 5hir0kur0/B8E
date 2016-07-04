@@ -3,9 +3,7 @@ package gui;
 import misc.Pair;
 
 import javax.swing.text.*;
-import java.util.List;
-import java.util.Objects;
-import java.util.Observer;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,14 +14,25 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
     private List<Pair<Pattern, AttributeSet>> style;
     private final Observer observer;
 
+    private ArrayList<Edit> edits;
+    private int editIndex;
+
     SyntaxHighlightedDocument(List<Pair<Pattern, AttributeSet>> style, Observer observer) {
         this.style = Objects.requireNonNull(style);
         this.observer = observer;
+
+        edits     = new ArrayList<>(42);
+        editIndex = 0;
     }
 
 
     @Override
     public void insertString(int offset, String str, AttributeSet as) throws BadLocationException {
+        addEdit(offset, str, true);
+        _insertString(offset, str);
+    }
+
+    private void _insertString(int offset, String str) throws BadLocationException {
         super.insertString(offset, str, StyleContext.getDefaultStyleContext().getEmptySet());
         updateSyntaxHighlighting(offset, str.length());
         if (str.contains(LineNumberSyntaxPane.LINE_END)) this.observer.update(null, null);
@@ -31,6 +40,11 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
 
     @Override
     public void remove(int offset, int length) throws BadLocationException {
+        addEdit(offset, super.getText(offset, length), false);
+        _remove(offset, length);
+    }
+
+    private void _remove(int offset, int length) throws BadLocationException {
         final boolean lineChange = super.getText(offset, length).contains(LineNumberSyntaxPane.LINE_END);
         super.remove(offset, length);
         updateSyntaxHighlighting(offset, 1); //update the line starting from which text was deleted
@@ -41,7 +55,7 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
         this.style = Objects.requireNonNull(style);
     }
 
-    void updateSyntaxHighlighting(int offset, int length) throws BadLocationException {
+    private void updateSyntaxHighlighting(int offset, int length) throws BadLocationException {
         for (int currentOffset = offset, loopStop = offset + length; currentOffset < loopStop;) {
             final Element e = super.getParagraphElement(currentOffset);
             final int tmpStart = e.getStartOffset();
@@ -67,12 +81,87 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
         }
     }
 
+    public Optional<Edit> undo() {
+          if (++editIndex > 0 && editIndex <= edits.size()) {
+              Edit e = edits.get(edits.size() - editIndex);
+              try {
+                  if (e.insert)
+                      this._remove(e.offset, e.data.length());
+                  else
+                      this._insertString(e.offset, e.data);
+              } catch (BadLocationException ex) {
+                  ex.printStackTrace();
+              }
+              return Optional.of(e);
+          }
+        return Optional.empty();
+    }
+
+    public Optional<Edit> redo() {
+        if (editIndex > 0 && editIndex <= edits.size()) {
+            Edit e = edits.get(edits.size() - editIndex);
+            try {
+                if (e.insert)
+                    this._insertString(e.offset, e.data);
+                else
+                    this._remove(e.offset, e.data.length());
+            } catch (BadLocationException ex) {
+                ex.printStackTrace();
+            }
+            --editIndex;
+            return Optional.of(e);
+        }
+        return Optional.empty();
+    }
+
+    public void discardAllEdits() {
+        edits.clear();
+        editIndex = 0;
+    }
+
     void updateCompleteSyntaxHighlighting() {
         try {
             updateSyntaxHighlighting(0, super.getLength());
         } catch (BadLocationException e) { //this is basically impossible to happen
             //TODO: Log exception
             e.printStackTrace();
+        }
+    }
+
+    private void addEdit(int offset, String text, boolean insert) {
+        if (editIndex != 0) {
+            edits.subList(edits.size() - editIndex, edits.size()).clear(); // This is is the official method do  delete a range in a list...
+            editIndex = 0;
+        }
+        edits.add(new Edit(offset, insert, text));
+
+    }
+
+    static final class Edit {
+        private  int offset;
+        private boolean insert;
+        private String data;
+
+        private Edit(int offset, boolean insert, String data) {
+            this.offset = offset;
+            this.data = Objects.requireNonNull(data);
+            this.insert = insert;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+
+        public int getLength() {
+            return data.length();
+        }
+
+        public String getData() {
+            return data;
+        }
+
+        public boolean isInsert() {
+            return insert;
         }
     }
 }

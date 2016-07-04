@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+B8E theme
+Base16 Solarized Light, by Ethan Schoonover (http://ethanschoonover.com/solarized)
+template for base16-builder by Noxgrim
+-->
 <ns2:syntaxTheme xmlns:ns2="https://github.com/5hir0kur0/B8E/tree/master/src/gui">
-<!-- B8E theme template -->
-<!-- Base16 Solarized Light, by Ethan Schoonover (http://ethanschoonover.com/solarized) -->
-<!-- template for base16-builder by Noxgrim -->
     <styleMap>
         <entry>
             <key>asm</key>
@@ -37,7 +39,7 @@
                 <style pattern="^(\s*(?:[\$#\.].*?|[\$#\.]?(?:if|elif|else|endif|regex|end|file|line|include|org|end|d[bws])\s+.*?|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(?:equ|set|bit|code|[ix]?data)\s+.*?))\s*(?:(?&lt;!\\);|$)" flags="2">
                     <attributes background="#FF93a1a1"/>
                 </style>
-                <style pattern="^\s*(?:([\$#\.]?\s*(?:org|end|d[bws]|if|elif|else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(equ|set|bit|code|[ix]?data))" flags="2">
+                <style pattern="^\s*(?:([\$#\.]?\s*(?:org|end|d[bws]|if|elif|else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))\b|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(equ|set|bit|code|[ix]?data))" flags="2">
                     <attributes foreground="#FFcb4b16" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*[\$#\.]\s*?include\s+?&lt;(.*?)&gt;" flags="2">

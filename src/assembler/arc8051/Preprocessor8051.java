@@ -1616,7 +1616,7 @@ public class Preprocessor8051 implements Preprocessor {
     private Boolean evaluateCondition(String[] args) {
         StringBuilder expression = new StringBuilder(42);
 
-        final boolean[] sett = new boolean[1];
+        final boolean[] sett = new boolean[2];
         boolean lastNot = false;
 
         String left = null, right = null;
@@ -1629,8 +1629,9 @@ public class Preprocessor8051 implements Preprocessor {
                 if (sett[0]) return s.getBoolProperty(l);
                 else return Double.parseDouble(l) != 0;
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
                 return false;
             }
         };
@@ -1642,15 +1643,17 @@ public class Preprocessor8051 implements Preprocessor {
                 try {
                     lNum = Double.parseDouble(l);
                 } catch (NumberFormatException e) {
-                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                            Problem.Type.ERROR, currentFile, line, l));
+                    if (!sett[1])
+                        problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                                Problem.Type.ERROR, currentFile, line, l));
                     return false;
                 }
                 try {
                     rNum = Double.parseDouble(r);
                 } catch (NumberFormatException e) {
-                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                            Problem.Type.ERROR, currentFile, line, r));
+                    if (!sett[1])
+                        problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                                Problem.Type.ERROR, currentFile, line, r));
                     return false;
                 }
                 return lNum == rNum;
@@ -1664,15 +1667,17 @@ public class Preprocessor8051 implements Preprocessor {
                 try {
                     lNum = Double.parseDouble(l);
                 } catch (NumberFormatException e) {
-                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                            Problem.Type.ERROR, currentFile, line, l));
+                    if (!sett[1])
+                        problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                                Problem.Type.ERROR, currentFile, line, l));
                     return false;
                 }
                 try {
                     rNum = Double.parseDouble(r);
                 } catch (NumberFormatException e) {
-                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                            Problem.Type.ERROR, currentFile, line, r));
+                    if (!sett[1])
+                        problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                                Problem.Type.ERROR, currentFile, line, r));
                     return false;
                 }
                 return lNum != rNum;
@@ -1684,19 +1689,22 @@ public class Preprocessor8051 implements Preprocessor {
                 if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
                 else lNum = Double.parseDouble(l);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
                 return false;
             } catch (NullPointerException e) {
-                problems.add(new PreprocessingProblem("Setting not defined!",
-                        Problem.Type.WARNING, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Setting not defined!",
+                            Problem.Type.WARNING, currentFile, line, l));
                 lNum = Double.NaN;
             }
             try {
                 rNum = Double.parseDouble(r);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, r));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
                 return false;
             }
             return lNum < rNum;
@@ -1707,19 +1715,22 @@ public class Preprocessor8051 implements Preprocessor {
                 if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
                 else lNum = Double.parseDouble(l);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
                 return false;
             } catch (NullPointerException e) {
-                problems.add(new PreprocessingProblem("Setting not defined!",
-                        Problem.Type.WARNING, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Setting not defined!",
+                            Problem.Type.WARNING, currentFile, line, l));
                 lNum = Double.NaN;
             }
             try {
                 rNum = Double.parseDouble(r);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, r));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
                 return false;
             }
             return lNum <= rNum;
@@ -1730,19 +1741,22 @@ public class Preprocessor8051 implements Preprocessor {
                 if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
                 else lNum = Double.parseDouble(l);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
                 return false;
             } catch (NullPointerException e) {
-                problems.add(new PreprocessingProblem("Setting not defined!",
-                        Problem.Type.WARNING, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Setting not defined!",
+                            Problem.Type.WARNING, currentFile, line, l));
                 lNum = Double.NaN;
             }
             try {
                 rNum = Double.parseDouble(r);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, r));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
                 return false;
             }
             return lNum > rNum;
@@ -1753,19 +1767,22 @@ public class Preprocessor8051 implements Preprocessor {
                 if (sett[0]) lNum = Double.parseDouble(s.getProperty(l));
                 else lNum = Double.parseDouble(l);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, l));
                 return false;
             } catch (NullPointerException e) {
-                problems.add(new PreprocessingProblem("Setting not defined!",
-                        Problem.Type.WARNING, currentFile, line, l));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Setting not defined!",
+                            Problem.Type.WARNING, currentFile, line, l));
                 lNum = Double.NaN;
             }
             try {
                 rNum = Double.parseDouble(r);
             } catch (NumberFormatException e) {
-                problems.add(new PreprocessingProblem("Value could not be converted to a number!",
-                        Problem.Type.ERROR, currentFile, line, r));
+                if (!sett[1])
+                    problems.add(new PreprocessingProblem("Value could not be converted to a number!",
+                            Problem.Type.ERROR, currentFile, line, r));
                 return false;
             }
             return lNum >= rNum;
@@ -1778,13 +1795,28 @@ public class Preprocessor8051 implements Preprocessor {
                 case "--settings":
                 {
                     if (left == null)
-                        sett[0] = true;
-                    else if (!sett[0])
+                        if (sett[0])
+                            problems.add(new PreprocessingProblem("Duplicate option!", Problem.Type.ERROR,
+                                    currentFile, line, arg));
+                        else
+                            sett[0] = true;
+                    else
                         problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
+                    break;
+                }
+                case "-i":
+                case "--ignore-unset":
+                {
+                    if (left == null)
+                        if (sett[0])
+                            problems.add(new PreprocessingProblem("Duplicate option!", Problem.Type.ERROR,
+                                    currentFile, line, arg));
+                        else
+                            sett[1] = true;
                     else
-                        problems.add(new PreprocessingProblem("Duplicate option!",
-                                Problem.Type.WARNING, currentFile, line, arg));
+                        problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
                     break;
                 }
                 case "=":
