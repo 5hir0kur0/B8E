@@ -69,9 +69,9 @@ public class Main {
             System.out.println("     open project in DIRECTORY");
             System.out.println(" b8e --list-default-settings");
             System.out.println("     print default settings to stdout");
-            System.out.println(" b8e --assemble <file> [architecture]");
+            System.out.println(" b8e --assemble FILE [architecture]");
             System.out.println("     assemble a file without starting the GUI");
-            System.out.println("      <file>         the file to assemble");
+            System.out.println("      FILE           the file to assemble");
             System.out.println("      [architecture] the assembler's architecture (defaults to \"8051\")");
             System.out.println(" b8e --settings <setting>...");
             System.out.println("     set settings to specific values on startup; settings don't have to exist");
@@ -122,13 +122,13 @@ public class Main {
         }));
         CL_OPTIONS.add(new Pair<>("--settings", list -> {
             if (list.isEmpty()) {
-                System.err.println("Invalid syntax for '--settings': Expected at least 1 argument.");
+                System.err.println("Invalid syntax for '--settings': Expected at least one argument.");
                 System.exit(8);
             } else {
                 for (String setting : list) {
                     String[] value = setting.split("=");
                     if (value.length == 2) {
-                        Settings.INSTANCE.setProperty(value[0], value[1]);
+                        Settings.INSTANCE.setFileProperty(value[0], value[1]);
                     } else {
                         System.err.println("Malformed input: " + setting);
                         System.err.println(" Expected <key>=<value>");
