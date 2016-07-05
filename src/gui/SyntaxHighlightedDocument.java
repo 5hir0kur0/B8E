@@ -28,13 +28,23 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
 
     @Override
     public void insertString(int offset, String str, AttributeSet as) throws BadLocationException {
+        if (str.endsWith(LineNumberSyntaxPane.LINE_END)) {
+            final Element element = super.getParagraphElement(offset + str.length());
+            final String line = super.getText(element.getStartOffset(),
+                    element.getEndOffset() - element.getStartOffset());
+            String prefix = line.substring(0, line.indexOf(line.trim()));
+            if (line.trim().length() == 0)
+                str = LineNumberSyntaxPane.LINE_END + line.substring(0, offset - element.getStartOffset());
+            else
+                str += prefix;
+        }
         addEdit(offset, str, true);
         _insertString(offset, str);
     }
 
     private void _insertString(int offset, String str) throws BadLocationException {
         super.insertString(offset, str, StyleContext.getDefaultStyleContext().getEmptySet());
-        updateSyntaxHighlighting(offset, str.length());
+            updateSyntaxHighlighting(offset, str.length()  + (str.endsWith(LineNumberSyntaxPane.LINE_END) ? 1 : 0));
         if (str.contains(LineNumberSyntaxPane.LINE_END)) this.observer.update(null, null);
     }
 

@@ -173,7 +173,7 @@ public class LineNumberSyntaxPane extends JPanel {
 
     public void redo() {
         ((SyntaxHighlightedDocument) this.code.getDocument()).redo()
-                .ifPresent(edit -> LineNumberSyntaxPane.this.code.setCaretPosition(edit.getOffset()));
+                .ifPresent(edit -> LineNumberSyntaxPane.this.code.setCaretPosition(edit.getOffset() + edit.getLength()));
     }
 
     public void setCaret(int line, int column) {

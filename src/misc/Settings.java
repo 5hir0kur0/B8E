@@ -163,6 +163,14 @@ public enum Settings {
         this.settings.setProperty(key, value);
     }
 
+    /**
+     * Sets a value with the same magnitude weight as externally loaded setting files.
+     * @see java.util.Properties#setProperty(String, String)
+     */
+    public void setFileProperty(String key, String value) {
+        this.settingsFile.setProperty(key, value);
+    }
+
     /** @see java.util.Properties#load(Reader) */
     public void load(Reader r) throws IOException {
         this.settings.load(r);
