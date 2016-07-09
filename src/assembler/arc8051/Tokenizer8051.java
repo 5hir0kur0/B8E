@@ -8,6 +8,7 @@ import assembler.tokens.Tokens;
 import assembler.util.assembling.Directive;
 import assembler.util.problems.Problem;
 import assembler.util.problems.TokenizingProblem;
+import misc.Logger;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -158,6 +159,7 @@ public class Tokenizer8051 implements Tokenizer {
 
     @Override
     public List<Token> tokenize(List<String> input, List<Problem<?>> problems) {
+        Logger.log("Start tokenizer…", Tokenizer.class, Logger.LogLevel.INFO);
         tokens = new LinkedList<>();
         this.problems.clear();
 
@@ -208,6 +210,8 @@ public class Tokenizer8051 implements Tokenizer {
         }
 
         problems.addAll(this.problems);
+        Logger.log("Tokenizing finished. Found " + tokens.size() + " token" + (tokens.size() == 1 ? "" : "s") + ".",
+                Tokenizer.class, Logger.LogLevel.INFO);
         return tokens;
     }
 

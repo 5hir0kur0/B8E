@@ -8,6 +8,7 @@ import assembler.util.assembling.Mnemonic;
 import assembler.util.problems.ExceptionProblem;
 import assembler.util.problems.PreprocessingProblem;
 import assembler.util.problems.Problem;
+import misc.Logger;
 import misc.Settings;
 import simplemath.SimpleMath;
 
@@ -310,11 +311,11 @@ public class Preprocessor8051 implements Preprocessor {
                             try {
                                 zipFS.close();
                             } catch (IOException e1) {
-                                e1.printStackTrace();
+                                Logger.logThrowable(e1, Preprocessor.class, Logger.LogLevel.ERROR);
                             }
                         return false;
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        Logger.logThrowable(e, Preprocessor.class, Logger.LogLevel.ERROR);
                         return false;
                     }
                 }
@@ -714,6 +715,7 @@ public class Preprocessor8051 implements Preprocessor {
 
     @Override
     public List<Problem<?>> preprocess(Path workingDirectory, Path file, List<String> output) {
+        Logger.log("Start preprocessing…", Preprocessor.class, Logger.LogLevel.INFO);
         problems.clear();
         regexes.clear();
         this.output.clear();
@@ -813,6 +815,12 @@ public class Preprocessor8051 implements Preprocessor {
 
         this.output.clear();
 
+        Logger.log("Preprocessing finished.", Preprocessor.class, Logger.LogLevel.INFO);
+        if (Logger.getLevel() == Logger.LogLevel.DEBUG) {
+            Logger.log("Defined Regexes:", Preprocessor.class, Logger.LogLevel.DEBUG);
+            for (Regex regex : regexes)
+                Logger.log(regex.toString(), Preprocessor.class, Logger.LogLevel.DEBUG);
+        }
         return problems;
     }
 
@@ -904,6 +912,8 @@ public class Preprocessor8051 implements Preprocessor {
         } catch (IOException e) {
             problems.add(new ExceptionProblem("Unable to read file: \"" + file + "\"", Problem.Type.ERROR, currentFile,
                     currentFile == null ? -1 : line, e));
+            Logger.log("Unable to read file: \"" + file + "\"", Preprocessor.class, Logger.LogLevel.DEBUG);
+            Logger.logThrowable(e, Preprocessor.class, Logger.LogLevel.DEBUG);
             return null;
         }
     }

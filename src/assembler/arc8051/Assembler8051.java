@@ -8,6 +8,7 @@ import assembler.util.HexWriter;
 import assembler.util.Listing;
 import assembler.util.assembling.Assembled;
 import assembler.util.problems.*;
+import misc.Logger;
 import misc.Settings;
 
 import java.io.BufferedWriter;
@@ -56,6 +57,8 @@ public class Assembler8051 implements Assembler {
 
     @Override
     public byte[] assemble(Path source, Path directory, List<Problem<?>> problems) {
+        Logger.log("Start assembling process of '" + source + "' in reference directory '" + directory + "'.",
+                Assembler.class, Logger.LogLevel.INFO);
         result = new byte[0xFFFF+1];
         successful = true;
 
@@ -67,34 +70,46 @@ public class Assembler8051 implements Assembler {
 
         List<Assembled8051> assembled = toAssembled(tokens, labels, problems, source);
 
+        Logger.log("Resolving labels…", Assembler.class, Logger.LogLevel.INFO);
         resolve(assembled, labels, problems, Integer.MAX_VALUE);
+        Logger.log("Resolved labels.", Assembler.class, Logger.LogLevel.INFO);
 
         int actualBytes = writeBinaryToArray(result, assembled, problems);
 
+        Logger.log("Assembling finished. Result holds " + actualBytes + " byte" + (actualBytes == 1 ? "" : "s") + ".",
+                Assembler.class, Logger.LogLevel.INFO);
+        Logger.log("Writing files…", Assembler.class, Logger.LogLevel.INFO);
         writeFiles(directory, source, actualBytes + 1, assembled, problems);
+        Logger.log("Writing files finished.", Assembler.class, Logger.LogLevel.INFO);
 
-        if (!checkErrors(AssemblerSettings.STOP_ASSEMBLER, problems, TokenProblem.class, "assembling"))
+        if (!checkErrors(AssemblerSettings.STOP_ASSEMBLER, problems, TokenProblem.class, "assembling") ||
+            !checkErrors(AssemblerSettings.STOP_ASSEMBLER, problems, ExceptionProblem.class, "assembling"))
             return result = new byte[0xFFFF+1];
 
         Collections.sort(problems);
 
+        Logger.log("Assembling process finished. Encountered " + problems.size() +
+                " problem" + (problems.size() == 1 ? "." : "s."), Assembler.class, Logger.LogLevel.INFO);
         return result;
     }
 
     private List<Token> getTokens(Path source, Path directory, List<Problem<?>> problems) {
         List<String> inputOutput = new LinkedList<>();
         problems.addAll(preprocessor.preprocess(directory, source, inputOutput));
-        if (!checkErrors(AssemblerSettings.STOP_PREPROCESSOR, problems, PreprocessingProblem.class, "preprocessing"))
+        if (!checkErrors(AssemblerSettings.STOP_PREPROCESSOR, problems, PreprocessingProblem.class, "preprocessing") ||
+            !checkErrors(AssemblerSettings.STOP_PREPROCESSOR, problems, ExceptionProblem.class, "preprocessing"))
             return null;
 
         List<Token> output = tokenizer.tokenize(inputOutput, problems);
-        if (!checkErrors(AssemblerSettings.STOP_TOKENIZER, problems, TokenizingProblem.class, "tokenizing"))
+        if (!checkErrors(AssemblerSettings.STOP_TOKENIZER, problems, TokenizingProblem.class, "tokenizing") ||
+            !checkErrors(AssemblerSettings.STOP_TOKENIZER, problems, ExceptionProblem.class, "tokenizing"))
             return null;
         return output;
     }
 
     private List<Assembled8051> toAssembled(List<Token> tokens, List<LabelToken> labels,
                                             List<Problem<?>> problems, Path source) {
+        Logger.log("Generating Assembled objects…", Assembler.class, Logger.LogLevel.DEBUG);
         int origin = 0;
         Path currentFile = source;
 
@@ -173,7 +188,8 @@ public class Assembler8051 implements Assembler {
         else
             result.add(new Assembled8051(origin, 0, localList, localLabels, currentFile));
 
-
+        Logger.log("Generating of " + result.size() + " Assembled objects finished.",
+                Assembler.class, Logger.LogLevel.DEBUG);
         return result;
     }
 
@@ -239,39 +255,58 @@ public class Assembler8051 implements Assembler {
                     s.getProperty(AssemblerSettings.OUTPUT_HEX_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION))),
                     s.getIntProperty(AssemblerSettings.OUTPUT_HEX_BUFFER_LENGTH, i -> i > 0))) {
 
+                Logger.log("Writing Intel HEX file…", Assembler.class, Logger.LogLevel.INFO);
                 hw.writeAll(assembled, s.getBoolProperty(AssemblerSettings.OUTPUT_HEX_WRAP));
+                Logger.log("Writing Intel HEX file finished.", Assembler.class, Logger.LogLevel.INFO);
 
             } catch (Exception e) {
                 problems.add(new ExceptionProblem("Could not write HEX file!", Problem.Type.ERROR, e));
+                Logger.log("Could not write HEX file!", Assembler.class, Logger.LogLevel.DEBUG);
+                Logger.logThrowable(e, Assembler.class, Logger.LogLevel.DEBUG);
             }
+        else
+            Logger.log("Writing Intel HEX file omitted.", Assembler.class, Logger.LogLevel.INFO);
+
 
         this.listing = new Listing(assembled, 16);
+        Logger.log("Created Listing.", Assembler.class, Logger.LogLevel.DEBUG);
 
         // Write Listing
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_LST)) {
             try (BufferedWriter bf = Files.newBufferedWriter(getFile(directory, file,
                     s.getProperty(AssemblerSettings.OUTPUT_LST_EXTENSION)))) {
 
+                Logger.log("Writing listing file…", Assembler.class, Logger.LogLevel.INFO);
                 this.listing.writeAll(bf);
+                Logger.log("Writing listing file finished.", Assembler.class, Logger.LogLevel.INFO);
 
             } catch (IOException e) {
-                problems.add(new ExceptionProblem("Could not write binary file!", Problem.Type.ERROR, e));
+                problems.add(new ExceptionProblem("Could not write listing file!", Problem.Type.ERROR, e));
+                Logger.log("Could not write listing file!", Assembler.class, Logger.LogLevel.DEBUG);
+                Logger.logThrowable(e, Assembler.class, Logger.LogLevel.DEBUG);
             }
-        }
+        } else
+            Logger.log("Writing listing file omitted.", Assembler.class, Logger.LogLevel.INFO);
 
         // Write binary
         if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN)) {
            try (OutputStream os = Files.newOutputStream(getFile(directory, file,
                    s.getProperty(AssemblerSettings.OUTPUT_BIN_EXTENSION, AssemblerSettings.VALID_FILE_EXTENSION)))) {
+
+               Logger.log("Writing binary file…", Assembler.class, Logger.LogLevel.INFO);
                if (s.getBoolProperty(AssemblerSettings.OUTPUT_BIN_NECESSARY))
                    os.write(result, 0 , actualBytes);
                else
                    os.write(result);
+               Logger.log("Writing binary file finished.", Assembler.class, Logger.LogLevel.INFO);
 
            } catch (Exception e) {
                 problems.add(new ExceptionProblem("Could not write binary file!", Problem.Type.ERROR, e));
+               Logger.log("Could not write binary file!", Assembler.class, Logger.LogLevel.DEBUG);
+               Logger.logThrowable(e, Assembler.class, Logger.LogLevel.DEBUG);
             }
-        }
+        } else
+            Logger.log("Writing binary file omitted.", Assembler.class, Logger.LogLevel.INFO);
     }
 
     private Path getFile(Path directory, Path file, String extension) {
@@ -283,19 +318,21 @@ public class Assembler8051 implements Assembler {
             return Paths.get(directory.toString(), outDir, fileName.substring(0, fileName.lastIndexOf('.')) + extension);
 
     }
-     private boolean checkErrors(String setting, List<Problem<?>> problems, Class<? extends Problem> searchedType,
-                                 String workName) {
-         Problem.Type[] type = {AssemblerSettings.getStopPoint(
-                 Settings.INSTANCE.getProperty(setting, AssemblerSettings.VALID_STOP_POINT))};
-         Optional<Problem<?>> found = problems.stream().filter(
-                 p -> searchedType.isInstance(p) && p.getType() == type[0]).findFirst();
-         if (found.isPresent()) {
-             Problem cause = found.get();
-             problems.add(new Problem<Problem<?>>("Stopped assembling due to a Problem of type " + cause.getType() +
-                     " while " +  workName + " the file.", Problem.Type.INFORMATION,
-                     cause.getPath(), cause.getLine(), cause));
-             return this.successful = false;
-         }
-         return true;
-     }
+    private boolean checkErrors(String setting, List<Problem<?>> problems, Class<? extends Problem> searchedType,
+                                String workName) {
+        Problem.Type[] type = {AssemblerSettings.getStopPoint(
+                Settings.INSTANCE.getProperty(setting, AssemblerSettings.VALID_STOP_POINT))};
+        Optional<Problem<?>> found = problems.stream().filter(
+                p -> searchedType.isInstance(p) && p.getType() == type[0]).findFirst();
+        if (found.isPresent()) {
+            Problem cause = found.get();
+            final String msg = "Stopped assembling due to a Problem of type " + cause.getType() +
+                    " while " +  workName + " the file.";
+            problems.add(new Problem<Problem<?>>(msg, Problem.Type.INFORMATION,
+                    cause.getPath(), cause.getLine(), cause));
+            Logger.log(msg, Assembler.class, Logger.LogLevel.INFO);
+            return this.successful = false;
+        }
+        return true;
+    }
 }
