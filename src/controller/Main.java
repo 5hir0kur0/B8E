@@ -7,6 +7,7 @@ import emulator.RAM;
 import emulator.arc8051.MC8051;
 import gui.EmulatorWindow;
 import gui.MainWindow;
+import misc.Logger;
 import misc.Pair;
 import misc.Settings;
 
@@ -17,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -50,7 +52,8 @@ public class Main {
             "gui.MainWindow",
             "emulator.arc8051.State8051",
             "controller.Main",
-            "assembler.util.AssemblerSettings"
+            "assembler.util.AssemblerSettings",
+            "misc.Logger",
     };
 
     static {
@@ -93,8 +96,8 @@ public class Main {
                 for (String className : CLASSES_WITH_SETTINGS)
                     Class.forName(className);
             } catch (ClassNotFoundException e) {
-                System.err.println("An error occurred while listing the settings:");
-                e.printStackTrace();
+                Logger.log("An error occurred while listing the settings:", Main.class, Logger.LogLevel.ERROR);
+                Logger.logThrowable(e, Main.class, Logger.LogLevel.ERROR);
                 System.exit(6);
             }
             Settings.INSTANCE.listDefaults(System.out);
@@ -121,6 +124,15 @@ public class Main {
             PROJECT_PERMANENT = false;
         }));
         CL_OPTIONS.add(new Pair<>("--settings", list -> {
+            try {
+                for (String className : CLASSES_WITH_SETTINGS)
+                    Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                Logger.log("An error occurred while loading the default settings:", Main.class, Logger.LogLevel.ERROR);
+                Logger.logThrowable(e, Main.class, Logger.LogLevel.ERROR);
+                System.exit(6);
+            }
+
             if (list.isEmpty()) {
                 System.err.println("Invalid syntax for '--settings': Expected at least one argument.");
                 System.exit(8);
@@ -147,7 +159,7 @@ public class Main {
                     Settings.INSTANCE.loadSettingsFile(in);
                 }
             } catch (Exception e) {
-                System.err.println("Reading the settings file (" + list.get(0) + ") failed");
+                Logger.log("Reading the settings file (" + list.get(0) + ") failed", Main.class, Logger.LogLevel.ERROR);
                 System.exit(13);
             }
         }));
@@ -204,10 +216,11 @@ public class Main {
                 SwingUtilities.invokeLater(() -> new EmulatorWindow(emulator, null));
                 exitAfterOption = true;
             } catch (InvalidPathException e) {
-                System.err.println("Invalid syntax for '--open-state-dump': Expected valid path");
+                Logger.log("Invalid syntax for '--open-state-dump': Expected valid path", Main.class,
+                        Logger.LogLevel.ERROR);
                 System.exit(1);
             } catch (IOException e) {
-                System.err.println("Error: Couldn't load path.");
+                Logger.log("Error: Couldn't load path.", Main.class, Logger.LogLevel.ERROR);
             }
         }));
         CL_OPTIONS.add(new Pair<>("--emulate", list -> {
@@ -229,10 +242,10 @@ public class Main {
                 SwingUtilities.invokeLater(() -> new EmulatorWindow(emulator, null));
                 exitAfterOption = true;
             } catch (InvalidPathException e) {
-                System.err.println("Invalid syntax for '--emulate': Expected valid path");
+                Logger.log("Invalid syntax for '--emulate': Expected valid path", Main.class, Logger.LogLevel.ERROR);
                 System.exit(1);
             } catch (IOException e) {
-                System.err.println("Error: Couldn't load path.");
+                Logger.log("Error: Couldn't load path.", Main.class, Logger.LogLevel.ERROR);
             }
         }));
      }
@@ -241,15 +254,21 @@ public class Main {
         if (MAIN_WINDOW != null) try {
             MAIN_WINDOW.panic();
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.logThrowable(e, Thread.UncaughtExceptionHandler.class, Logger.LogLevel.ERROR);
         }
         if (throwable instanceof Error) {
-            System.err.println("An error occurred in B8E...");
+            Logger.log("An error occurred in B8E...", Thread.UncaughtExceptionHandler.class, Logger.LogLevel.ERROR);
         } else if (throwable instanceof Exception) {
-            if (MAIN_WINDOW != null) MAIN_WINDOW.reportException((Exception)throwable, true);
-            else System.err.println("An exception occurred in B8E...");
+            if (MAIN_WINDOW != null)  {
+                MAIN_WINDOW.reportException((Exception)throwable, true);
+                return;
+            }
+            else {
+                Logger.log("An exception occurred in B8E...", Thread.UncaughtExceptionHandler.class,
+                        Logger.LogLevel.ERROR);
+            }
         }
-        throwable.printStackTrace();
+        Logger.logThrowable(throwable, Thread.UncaughtExceptionHandler.class, Logger.LogLevel.ERROR);
     };
 
     private static void setUpLookAndFeel() {
@@ -282,7 +301,7 @@ public class Main {
                 for (Pair<String, Consumer<List<String>>> pair : CL_OPTIONS)
                     if (pair.x.equals(args[i])) {
                         List<String> argArgs = new LinkedList<>();
-                        while (i < args.length - 1 && !args[++i].startsWith("--")) argArgs.add(args[i]);
+                        while (i < args.length - 1 && !args[i+1].startsWith("--")) argArgs.add(args[++i]);
                         pair.y.accept(argArgs);
                         continue outer;
                     }

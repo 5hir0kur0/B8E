@@ -5,7 +5,7 @@ import assembler.util.Listing;
 import assembler.util.problems.Problem;
 import controller.Project;
 import controller.TextFile;
-import emulator.RAM;
+import misc.Logger;
 import misc.Pair;
 import misc.Settings;
 
@@ -13,7 +13,9 @@ import javax.swing.*;
 import javax.swing.event.TreeModelListener;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
-import javax.swing.table.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableColumnModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
@@ -28,7 +30,6 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author T., Noxgrim, 5hir0kur0
@@ -169,6 +170,7 @@ public class MainWindow extends JFrame {
     }
 
     public void reportException(String message, Exception e, boolean severe) {
+        Logger.logThrowable(e, MainWindow.class, severe ? Logger.LogLevel.ERROR : Logger.LogLevel.WARNING);
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
         JPanel panel = new JPanel(new BorderLayout());

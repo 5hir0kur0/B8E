@@ -56,7 +56,7 @@ public enum Settings {
      *         Note: If no default value is specified {@code null} will be returned.
      */
     public String getProperty(String key, Predicate<String> valueIsValid) {
-        return this.getProperty(key, this.defaults.getProperty(key), valueIsValid);
+        return this.getProperty(key, this.getDefault(key), valueIsValid);
     }
 
     /**
@@ -86,7 +86,7 @@ public enum Settings {
     public int getIntProperty(String key, IntPredicate valueIsValid) {
         int defaultVal;
         try {
-            defaultVal = Integer.parseInt(this.defaults.getProperty(key));
+            defaultVal = Integer.parseInt(this.getDefault(key));
         } catch (NumberFormatException | NullPointerException e) {
             //TODO: log exception
             return 0;
@@ -138,7 +138,7 @@ public enum Settings {
     public boolean getBoolProperty(String key) {
         String res = this.settings.getProperty(key);
         if (null == res || res.trim().isEmpty())
-            return Boolean.parseBoolean(this.defaults.getProperty(key));
+            return Boolean.parseBoolean(this.getDefault(key));
         return Boolean.parseBoolean(res);
     }
 
@@ -161,6 +161,8 @@ public enum Settings {
      */
     public void setProperty(String key, String value) {
         this.settings.setProperty(key, value);
+        if (!defaults.containsKey(key))
+            Logger.log("Property '" + key + "' does not exist!", Settings.class, Logger.LogLevel.WARNING);
     }
 
     /**
@@ -169,6 +171,8 @@ public enum Settings {
      */
     public void setFileProperty(String key, String value) {
         this.settingsFile.setProperty(key, value);
+        if (!defaults.containsKey(key))
+            Logger.log("Property '" + key + "' does not exist!", Settings.class, Logger.LogLevel.WARNING);
     }
 
     /** @see java.util.Properties#load(Reader) */
@@ -199,7 +203,19 @@ public enum Settings {
     public Set<String> getKeys() {
         final Set<Object> tmp = new HashSet<>();
         tmp.addAll(this.defaults.keySet());
+        tmp.addAll(this.settingsFile.keySet());
         tmp.addAll(this.settings.keySet());
         return tmp.stream().map(Object::toString).collect(Collectors.toSet());
+    }
+
+    /**
+     * Tries to get a key from {@code settingsFile]. If it is not present
+     * the value in {@code defaults} will be returned.
+     */
+    private String getDefault(String key) {
+        if (settingsFile.containsKey(key))
+            return settingsFile.getProperty(key);
+        else
+            return defaults.getProperty(key);
     }
 }
