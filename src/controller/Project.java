@@ -52,7 +52,9 @@ public class Project implements AutoCloseable {
     public void close() throws IOException {
         if (this.projectFile != null && Files.exists(this.projectFile) && this.isPermanent())
             Settings.INSTANCE.store(Files.newBufferedWriter(this.projectFile, CHARSET),
-                    "Project File for " + this.getName());
+                    "Project File for " + this.getName() + "\n" +
+                    "vim: set syntax=conf"); // Write Vim modeline. Only takes effect if the 'modeline' option is set.
+                                             // (Deactivated by default on Debian systems.)
     }
 
     public TextFile requestResource(Path path, boolean create) throws IOException {
