@@ -29,12 +29,18 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
     @Override
     public void insertString(int offset, String str, AttributeSet as) throws BadLocationException {
         if (str.endsWith(LineNumberSyntaxPane.LINE_END)) {
+            final String end = LineNumberSyntaxPane.LINE_END;
             final Element element = super.getParagraphElement(offset + str.length());
-            final String line = super.getText(element.getStartOffset(),
-                    element.getEndOffset() - element.getStartOffset());
+            String line;
+            if (str.indexOf(end) == str.lastIndexOf(end)) {
+                line = super.getText(element.getStartOffset(),
+                        element.getEndOffset() - element.getStartOffset());
+            } else {
+                line = str.substring(str.lastIndexOf(end, str.lastIndexOf(end)-1)+end.length());
+            }
             String prefix = line.substring(0, line.indexOf(line.trim()));
             if (line.trim().length() == 0)
-                str = LineNumberSyntaxPane.LINE_END + line.substring(0, offset - element.getStartOffset());
+                str += line.substring(0, offset - element.getStartOffset());
             else
                 str += prefix;
         }

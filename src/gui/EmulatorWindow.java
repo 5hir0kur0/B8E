@@ -621,7 +621,7 @@ public class EmulatorWindow extends JFrame {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return !EmulatorWindow.this.running && this.modifiable;
+            return col > 0 && !EmulatorWindow.this.running && this.modifiable;
         }
 
         @Override
