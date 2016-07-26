@@ -22,6 +22,8 @@ import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -44,11 +46,13 @@ public class MainWindow extends JFrame {
     private JTree fsTree;
     private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
-            refreshTree, zoomIn, zoomOut, nextTab, prevTab, reloadFile, buildRunMain, buildRunCurrent,
+            refreshTree, zoomIn, zoomOut, nextTab, prevTab, closeTab, reloadFile, buildRunMain, buildRunCurrent,
             buildMain, buildCurrent, runMain, runCurrent, setMain, settings;
 
     private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
     private final static String AUTOSAVE_SETTING_DEFAULT = "true";
+    private final static String CLOSE_BEHAVIOR = "gui.close-behavior";
+    private final static String CLOSE_BEHAVIOR_DEFAULT = "ask";
 
     static {Settings.INSTANCE.setDefault(AUTOSAVE_SETTING, AUTOSAVE_SETTING_DEFAULT);}
     { setUpActions(); }
@@ -68,6 +72,7 @@ public class MainWindow extends JFrame {
     final static String ZOOM_OUT_TEXT = "Zoom out";
     final static String NEXT_TAB_TEXT = "Next tab";
     final static String PREV_TAB_TEXT = "Previous tab";
+    final static String CLOSE_TAB_TEXT = "Close tab";
     final static String RELOAD_FILE_TEXT = "Reload file";
     final static String BUILD_RUN_MAIN_TEXT = "Build and run main file";
     final static String BUILD_MAIN_TEXT = "Build main file";
@@ -201,68 +206,33 @@ public class MainWindow extends JFrame {
             try {
                 pane.child.store(pane.textFile.getWriter());
             } catch (IOException e) {
-                System.err.println("error during panic-save:");
-                e.printStackTrace();
+                Logger.log("error during panic-save:", MainWindow.class, Logger.LogLevel.ERROR);
+                Logger.logThrowable(e, MainWindow.class, Logger.LogLevel.ERROR);
             }
         }
         try {
             this.project.close();
         } catch (IOException e) {
-            System.err.println("error during panic-save:");
-            e.printStackTrace();
+            Logger.log("error during panic-save:", MainWindow.class, Logger.LogLevel.ERROR);
+            Logger.logThrowable(e, MainWindow.class, Logger.LogLevel.ERROR);
         }
     }
 
     private void windowClosing() {
-        boolean unsavedFiles = false;
-        final StringBuilder dialogText = new StringBuilder();
-        for (int i = 0, all = MainWindow.this.jTabbedPane.getTabCount(); i < all; ++i) try {
-            final Pair<TextFile, LineNumberSyntaxPane> pair = MainWindow.this.getFileAt(i);
-            if (pair.y.isChanged()) {
-                unsavedFiles = true;
-                final String tmpName = pair.x == null ? "[untitled file]" : pair.x.getPath().getFileName().toString();
-                dialogText.append(tmpName).append('\n');
-            }
-        } catch (NotifyUserException ignored) {
-            ignored.printStackTrace();
-        }
-        if (unsavedFiles) {
-            final JTextArea textArea = new JTextArea(dialogText.toString());
-            textArea.setEditable(false);
-            final JPanel panel = new JPanel(new BorderLayout());
-            panel.add(new JLabel("The following files have not been saved:"), BorderLayout.PAGE_START);
-            panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
-            panel.add(new JLabel("Do you want to save them?"), BorderLayout.PAGE_END);
-            final int result = JOptionPane.showConfirmDialog(MainWindow.this,
-                    panel,
-                    "Do you want to save unsaved files?",
-                    JOptionPane.YES_NO_CANCEL_OPTION);
-            switch (result) {
-                case JOptionPane.YES_OPTION:
-                    MainWindow.this.saveAllFiles();
-                    break;
-                case JOptionPane.NO_OPTION:
-                    break;
-                case JOptionPane.CANCEL_OPTION:
-                case JOptionPane.CLOSED_OPTION:
-                    return;
-            }
 
+        final int[] close = new int[this.jTabbedPane.getTabCount()];
+        for (int i = 0; i < close.length; ++i)
+            close[i] = i;
+
+        if (close.length == 0 || this.closeTabs(close)) {
             try {
-                MainWindow.this.project.close();
-            } catch (IOException e1) {
-                MainWindow.this.reportException("An Error occurred while closing the project", e1, false);
-                e1.printStackTrace();
+                this.project.close();
+            } catch (IOException e) {
+                this.reportException("An error occurred while closing the project", e, false);
             }
-        }
 
-        try {
-            this.project.close();
-        } catch (IOException e) {
-            this.reportException("An error occurred while closing the project", e, false);
+            super.dispose();
         }
-
-        MainWindow.super.dispose();
     }
 
     private JMenuBar makeMenu() {
@@ -354,6 +324,9 @@ public class MainWindow extends JFrame {
         JMenuItem prevTab = new JMenuItem(this.prevTab);
         prevTab.setMnemonic('p');
         viewMenu.add(prevTab);
+        JMenuItem closeTab = new JMenuItem(this.closeTab);
+        closeTab.setMnemonic('c');
+        viewMenu.add(closeTab);
         viewMenu.addSeparator();
         JMenuItem refreshTree = new JMenuItem(this.refreshTree);
         refreshTree.setMnemonic('f');
@@ -484,6 +457,8 @@ public class MainWindow extends JFrame {
                     this.reportException(e.getMessage(), e, false);
                     return;
                 }
+                this.jTabbedPane.setToolTipTextAt(index, file.x.getPath().toString());
+                // set the tooltip first to enforce a property change (because a tooltip isn't a property, you know)
                 this.jTabbedPane.setTitleAt(index, file.x.getPath().getFileName().toString());
                 this.refreshTree();
             } catch (IOException e1) {
@@ -791,7 +766,217 @@ public class MainWindow extends JFrame {
             this.jTabbedPane.add(scrollPane);
         scrollPane.requestFocusInWindow();
         syntaxPane.setCaret(0, 0);
-        this.jTabbedPane.setTitleAt(this.jTabbedPane.getSelectedIndex(), title);
+
+        final int index = this.jTabbedPane.getSelectedIndex();
+        final TabTitle tt = new TabTitle(this);
+        jTabbedPane.addPropertyChangeListener(tt);
+        this.jTabbedPane.setTitleAt(index, title);
+        this.jTabbedPane.setTabComponentAt(index, tt);
+        if (textFile != null && textFile.getPath() != null)
+            this.jTabbedPane.setToolTipTextAt(index, textFile.getPath().toString());
+        else
+            this.jTabbedPane.setToolTipTextAt(index, "[File not jet saved.]");
+    }
+
+    private boolean closeTabs(int ... indexes) {
+        String setting = Settings.INSTANCE.getProperty(CLOSE_BEHAVIOR, CLOSE_BEHAVIOR_DEFAULT,
+                s -> s.equalsIgnoreCase("save") || s.equalsIgnoreCase("ask") || s.equalsIgnoreCase("discard"));
+
+        switch (setting.toLowerCase()) {
+            case "discard":
+                return true;
+            case "save":
+            {
+                try {
+                    for (int i : indexes)
+                        if (this.getFileAt(i).y.isChanged())
+                            this.saveFile(i);
+                } catch (NotifyUserException ignored) {
+                    Logger.logThrowable(ignored, MainWindow.class, Logger.LogLevel.DEBUG);
+                }
+                return true;
+            }
+            case "ask":
+            {
+                List<Integer> unsavedFiles = new ArrayList<>(indexes.length);
+                Object prompt = null;
+                StringBuilder files = new StringBuilder();
+
+                if (indexes.length > 0) {
+                    Arrays.sort(indexes); // Sort tp allow offset to work properly
+
+                    for (int index : indexes)
+                        try {
+                            final Pair<TextFile, LineNumberSyntaxPane> file = this.getFileAt(index);
+                            if (file.y.isChanged()) {
+                                files.append(file.x == null ? "[untitled file]" : file.x.getPath().getFileName()
+                                        .toString()).append('\n');
+                                unsavedFiles.add(index);
+                            }
+                        } catch (NotifyUserException ignored) {
+                            Logger.logThrowable(ignored, MainWindow.class, Logger.LogLevel.DEBUG);
+                        }
+                    if (files.length() > 0)
+                        files.setLength(files.length()-1);
+
+                    if (unsavedFiles.size() == 1) {
+                        try {
+                            final Pair<TextFile, LineNumberSyntaxPane> file = this.getFileAt(unsavedFiles.get(0));
+                            prompt = "The file \"" +
+                                    (file.x == null ? "[untitled file]" : file.x.getPath().getFileName().toString()) +
+                                    "\" has not been saved.\nDo you want to save it?";
+                        } catch (NotifyUserException ignored) {
+                            Logger.logThrowable(ignored, MainWindow.class, Logger.LogLevel.DEBUG);
+                        }
+                    } else {
+                        final JTextArea textArea = new JTextArea(files.toString());
+                        textArea.setEditable(false);
+                        final JPanel panel = new JPanel(new BorderLayout());
+                        panel.add(new JLabel("The following files have not been saved:"), BorderLayout.PAGE_START);
+                        panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+                        panel.add(new JLabel("Do you want to save them?"), BorderLayout.PAGE_END);
+                        prompt = panel;
+                    }
+
+                } else
+                    throw new IllegalArgumentException("No tabs to close specified.");
+
+                final int result;
+                if (!unsavedFiles.isEmpty()) {
+                    result = JOptionPane.showConfirmDialog(MainWindow.this,
+                            prompt, "Do you want to save unsaved files?",
+                            JOptionPane.YES_NO_CANCEL_OPTION);
+                } else
+                    result = JOptionPane.NO_OPTION;
+
+                switch (result) {
+                    case JOptionPane.YES_OPTION:
+                        for (int index : unsavedFiles)
+                            this.saveFile(index);
+                    case JOptionPane.NO_OPTION:
+                        int offset = 0;
+                        for (int index : indexes)
+                            this.jTabbedPane.remove(index - offset++);
+                        return true;
+                    case JOptionPane.CANCEL_OPTION:
+                    case JOptionPane.CLOSED_OPTION:
+                        return false;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static class TabTitle extends JPanel implements PropertyChangeListener {
+
+        final private JLabel title;
+        final private JButton closeButton;
+
+        final MainWindow pane;
+
+        private TabTitle(MainWindow pane) {
+            this.pane = pane;
+            this.setFocusable(false);
+            this.setOpaque(false);
+            this.setLayout(new FlowLayout(FlowLayout.TRAILING, 0, 0));
+
+            this.closeButton = new TabCloseButton();
+            this.closeButton.setFocusable(false);
+            this.closeButton.setAction(new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    pane.closeTabs(pane.jTabbedPane.indexOfTabComponent(TabTitle.this));
+                }
+            });
+            this.closeButton.setToolTipText("Close this tab.");
+            this.add(closeButton);
+
+            this.title = new JLabel();
+            this.title.setFocusable(false);
+            this.title.setBorder(BorderFactory.createEmptyBorder(0, 3, 0 , 0));
+            this.add(title);
+
+            final MouseAdapter ma = new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    switch (e.getButton()) {
+                        case 1: // left click
+                            pane.jTabbedPane.setSelectedIndex(pane.jTabbedPane.indexOfTabComponent(TabTitle.this));
+                            // Emulate default behavior because the click event seems to vanish if a custom tab component
+                            // is used and doesn't select the tab.
+                            break;
+                        case 2:
+                            pane.closeTabs(pane.jTabbedPane.indexOfTabComponent(TabTitle.this));
+                    }
+                }
+            };
+            this.addMouseListener(ma);
+            this.title.addMouseListener(ma);
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            if (evt == null)
+                return;
+            if (evt.getPropertyName().equals("indexForTitle") || evt.getPropertyName().equals("indexForTabComponent")) {
+                final int index = pane.jTabbedPane.indexOfTabComponent(this);
+                if (index != -1) {
+                    this.title.setText(pane.jTabbedPane.getTitleAt(index));
+                    this.setToolTipText(pane.jTabbedPane.getToolTipTextAt(index));
+                    this.title.setToolTipText(pane.jTabbedPane.getToolTipTextAt(index));
+                }
+            }
+
+        }
+
+        private class TabCloseButton extends JButton {
+            private boolean pressed;
+            private boolean mouseover;
+
+            TabCloseButton() {
+
+                this.pressed = false;
+                this.mouseover = false;
+
+                this.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseReleased(MouseEvent e) {
+                        pressed = false;
+                    }
+
+                    @Override
+                    public void mousePressed(MouseEvent e) {
+                        pressed = true;
+                    }
+
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        mouseover = true;
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        mouseover = false;
+                    }
+                });
+
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                int offset = 3;
+                Graphics2D g2d = (Graphics2D) g;
+                if (pressed)
+                    g2d.translate(1, 1);
+                g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER));
+                if (mouseover)
+                    g2d.setColor(g2d.getColor().brighter());
+
+                g.drawLine(offset, offset, this.getWidth()-offset, this.getHeight()-offset);
+                g.drawLine(this.getWidth()-offset, offset, offset, this.getHeight()-offset);
+            }
+        }
     }
 
     private void openFile(Path path) {
@@ -935,6 +1120,14 @@ public class MainWindow extends JFrame {
                                                  % mw.jTabbedPane.getTabCount());
             }
         };
+        this.closeTab = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                final int index = mw.jTabbedPane.getSelectedIndex();
+                if (index != -1)
+                    mw.closeTabs(index);
+            }
+        };
         this.reloadFile = new AbstractAction(RELOAD_FILE_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -1069,6 +1262,7 @@ public class MainWindow extends JFrame {
         map.put(ZOOM_OUT_TEXT, this.zoomOut);
         map.put(NEXT_TAB_TEXT, this.nextTab);
         map.put(PREV_TAB_TEXT, this.prevTab);
+        map.put(CLOSE_TAB_TEXT, this.closeTab);
         map.put(RELOAD_FILE_TEXT, this.reloadFile);
         map.put(BUILD_RUN_MAIN_TEXT, this.buildRunMain);
         map.put(BUILD_MAIN_TEXT, this.buildMain);
@@ -1087,6 +1281,7 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, InputEvent.CTRL_DOWN_MASK), ZOOM_OUT_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), NEXT_TAB_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK), PREV_TAB_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK), CLOSE_TAB_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 NEW_FILE_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK), OPEN_FILE_TEXT);
@@ -1155,7 +1350,7 @@ public class MainWindow extends JFrame {
     private void build(Path path) {
         blockBuild(true);
         if (Settings.INSTANCE.getBoolProperty(AUTOSAVE_SETTING))
-            this.saveAll.actionPerformed(new ActionEvent(AUTOSAVE_SETTING, 0, "autosave"));
+            this.saveAllFiles();
         try {
             Assembler a = this.project.getAssembler();
             List<Problem<?>> problems = new LinkedList<>();
