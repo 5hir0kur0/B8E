@@ -129,8 +129,16 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     public void store(Writer w) throws IOException {
-        this.code.write(w);
-        this.savedHash = this.code.getText().hashCode();
+        final String old = this.code.getText();
+        this.code.setText(old + LINE_END); // Append new line because it will not be written
+        try {
+            this.code.write(w);
+        } catch (IOException e) {
+            this.code.setText(old);
+            throw e;
+        }
+        this.code.setText(old);
+        this.savedHash = old.hashCode();
     }
 
     public void load(Reader r) throws IOException {
@@ -139,12 +147,17 @@ public class LineNumberSyntaxPane extends JPanel {
                 (Observable, Object) -> updateLineNumbers());
         this.code.setContentType("text/plain");
         this.code.setDocument(shDoc);
+        shDoc.setAutoIndent(false); // Prevent auto indent on first load
         try {
             this.code.getEditorKit().read(r, this.code.getStyledDocument(), 0);
+            String text = shDoc.getText(0, shDoc.getLength());
+            if (text.endsWith(LINE_END)) // Remove unnecessary trailing new line
+                this.code.setText(text.substring(0, text.length()-LINE_END.length()));
         } catch (BadLocationException impossible) {
             System.err.println("an impossible exception occurred:");
             impossible.printStackTrace();
         }
+        shDoc.setAutoIndent(true);
         shDoc.discardAllEdits(); // Prevent ability to undo load
         this.code.setCaretPosition(0);
         this.updateLineNumbers();

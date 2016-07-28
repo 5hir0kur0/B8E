@@ -14,6 +14,8 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
     private List<Pair<Pattern, AttributeSet>> style;
     private final Observer observer;
 
+    private boolean autoIndent;
+
     private ArrayList<Edit> edits;
     private int editIndex;
 
@@ -23,24 +25,31 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
 
         edits     = new ArrayList<>(42);
         editIndex = 0;
+        autoIndent = true;
     }
 
 
     @Override
     public void insertString(int offset, String str, AttributeSet as) throws BadLocationException {
-        if (str.endsWith(LineNumberSyntaxPane.LINE_END)) {
-            final String end = LineNumberSyntaxPane.LINE_END;
+        if (str.endsWith(LineNumberSyntaxPane.LINE_END) && autoIndent) {
+            final String lineEnd = LineNumberSyntaxPane.LINE_END;
             final Element element = super.getParagraphElement(offset + str.length());
             String line;
-            if (str.indexOf(end) == str.lastIndexOf(end)) {
+            if (str.indexOf(lineEnd) == str.lastIndexOf(lineEnd)) {
                 line = super.getText(element.getStartOffset(),
                         element.getEndOffset() - element.getStartOffset());
             } else {
-                line = str.substring(str.lastIndexOf(end, str.lastIndexOf(end)-1)+end.length());
+                line = str.substring(str.lastIndexOf(lineEnd, str.lastIndexOf(lineEnd)-1)+lineEnd.length());
             }
             String prefix = line.substring(0, line.indexOf(line.trim()));
-            if (line.trim().length() == 0)
-                str += line.substring(0, offset - element.getStartOffset());
+            if (line.trim().length() == 0) {
+               int cursorPos = offset - element.getStartOffset();
+                if (cursorPos < line.length())
+                    str += line.substring(0, cursorPos);
+                else {
+                    str += String.format("%" + cursorPos + "s", line);
+                }
+            }
             else
                 str += prefix;
         }
@@ -95,6 +104,10 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
                 }
             }
         }
+    }
+
+    void setAutoIndent(boolean autoIndent) {
+        this.autoIndent = autoIndent;
     }
 
     public Optional<Edit> undo() {
