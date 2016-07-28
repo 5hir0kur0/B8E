@@ -494,6 +494,20 @@ public class MainWindow extends JFrame {
                 }
             }
         });
+        this.fsTree.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                // e.getKeyCode() : Seems to be always be 0 so we have to use
+                // the key char
+                if (e.getKeyChar() == '\n') {
+                    TreePath path = MainWindow.this.fsTree.getSelectionPath();
+                    if (path == null) return;
+                    PathNode leaf = (PathNode) path.getLastPathComponent();
+                    if (Files.isRegularFile(leaf.path, LinkOption.NOFOLLOW_LINKS))
+                        MainWindow.this.openOrSwitchToFile(leaf.path);
+                }
+            }
+        });
         this.mainSplit.setRightComponent(new JScrollPane((MainWindow.this.fsTree)));
         this.mainSplit.setDividerLocation(0.75);
     }
@@ -973,8 +987,11 @@ public class MainWindow extends JFrame {
                 if (mouseover)
                     g2d.setColor(g2d.getColor().brighter());
 
-                g.drawLine(offset, offset, this.getWidth()-offset, this.getHeight()-offset);
-                g.drawLine(this.getWidth()-offset, offset, offset, this.getHeight()-offset);
+                g.drawLine(offset, offset, this.getHeight()-offset, this.getHeight()-offset);
+                g.drawLine(this.getHeight()-offset, offset, offset, this.getHeight()-offset);
+                if (this.getHeight() != this.getWidth()) {
+                    this.setSize(this.getHeight(), this.getHeight());
+                }
             }
         }
     }
