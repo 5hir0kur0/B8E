@@ -33,7 +33,7 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
     public void insertString(int offset, String str, AttributeSet as) throws BadLocationException {
         if (str.endsWith(LineNumberSyntaxPane.LINE_END) && autoIndent) {
             final String lineEnd = LineNumberSyntaxPane.LINE_END;
-            final Element element = super.getParagraphElement(offset + str.length());
+            final Element element = super.getParagraphElement(offset);
             String line;
             if (str.indexOf(lineEnd) == str.lastIndexOf(lineEnd)) {
                 line = super.getText(element.getStartOffset(),
