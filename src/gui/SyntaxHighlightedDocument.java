@@ -23,8 +23,8 @@ class SyntaxHighlightedDocument extends DefaultStyledDocument {
         this.style = Objects.requireNonNull(style);
         this.observer = observer;
 
-        edits     = new ArrayList<>(42);
-        editIndex = 0;
+        edits      = new ArrayList<>(42);
+        editIndex  = 0;
         autoIndent = true;
     }
 

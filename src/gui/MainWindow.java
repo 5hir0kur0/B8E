@@ -49,12 +49,18 @@ public class MainWindow extends JFrame {
             refreshTree, zoomIn, zoomOut, nextTab, prevTab, closeTab, reloadFile, buildRunMain, buildRunCurrent,
             buildMain, buildCurrent, runMain, runCurrent, setMain, settings;
 
-    private final static String AUTOSAVE_SETTING = "gui.autosave-on-build";
-    private final static String AUTOSAVE_SETTING_DEFAULT = "true";
+    private final static String AUTO_SAVE_SETTING = "gui.auto-save-on-build";
+    private final static String AUTO_SAVE_SETTING_DEFAULT = "true";
     private final static String CLOSE_BEHAVIOR = "gui.close-behavior";
     private final static String CLOSE_BEHAVIOR_DEFAULT = "ask";
+    private final static String TREE_SHOW_HIDDEN_FILES = "gui.file-system-tree.show-hidden-files";
+    private final static String TREE_SHOW_HIDDEN_FILES_DEFAULT = "false";
 
-    static {Settings.INSTANCE.setDefault(AUTOSAVE_SETTING, AUTOSAVE_SETTING_DEFAULT);}
+    static {
+        Settings.INSTANCE.setDefault(AUTO_SAVE_SETTING, AUTO_SAVE_SETTING_DEFAULT);
+        Settings.INSTANCE.setDefault(CLOSE_BEHAVIOR, CLOSE_BEHAVIOR_DEFAULT);
+        Settings.INSTANCE.setDefault(TREE_SHOW_HIDDEN_FILES, TREE_SHOW_HIDDEN_FILES_DEFAULT);
+    }
     { setUpActions(); }
 
     final static String UNDO_TEXT = "Undo";
@@ -1366,7 +1372,7 @@ public class MainWindow extends JFrame {
 
     private void build(Path path) {
         blockBuild(true);
-        if (Settings.INSTANCE.getBoolProperty(AUTOSAVE_SETTING))
+        if (Settings.INSTANCE.getBoolProperty(AUTO_SAVE_SETTING))
             this.saveAllFiles();
         try {
             Assembler a = this.project.getAssembler();
@@ -1449,11 +1455,12 @@ public class MainWindow extends JFrame {
     };
 
     private static final List<Path> dirList = new ArrayList<>();
+    private static boolean treeShowHiddenFiles;
 
     private static PathNode getChild(Path parent, int index) {
         dirList.clear();
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
-                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+                x -> !Files.isHidden(x) | MainWindow.treeShowHiddenFiles && Files.isReadable(x))) {
             ds.forEach(dirList::add);
         } catch (IOException ignored) { ignored.printStackTrace(); }
 
@@ -1479,7 +1486,7 @@ public class MainWindow extends JFrame {
             return 0;
         int[] count = {0};
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
-                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+                x -> !Files.isHidden(x) | MainWindow.treeShowHiddenFiles && Files.isReadable(x))) {
             ds.forEach(x -> ++count[0]);
         } catch (IOException ignored) { ignored.printStackTrace(); }
         return count[0];
@@ -1488,7 +1495,7 @@ public class MainWindow extends JFrame {
     private static int getIndex(Path parent, Path child) {
         dirList.clear();
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(parent,
-                x -> !Files.isHidden(x) && Files.isReadable(x))) {
+                x -> !Files.isHidden(x) | MainWindow.treeShowHiddenFiles && Files.isReadable(x))) {
             ds.forEach(dirList::add);
         } catch (IOException ignored) { ignored.printStackTrace(); }
 
@@ -1497,6 +1504,7 @@ public class MainWindow extends JFrame {
     }
 
     private TreeModel makeFileSystemTree() {
+        treeShowHiddenFiles = Settings.INSTANCE.getBoolProperty(TREE_SHOW_HIDDEN_FILES);
         return new TreeModel() {
             @Override
             public Object getRoot() {

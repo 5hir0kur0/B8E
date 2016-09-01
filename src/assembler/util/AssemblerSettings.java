@@ -2,12 +2,13 @@ package assembler.util;
 
 import assembler.arc8051.MC8051Library;
 import assembler.util.problems.Problem;
+import misc.Logger;
 import misc.Settings;
 
 import java.util.function.Predicate;
 
 /**
- * A temporary class to store the assembler settings.
+ * A class to store and centralise the assembler settings.
  * @author Noxgrim
  */
 public class AssemblerSettings {
@@ -273,8 +274,8 @@ public class AssemblerSettings {
      * Example:
      * <pre>
      *     true:
-     *         20: 000C  80 F2      back:
-     *         *                      sjmp start
+     *        20: 000C  80 F2      back:
+     *         *                     sjmp start
      *     false:
      *        20: 000C  80 F2       back:   sjmp start
      * </pre>
@@ -310,6 +311,8 @@ public class AssemblerSettings {
      * if the <code>'jmp'</code> mnemonic is used).<br>
      * If set to <code>false</code>, every <code>'jmp'</code> mnemonic will be replaced
      * with a <code>'ljmp'</code> mnemonic.<br>
+     * NOTE: Does not take effect if the preprocessor is turned of or the default file
+     *       is not included or overridden.
      * <br>
      * Valid values: true, false<br>
      * Defaults to: true
@@ -321,6 +324,8 @@ public class AssemblerSettings {
      * and absolute jumps).
      * If set to <code>true</code>, every <code>'sjmp'</code>, <code>'ajmp'</code> and
      * <code>'ljmp'</code> mnemonic will be replaced with a <code>'jmp'</code> mnemonic.<br>
+     * NOTE: Does not take effect if the preprocessor is turned of or the default file
+     *       is not included or overridden.
      * <br>
      * Valid values: true, false<br>
      * Defaults to: false
@@ -432,6 +437,7 @@ public class AssemblerSettings {
             emulator.NumeralSystem.valueOf(x);
             return true;
         } catch (IllegalArgumentException e) {
+            Logger.logThrowable(e, AssemblerSettings.class, Logger.LogLevel.DEBUG);
             return false;
         }
     };

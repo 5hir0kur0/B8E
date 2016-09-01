@@ -326,7 +326,8 @@ public class Assembler8051 implements Assembler {
                 p -> searchedType.isInstance(p) && p.getType() == type[0]).findFirst();
         if (found.isPresent()) {
             Problem cause = found.get();
-            final String msg = "Stopped assembling due to a Problem of type " + cause.getType() +
+            final String msg = "Stopped assembling due to a" +
+                    ("AEIOU".contains(Character.toString(cause.getType().name().charAt(0))) ? "n " : " ") + cause.getType() +
                     " while " +  workName + " the file.";
             problems.add(new Problem<Problem<?>>(msg, Problem.Type.INFORMATION,
                     cause.getPath(), cause.getLine(), cause));
