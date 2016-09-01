@@ -132,6 +132,7 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     public void store(Writer w) throws IOException {
+        ((SyntaxHighlightedDocument) this.code.getDocument()).setAutoIndent(false);
         final String old = this.code.getText();
         this.code.setText(old + LINE_END); // Append new line because it will not be written
         try {
@@ -141,6 +142,8 @@ public class LineNumberSyntaxPane extends JPanel {
             throw e;
         }
         this.code.setText(old);
+        if (Settings.INSTANCE.getBoolProperty(AUTO_INDENT_SETTING, Boolean.parseBoolean(AUTO_INDENT_SETTING_DEFAULT)))
+            ((SyntaxHighlightedDocument) this.code.getDocument()).setAutoIndent(true);
         this.savedHash = old.hashCode();
     }
 
