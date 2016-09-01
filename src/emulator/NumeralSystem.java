@@ -24,7 +24,7 @@ public enum NumeralSystem {
             if (value.charAt(0) == '+') throw new NumberFormatException("No signs allowed in numbers.");
             return Long.parseUnsignedLong(value, 8);
         }
-    },DECIMAL() {
+    }, DECIMAL() {
         @Override
         public long getValue(String value) {
             if (value.charAt(0) == '+') throw new NumberFormatException("No signs allowed in numbers.");

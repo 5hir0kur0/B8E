@@ -32,6 +32,8 @@ public class LineNumberSyntaxPane extends JPanel {
     private final static String FONT_SIZE_SETTING = "gui.editor.font-size";
     private final static String FONT_SIZE_SETTING_DEFAULT = "12";
     private final static IntPredicate IS_VALID_FONT_SIZE = i -> i > 0 && i < 9001;
+    private final static String AUTO_INDENT_SETTING = "gui.editor.auto-indent";
+    private final static String AUTO_INDENT_SETTING_DEFAULT = "true";
 
     final static String LINE_END = "\n";
 
@@ -39,6 +41,7 @@ public class LineNumberSyntaxPane extends JPanel {
     static {
         Settings.INSTANCE.setDefault(FONT_SETTING, FONT_SETTING_DEFAULT);
         Settings.INSTANCE.setDefault(FONT_SIZE_SETTING, FONT_SIZE_SETTING_DEFAULT);
+        Settings.INSTANCE.setDefault(AUTO_INDENT_SETTING, AUTO_INDENT_SETTING_DEFAULT);
     }
 
     private final JTextArea lineNumbers;
@@ -157,7 +160,8 @@ public class LineNumberSyntaxPane extends JPanel {
             System.err.println("an impossible exception occurred:");
             impossible.printStackTrace();
         }
-        shDoc.setAutoIndent(true);
+        if (Settings.INSTANCE.getBoolProperty(AUTO_INDENT_SETTING, Boolean.parseBoolean(AUTO_INDENT_SETTING_DEFAULT)))
+            shDoc.setAutoIndent(true);
         shDoc.discardAllEdits(); // Prevent ability to undo load
         this.code.setCaretPosition(0);
         this.updateLineNumbers();

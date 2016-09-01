@@ -1,5 +1,5 @@
 ; Taken from http://plit.de/asem-51/mcufiles.zip
-;  
+;
 ;     File Name    Manufacturer    Versions
 ;  -----------------------------------------------------------------------
 ;      8051.MCU    Intel           8051, 8031, 8751BH
@@ -31,7 +31,7 @@ IE	DATA	0A8H
 P3	DATA	0B0H
 IP	DATA	0B8H
 PSW	DATA	0D0H
-;ACC	DATA	0E0H ; Incompability: A is a reserved symbol
+;ACC	DATA	0E0H ; Incompability: A(CC) is a reserved symbol
 B	DATA	0F0H
 
 IT0	BIT	088H
@@ -83,3 +83,4 @@ TIMER0	CODE	00BH
 EXTI1	CODE	013H
 TIMER1	CODE	01BH
 SINT	CODE	023H
+

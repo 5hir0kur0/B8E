@@ -32,12 +32,12 @@ ADD_16:
   mov  r1,  a
   pop   a
   mov  r0, a
-  JNC no_carry
+  JNC add16_no_carry
     mov  r2,  01h
-    sjmp finish 
-  no_carry:
+    sjmp add16_finish 
+  add16_no_carry:
     mov  r2,  00h
- finish:
+ add16_finish:
   mov  r3, 00h
 
   pop   a
@@ -79,20 +79,21 @@ SUBB_16:
   pop   a
   mov  r0, a
  $else
-  jnc negative_subb
+  jnc subb16_negative
     mov r1, a
     pop  a
     mov r0, a
     mov r3, 00h
     mov r2, 00h
-    sjmp finish_subb
-  negative_subb:
+    sjmp subb16_finish
+  subb16_negative:
     mov r3, a
     pop  a
     mov r2, a
     mov r1, 0FFh
     mov r0, 0FFh
- finish_subb:
+ subb16_finish:
  $endif
   pop a
  RET
+
