@@ -147,7 +147,7 @@ public class Tokenizer8051 implements Tokenizer {
                         tokens.add(new DirectiveTokens.OriginChangeToken(Long.parseLong(args[0]), line));
                     } catch (NumberFormatException e) {
                         problems.add(new TokenizingProblem("Illegal number format!", Problem.Type.ERROR,
-                                file, line, args[1]));
+                                file, line, args[0]));
                         return false;
                     }
 
@@ -598,7 +598,7 @@ public class Tokenizer8051 implements Tokenizer {
                             address = Integer.parseInt(value.toString());
                         } catch (NumberFormatException e) {
                             problems.add(new TokenizingProblem(
-                                    "Illegal format for expected a valid decimal number for the address!",
+                                    "Expected a valid decimal number for the address!",
                                     Problem.Type.ERROR, file, this.line, value.toString()));
                             break outer;
                         }
@@ -606,7 +606,7 @@ public class Tokenizer8051 implements Tokenizer {
                         bit = Integer.parseInt(bitNr.toString());
                     } catch (NumberFormatException e) {
                         problems.add(new TokenizingProblem(
-                                "Illegal format for expected a valid decimal number for the bit number!",
+                                "Expected a valid decimal number for the bit number!",
                                 Problem.Type.ERROR, file, this.line, bitNr.toString()));
                         break outer;
                     }
@@ -664,7 +664,7 @@ public class Tokenizer8051 implements Tokenizer {
 
                 } catch (NumberFormatException e) {
                     problems.add(new TokenizingProblem(
-                            "Illegal format for expected a valid decimal number!",
+                            "Expected a valid decimal number!",
                             Problem.Type.ERROR, file, this.line, bitNr.toString()));
                 }
             }

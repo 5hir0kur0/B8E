@@ -44,6 +44,7 @@ public class Preprocessor8051 implements Preprocessor {
 
     private List<String> output;
     private int outputIndex;
+    private int outputIndexOffset;
 
     private byte endState;         // 0: Running, 1: End Reached, 2: End Problem created
     private static final byte RUNNING = 0;
@@ -341,22 +342,22 @@ public class Preprocessor8051 implements Preprocessor {
                 @Override
                 public boolean perform(String... args) {
 
-                    if (!MC8051Library.NUMBER_PATTERN.matcher(args[1]).matches()) {
-                        problems.add(new PreprocessingProblem("First argument of 'org' is not a valid number!",
-                                Problem.Type.ERROR, currentFile, line, args[1]));
+                    if (!MC8051Library.NUMBER_PATTERN.matcher(args[0]).matches()) {
+                        problems.add(new PreprocessingProblem("Argument of 'org' is not a valid number!",
+                                Problem.Type.ERROR, currentFile, line, args[0]));
                         return false;
                     } else {
                         try {
-                            int value = Integer.parseInt(args[1]);
+                            int value = Integer.parseInt(args[0]);
                             if (value > 0xFFFF) {
                                 problems.add(new PreprocessingProblem("Number too big! Value cannot be bigger than " +
                                         "0FFFFh!",
-                                        Problem.Type.ERROR, currentFile, line, args[1]));
+                                        Problem.Type.ERROR, currentFile, line, args[0]));
                                 return false;
                             }
                         } catch (NumberFormatException e) {
-                            problems.add(new PreprocessingProblem("Second argument of 'org' is not a valid number!",
-                                    Problem.Type.ERROR, currentFile, line, args[1]));
+                            problems.add(new PreprocessingProblem("Argument of 'org' is not a valid number!",
+                                    Problem.Type.ERROR, currentFile, line, args[0]));
                             return false;
                         }
                     }
@@ -768,8 +769,11 @@ public class Preprocessor8051 implements Preprocessor {
                                                                    // for Tokenizer and Assembler
         this.output.add(includeDefaults(), "$line 1");
 
-        for (outputIndex = 0; outputIndex < this.output.size(); ++outputIndex) {
+        for (outputIndex = 0, outputIndexOffset = 0; outputIndex < this.output.size(); ++outputIndex) {
             lineString = this.output.get(outputIndex);
+
+            lineString = concatLine(lineString);              // Concat line with the next line if it ends
+                                                              // with a backslash.
 
             if (lineString == null) {
                 if (includeDepth > 0) --includeDepth;
@@ -791,8 +795,10 @@ public class Preprocessor8051 implements Preprocessor {
 
                 lineString = validateLabels(lineString);      // Test for name duplicates in labels and reserve symbol
 
-                if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches())
-                    lineString = handleDirective(lineString); // Line is a directive: handle it
+                if (MC8051Library.DIRECTIVE_PATTERN.matcher(lineString).matches()) { // Line is a directive:
+                    this.output.set(this.outputIndex, lineString); // update outer line (for fallthrough directives
+                    lineString = handleDirective(lineString);      // handle it
+                }
                 else if (conditionStack.isEmpty() || conditionState == COND_IS_ACTIVE) // Only output if no condition
                                                                                        // active or in positive
                                                                                        // condition
@@ -812,6 +818,9 @@ public class Preprocessor8051 implements Preprocessor {
                         problems);
                 endState = END_PROBLEM_CREATED;
             }
+            this.outputIndex += this.outputIndexOffset;       // Add skipped lines.
+            for (; 0 < this.outputIndexOffset; --this.outputIndexOffset, ++this.line)
+                output.add("");
 
         }
         if (!conditionStack.isEmpty())
@@ -1356,6 +1365,36 @@ public class Preprocessor8051 implements Preprocessor {
                     Problem.Type.ERROR, currentFile, line, number));
         }
         return result;
+    }
+
+    /**
+     * Concatenates a line with the next on if it ends with a backslash.
+     *
+     * @param source
+     *      the String to be used.
+     *
+     * @return
+     *      the modified source String.
+     */
+    private String concatLine(String source) {
+        if (source == null || !source.endsWith("\\"))
+            return source;
+        else {
+            do {
+                source = source.substring(0, source.length()-1);
+                if (this.outputIndex + this.outputIndexOffset+1 < this.output.size()) {
+                    source += this.output.get(this.outputIndex + ++this.outputIndexOffset);
+                    this.output.set(this.outputIndex + this.outputIndexOffset, "");
+                    // Fill with empty line to keep line count correct
+                } else {
+                    problems.add(new PreprocessingProblem("No line found after concatenation indicator!",
+                            Problem.Type.ERROR, currentFile, line+outputIndexOffset+1, "<EOF>"));
+                    return source.substring(0, source.length()-1);
+                }
+
+            } while(source.endsWith("\\"));
+        }
+        return source;
     }
 
     /**

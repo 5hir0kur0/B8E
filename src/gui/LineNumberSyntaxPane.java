@@ -132,7 +132,12 @@ public class LineNumberSyntaxPane extends JPanel {
     }
 
     public void store(Writer w) throws IOException {
-        ((SyntaxHighlightedDocument) this.code.getDocument()).setAutoIndent(false);
+        SyntaxHighlightedDocument shdoc = (SyntaxHighlightedDocument) this.code.getDocument();
+        shdoc.setAutoIndent(false);
+        // Keep highlighted lines
+        final Map<Integer, Color> highlightedLines = new HashMap<>(this.highlighter.highlights.size());
+        this.highlighter.highlights.forEach((key, value) -> highlightedLines.put(key.x, value));
+
         final String old = this.code.getText();
         this.code.setText(old + LINE_END); // Append new line because it will not be written
         try {
@@ -142,8 +147,10 @@ public class LineNumberSyntaxPane extends JPanel {
             throw e;
         }
         this.code.setText(old);
+        // Restore highlighted lines
+        this.highlighter.updateHighlightedLines(highlightedLines);
         if (Settings.INSTANCE.getBoolProperty(AUTO_INDENT_SETTING, Boolean.parseBoolean(AUTO_INDENT_SETTING_DEFAULT)))
-            ((SyntaxHighlightedDocument) this.code.getDocument()).setAutoIndent(true);
+            shdoc.setAutoIndent(true);
         this.savedHash = old.hashCode();
     }
 
