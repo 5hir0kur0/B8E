@@ -69,6 +69,7 @@ public class DirectiveTokens {
          */
         public DataToken(final byte[] data, int line) {
             super(Arrays.toString(Objects.requireNonNull(data, "'data' cannot be 'null'!")), TokenType.DIRECTIVE, line);
+            this.data = data;
         }
 
         /**
