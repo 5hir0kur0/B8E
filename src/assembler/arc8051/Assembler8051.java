@@ -79,7 +79,7 @@ public class Assembler8051 implements Assembler {
         Logger.log("Assembling finished. Result holds " + actualBytes + " byte" + (actualBytes == 1 ? "" : "s") + ".",
                 Assembler.class, Logger.LogLevel.INFO);
         Logger.log("Writing files…", Assembler.class, Logger.LogLevel.INFO);
-        writeFiles(directory, source, actualBytes + 1, assembled, problems);
+        writeFiles(directory, source, actualBytes, assembled, problems);
         Logger.log("Writing files finished.", Assembler.class, Logger.LogLevel.INFO);
 
         if (!checkErrors(AssemblerSettings.STOP_ASSEMBLER, problems, TokenProblem.class, "assembling") ||
@@ -222,7 +222,7 @@ public class Assembler8051 implements Assembler {
     private int writeBinaryToArray(byte[] out, List<Assembled8051> assembled, List<Problem<?>> problems) {
 
         final int maxAddr = out.length-1;
-        int maxAddrWritten = 0;
+        int maxAddrWritten = -1;
         for (Assembled8051 a : assembled) {
             int address = (int) a.getAddress();
             if (address > maxAddr) {
@@ -242,7 +242,7 @@ public class Assembler8051 implements Assembler {
                 out[address + i] = codes[i];
             }
         }
-        return maxAddrWritten;
+        return maxAddrWritten + 1;
     }
 
     private void writeFiles(Path directory, Path file, final int actualBytes,
