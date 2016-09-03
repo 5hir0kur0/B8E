@@ -1642,7 +1642,10 @@ public class Preprocessor8051 implements Preprocessor {
     private Boolean evaluateCondition(String[] args) {
         StringBuilder expression = new StringBuilder(42);
 
-        final boolean[] sett = new boolean[2];
+        final boolean[] sett = new boolean[3];
+        // 0: Setting
+        // 1: Ignore errors
+        // 2: Errors default
         boolean lastNot = false;
 
         String left = null, right = null;
@@ -1658,7 +1661,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, l));
-                return false;
+                return sett[2];
             }
         };
         final BiPredicate<String, String> equals = (l, r) -> {
@@ -1672,7 +1675,7 @@ public class Preprocessor8051 implements Preprocessor {
                     if (!sett[1])
                         problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                                 Problem.Type.ERROR, currentFile, line, l));
-                    return false;
+                    return sett[2];
                 }
                 try {
                     rNum = Double.parseDouble(r);
@@ -1680,7 +1683,7 @@ public class Preprocessor8051 implements Preprocessor {
                     if (!sett[1])
                         problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                                 Problem.Type.ERROR, currentFile, line, r));
-                    return false;
+                    return sett[2];
                 }
                 return lNum == rNum;
             }
@@ -1696,7 +1699,7 @@ public class Preprocessor8051 implements Preprocessor {
                     if (!sett[1])
                         problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                                 Problem.Type.ERROR, currentFile, line, l));
-                    return false;
+                    return sett[2];
                 }
                 try {
                     rNum = Double.parseDouble(r);
@@ -1704,7 +1707,7 @@ public class Preprocessor8051 implements Preprocessor {
                     if (!sett[1])
                         problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                                 Problem.Type.ERROR, currentFile, line, r));
-                    return false;
+                    return sett[2];
                 }
                 return lNum != rNum;
             }
@@ -1718,7 +1721,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, l));
-                return false;
+                return sett[2];
             } catch (NullPointerException e) {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Setting not defined!",
@@ -1731,7 +1734,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, r));
-                return false;
+                return sett[2];
             }
             return lNum < rNum;
         };
@@ -1744,7 +1747,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, l));
-                return false;
+                return sett[2];
             } catch (NullPointerException e) {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Setting not defined!",
@@ -1757,7 +1760,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, r));
-                return false;
+                return sett[2];
             }
             return lNum <= rNum;
         };
@@ -1770,7 +1773,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, l));
-                return false;
+                return sett[2];
             } catch (NullPointerException e) {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Setting not defined!",
@@ -1783,7 +1786,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, r));
-                return false;
+                return sett[2];
             }
             return lNum > rNum;
         };
@@ -1796,7 +1799,7 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, l));
-                return false;
+                return sett[2];
             } catch (NullPointerException e) {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Setting not defined!",
@@ -1809,14 +1812,14 @@ public class Preprocessor8051 implements Preprocessor {
                 if (!sett[1])
                     problems.add(new PreprocessingProblem("Value could not be converted to a number!",
                             Problem.Type.ERROR, currentFile, line, r));
-                return false;
+                return sett[2];
             }
             return lNum >= rNum;
         };
 
         // Evaluate
-        for (String arg : args)
-            switch (arg.toLowerCase()) {
+        for (String arg : args) {
+            switch (arg) {
                 case "-s":
                 case "--settings":
                 {
@@ -1829,22 +1832,42 @@ public class Preprocessor8051 implements Preprocessor {
                     else
                         problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
-                    break;
+                    continue;
                 }
                 case "-i":
-                case "--ignore-unset":
+                case "--ignore-errors":
                 {
                     if (left == null)
-                        if (sett[0])
-                            problems.add(new PreprocessingProblem("Duplicate option!", Problem.Type.ERROR,
-                                    currentFile, line, arg));
-                        else
+                        if (sett[1])
+                            problems.add(new PreprocessingProblem("Duplicate or incompatible option!",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                        else {
                             sett[1] = true;
+                            sett[2] = false;
+                        }
                     else
                         problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
                                 Problem.Type.ERROR, currentFile, line, arg));
-                    break;
+                    continue;
                 }
+                case "-I":
+                case "--ignore-errors-default-true":
+                {
+                    if (left == null)
+                        if (sett[1])
+                            problems.add(new PreprocessingProblem("Duplicate or incompatible option!",
+                                    Problem.Type.ERROR, currentFile, line, arg));
+                        else {
+                            sett[1] = true;
+                            sett[2] = true;
+                        }
+                    else
+                        problems.add(new PreprocessingProblem("Expect option before the first argument of a statement!",
+                                Problem.Type.ERROR, currentFile, line, arg));
+                    continue;
+                }
+            }
+            switch (arg.toLowerCase()) {
                 case "=":
                 case "==":
                 {
@@ -1995,8 +2018,11 @@ public class Preprocessor8051 implements Preprocessor {
                                 expression.append(" 0 |");
                         }
                     }
-                    left = right = null; operator = null;
+                    left = right = null;
+                    operator = null;
                     sett[0] = false;
+                    sett[1] = false;
+                    sett[2] = false;
                     break;
                 }
                 case "|":
@@ -2016,7 +2042,7 @@ public class Preprocessor8051 implements Preprocessor {
                             else
                                 expression.append(" 0 ) |");
                             lastNot = false;
-                        } else  {
+                        } else {
                             if (simple.test(left))
                                 expression.append(" 1 |");
                             else
@@ -2039,8 +2065,11 @@ public class Preprocessor8051 implements Preprocessor {
                                 expression.append(" 0 |");
                         }
                     }
-                    left = right = null; operator = null;
+                    left = right = null;
+                    operator = null;
                     sett[0] = false;
+                    sett[1] = false;
+                    sett[2] = false;
                     break;
                 }
                 case "~":
@@ -2049,7 +2078,7 @@ public class Preprocessor8051 implements Preprocessor {
                 {
                     if (left == null) {
                         if (lastNot)
-                            expression.setLength(expression.length()-8);
+                            expression.setLength(expression.length() - 8);
                         else
                             expression.append(" ( 1 & ~");
                         lastNot = !lastNot;
@@ -2073,6 +2102,7 @@ public class Preprocessor8051 implements Preprocessor {
                                 Problem.Type.ERROR, currentFile, line, arg));
                 }
             }
+        }
         // Clean up
         if (left == null)
             if (sett[0])

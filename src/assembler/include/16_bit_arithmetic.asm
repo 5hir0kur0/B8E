@@ -6,6 +6,33 @@
 ; The whole file adds 221 bytes of code memory to the
 ; result if it is included.
 ;
+; You can alter the features of this include file by
+; setting global variables with 'equ' or 'set'.
+; Set 'add16_save_registers'
+;     'subb16_save_registers'
+;     'mul16_save_registers'
+;     'div16_save_registers'
+; to 0 to deactivate the usage of the stack to
+; restore the used registers to their original
+; values.
+; Set 'arith16_save_registers' to 0 to deactivate the
+; usage of stack saving globally. This overrides the
+; setting of the operation specific values.
+; The number in parenthesis refer to the value if stack
+; saving is deactivated.
+;
+; Set 'add16_active'
+;     'subb16_active'
+;     'mul16_active'
+;     'div16_active'
+; to 0 to deactivate a operation all together and save
+; precious code memory bytes in the process.
+;
+; You can also set 'subb16_16_bit_result' to 1 to activate
+; a 16 bit result value instead of a 32 bit result.
+; The number in brackets  refers to the value if the 16
+; bit result is activated.
+;
 ; Authors: Webmasters of 8052.com (?), Jorg Rockstroh,
 ;          Noxgrim
 
@@ -25,11 +52,14 @@
 ; =  R3   R2   R1   R0
 ;
 ; Usage:
-;    25 bytes of code memory
-;     2 bytes of stack
+;    25 (21) bytes of code memory
+;     2 ( 1) bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
+$if -I add16_active
 ADD_16:
+  $if -I arith16_save_registers AND -I add16_save_registers
   push  a
+  $endif
   ; Calculate the low byte
   mov   a, r0
   add   a, r2
@@ -49,8 +79,11 @@ ADD_16:
  add16_finish:
   mov  r3, 00h
 
+  $if -I arith16_save_registers AND -I add16_save_registers
   pop   a
+  $endif
  RET
+ $endif
 
 ; Subtracts the registers R1 and R0 from the registers 
 ; R3 and R2 and stores the result in R3, R2, R1 and R0.
@@ -68,11 +101,14 @@ ADD_16:
 ; =  R3   R2   R1   R0
 ;
 ; Usage:
-;    32 bytes of code memory
-;     2 bytes of stack
+;    32 (28) [16] bytes of code memory
+;     2 ( 1)      bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
+$if -I subb16_active
 SUBB_16:
+  $if -I arith16_save_registers AND -I subb16_save_registers
   push  a
+  $endif
 
   clr   c
   ; Subtract the low byte
@@ -103,8 +139,11 @@ SUBB_16:
     mov r0, 0FFh
  subb16_finish:
  $endif
+  $if -I arith16_save_registers AND -I subb16_save_registers
   pop a
+  $endif
  RET
+ $endif
 
 
 ; Multiply the registers R1 and R0 by the registers
@@ -121,11 +160,13 @@ SUBB_16:
 ; =  R3   R2   R1   R0
 ;
 ; Usage:
-;    88 bytes of code memory
-;     6 bytes of stack
+;    88 (56) bytes of code memory
+;     6 ( 0) bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
+$if -I mul16_active
 MUL16:
 
+  $if -I arith16_save_registers AND -I mul16_save_registers
  ; Push needed registers on the stack
   push a
   push b
@@ -137,6 +178,7 @@ MUL16:
   push a
   mov  a, r7
   push a
+  $endif
 
  ; Multiply R2 by R0
   mov  a, r2
@@ -191,6 +233,7 @@ MUL16:
   mov  a, r7
   mov r3,  a
 
+  $if -I arith16_save_registers AND -I mul16_save_registers
  ; Pop the values result from the stack
   pop a
   mov r7, a
@@ -202,7 +245,9 @@ MUL16:
   mov r4, a
   pop b
   pop a
+  $endif
  RET
+ $endif
 
 
 ; Divide the registers R1 and R0 by the registers
@@ -220,10 +265,12 @@ MUL16:
 ; =            R3   R2
 ;
 ; Usage:
-;    76 bytes of code memory
-;     4 bytes of stack
+;    76 (56) bytes of code memory
+;     4  (0) bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
+$if -I div16_active
 DIV16:
+   $if -I arith16_save_registers AND -I div16_save_registers
   ; Push needed registers on the stack
    push a
    push b
@@ -231,6 +278,7 @@ DIV16:
    push a
    mov  a, r5
    push a
+   $endif
 
    ; Initialize
    clr  c
@@ -279,6 +327,7 @@ DIV16:
    mov r3, 05h
    mov r2, 04h
 
+   $if -I arith16_save_registers AND -I div16_save_registers
   ; Pop the values result from the stack
    pop a
    mov r5, a
@@ -286,5 +335,7 @@ DIV16:
    mov r4, a
    pop b
    pop a
+   $endif
  RET
+ $endif
 

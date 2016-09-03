@@ -306,8 +306,8 @@ enum FallbackSyntaxThemes {
 
     private static final Pattern ASM_DIRECTIVE_LINE =
             Pattern.compile("^(\\s*(?:[\\$#\\.].*?|[\\$#\\.]?(?:if|elif|else|endif|regex|end|file|line|include|org|"
-                    + "end|d[bws])\\s+.*?|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(?:equ|set|bit|code|[ix]?data)\\s+.*?))"
-                    + "\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
+                    + "end|d[bws])\\s+.*?|\\S*?(?<!"+ASM_MNEMONIC_STRING+"|;)\\s+(?:equ|set|bit|code|[ix]?data)\\s+" +
+                    ".*?))\\s*(?:(?<!\\\\);|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE = Pattern.compile("^\\s*(?:([\\$#\\.]?\\s*(?:org|end|d[bws]|if|elif|"
             + "else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))\\b" +
                     "|\\S*?(?<!"+ASM_MNEMONIC_STRING+")\\s+(equ|set|bit|code|[ix]?data))", Pattern.CASE_INSENSITIVE);
