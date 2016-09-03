@@ -316,7 +316,7 @@ enum FallbackSyntaxThemes {
     private static final Pattern ASM_DIRECTIVE_PATH_INCLUDE_BRACKETS =
             Pattern.compile("^\\s*[\\$#\\.]?\\s*?include\\s+(<).*?(>)", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_DIRECTIVE_PATH_INCLUDE_FILE =
-            Pattern.compile("^\\s*[\\$#\\.]\\s*?include\\s+?<(.*?)>", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^\\s*[\\$#\\.]?\\s*?include\\s+?<(.*?)>", Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_PARENTHESES = Pattern.compile("(\\().*(\\)),|(\\().*(\\))",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern ASM_PARENTHESES_CONTENT = Pattern.compile("\\((.*)\\),|\\((.*)\\)",

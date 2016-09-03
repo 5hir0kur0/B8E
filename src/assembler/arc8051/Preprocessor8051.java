@@ -15,6 +15,7 @@ import simplemath.SimpleMath;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -210,7 +211,16 @@ public class Preprocessor8051 implements Preprocessor {
                                     // Zip-FileSystem handler:
                                     // http://stackoverflow.com/questions/25032716/
                                     // getting-filesystemnotfoundexception-from-zipfilesystemprovider-when-creating-a-p
-                                    URI uri = (Preprocessor.class.getResource("include/"+targetFile).toURI());
+                                    URL url = Preprocessor.class.getResource("include/"+targetFile);
+                                    if (url == null) {
+                                        problems.add(new PreprocessingProblem("File '" + targetFile + "' could not be" +
+                                                " included! It " + (!internal? "exits neither in the path nor" :
+                                                "does not exist") + " in the Jar file.",
+                                                Problem.Type.ERROR, currentFile, line, targetFile));
+                                        return false;
+                                    }
+
+                                    URI uri = url.toURI();
                                     Map<String, String> env = new HashMap<>(1);
                                     env.put("create", "true");
                                     try {
@@ -222,16 +232,18 @@ public class Preprocessor8051 implements Preprocessor {
                                     } catch (IOException ioe) {
                                         if (zipFS != null) // Close FS
                                             zipFS.close();
+                                        Logger.logThrowable(ioe, Preprocessor.class, Logger.LogLevel.DEBUG);
                                         problems.add(new PreprocessingProblem("Could not include from Jar: " +
                                                 ioe.getMessage(), Problem.Type.ERROR, currentFile, line, targetFile));
                                         return false;
                                     } catch (IllegalArgumentException e) {
-                                        // Try standard file System (Probably not in Jar.)
+                                        // Try standard file System (Program is probably not in a Jar.)
                                         if (zipFS != null) // Close FS
                                             zipFS.close();
                                         target = Paths.get(Preprocessor.class.getResource("include/"+targetFile).toURI());
                                     }
                                 } catch (NullPointerException | URISyntaxException e) {
+                                    Logger.logThrowable(e, Preprocessor.class, Logger.LogLevel.DEBUG);
                                     problems.add(new PreprocessingProblem("Could not include from Jar: " + e.getMessage(),
                                             Problem.Type.ERROR, currentFile, line, targetFile));
                                     if (zipFS != null) // Close FS
@@ -247,6 +259,10 @@ public class Preprocessor8051 implements Preprocessor {
                             }
 
                         } else {
+                            if (internal)
+                                problems.add(new PreprocessingProblem("The 'internal' option can only be used with " +
+                                        "path includes.", Problem.Type.ERROR, currentFile, line, args[0]));
+
                             boolean recursiveSearch = Settings.INSTANCE.getBoolProperty(
                                     AssemblerSettings.INCLUDE_RECURSIVE_SEARCH);
                             if (recursiveSearch) {

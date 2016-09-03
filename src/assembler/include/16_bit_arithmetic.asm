@@ -3,6 +3,8 @@
 ; operands.
 ; Most of them are just modified routines from the
 ; 8052.com website.
+; The whole file adds 221 bytes of code memory to the
+; result if it is included.
 ;
 ; Authors: Webmasters of 8052.com (?), Jorg Rockstroh,
 ;          Noxgrim
@@ -49,7 +51,6 @@ ADD_16:
 
   pop   a
  RET
-
 
 ; Subtracts the registers R1 and R0 from the registers 
 ; R3 and R2 and stores the result in R3, R2, R1 and R0.
@@ -120,7 +121,7 @@ SUBB_16:
 ; =  R3   R2   R1   R0
 ;
 ; Usage:
-;    -- bytes of code memory
+;    88 bytes of code memory
 ;     6 bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
 MUL16:
@@ -181,10 +182,14 @@ MUL16:
   mov  r7,   a
 
   ; Move result into result registers
-  mov r0, r4
-  mov r1, r5
-  mov r2, r6
-  mov r3, r7
+  mov  a, r4
+  mov r0,  a
+  mov  a, r5
+  mov r1,  a
+  mov  a, r6
+  mov r2,  a
+  mov  a, r7
+  mov r3,  a
 
  ; Pop the values result from the stack
   pop a
@@ -200,7 +205,6 @@ MUL16:
  RET
 
 
-$END
 ; Divide the registers R1 and R0 by the registers
 ; R3 and R2 and stores the result in R3, R2, R1 and R0.
 ; The accumulator, and the B register as well as most
@@ -216,7 +220,7 @@ $END
 ; =            R3   R2
 ;
 ; Usage:
-;    -- bytes of code memory
+;    76 bytes of code memory
 ;     4 bytes of stack
 ; Thanks to 8052.com for providing the tutorial.
 DIV16:

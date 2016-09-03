@@ -42,7 +42,7 @@ template for base16-builder by Noxgrim
                 <style pattern="^\s*(?:([\$#\.]?\s*(?:org|end|d[bws]|if|elif|else|endif|regex|end|file|line|include|equ|set|bit|code|[ix]?data))\b|\S*?(?&lt;!(?:[al]?call|[als]?jmp|mov[cx]?|reti?|swap|xchd?|addc?|subb|mul|div|da|setb|clr|cpl|anl|[ox]rl|rlc?|rrc?|nop|push|pop|inc|dec|cjne|djnz|jn?[bcz]|jbc?)\b)\s+(equ|set|bit|code|[ix]?data))" flags="2">
                     <attributes foreground="#FFdc9656" strikeThrough="false"/>
                 </style>
-                <style pattern="^\s*[\$#\.]\s*?include\s+?&lt;(.*?)&gt;" flags="2">
+                <style pattern="^\s*[\$#\.]?\s*?include\s+?&lt;(.*?)&gt;" flags="2">
                     <attributes foreground="#FFba8baf" strikeThrough="false"/>
                 </style>
                 <style pattern="^\s*[\$#\.]?\s*?include\s+(&lt;).*?(&gt;)" flags="2">
