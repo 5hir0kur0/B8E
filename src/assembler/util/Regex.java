@@ -660,7 +660,7 @@ public class Regex {
             }
 
             if (mods[i] == SUBSTITUTE_MODIFIER) {
-                substitution = segments[2 + i].replace("\\n", "\n");
+                substitution = segments[2 + i].replaceAll("(?<!\\\\)\\\\n", "\n");
                 segs.add("");
             } else if (mods[i] == CONDITION_MODIFIER) {
                 Pattern pattern = compilePattern(segments[2 + i], false);

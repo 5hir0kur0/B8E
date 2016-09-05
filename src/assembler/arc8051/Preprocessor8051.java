@@ -189,7 +189,7 @@ public class Preprocessor8051 implements Preprocessor {
                             if (!internal)
                                 for (String dir : dirs) {
 
-                                    dir = dir.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";");
+                                    dir = dir.replaceAll("\\\\(.)", "$1");
 
                                     if (!Files.exists(Paths.get(dir))) {
                                         final String message = "Include path does not exist!", finalDir = dir;
@@ -1465,7 +1465,7 @@ public class Preprocessor8051 implements Preprocessor {
                 for (String file : files.split("(?<!(?<!\\\\)\\\\);")) {
                     if (!file.isEmpty())
                         this.output.add(included++, "$include <"+
-                                file.replaceAll("\\\\\\\\", "\\\\").replaceAll("\\\\;", ";")+">");
+                                file.replaceAll("\\\\(.)", "$1")+">");
                 }
         }
         return included;
