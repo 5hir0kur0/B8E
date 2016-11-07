@@ -1,7 +1,5 @@
 package assembler.tokens;
 
-import assembler.arc8051.OperandToken8051;
-
 import java.util.Objects;
 
 /**

@@ -4,16 +4,17 @@ import misc.Pair;
 import misc.Settings;
 
 import javax.swing.text.AttributeSet;
-import java.awt.*;
-import java.io.BufferedReader;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import java.awt.Color;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
-import java.util.List;
 import java.util.regex.Pattern;
-import javax.xml.bind.*;
 
 
 public enum SyntaxThemes {

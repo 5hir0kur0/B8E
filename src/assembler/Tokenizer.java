@@ -3,7 +3,6 @@ package assembler;
 import assembler.tokens.Token;
 import assembler.util.problems.Problem;
 
-import java.io.StringReader;
 import java.util.List;
 
 /**

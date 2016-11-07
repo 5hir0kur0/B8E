@@ -118,7 +118,7 @@ public class Problem<T> implements Comparable<Problem<?>> {
     public String toString() {
         String name = this.getClass().getSimpleName();
         if (name.equals(Problem.class.getSimpleName()))
-            name += "<" + cause.getClass().getSimpleName()+ ">";
+            name += "<" + (cause != null ? cause.getClass().getSimpleName() : "?") + ">";
         return name + "("+type+")["+(path == null ? "?":path.toString())+":"+
                 (line!=-1?line:"?")+"]:"+" \""+message+"\""+(cause != null ? " (Caused by: "+cause.toString()+")" : "");
     }

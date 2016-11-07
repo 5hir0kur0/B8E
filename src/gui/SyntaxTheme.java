@@ -1,10 +1,9 @@
 package gui;
 
 
-
 import misc.Pair;
 
-import javax.swing.text.*;
+import javax.swing.text.AttributeSet;
 import javax.xml.bind.annotation.*;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.awt.Color;

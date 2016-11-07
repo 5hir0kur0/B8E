@@ -5,8 +5,9 @@ import misc.Settings;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import java.awt.*;
-import java.util.*;
+import java.awt.Dimension;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
