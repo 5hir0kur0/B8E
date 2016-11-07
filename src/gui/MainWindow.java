@@ -3,6 +3,7 @@ package gui;
 import assembler.Assembler;
 import assembler.util.Listing;
 import assembler.util.problems.Problem;
+import controller.Main;
 import controller.Project;
 import controller.TextFile;
 import misc.Logger;
@@ -46,8 +47,8 @@ public class MainWindow extends JFrame {
     private JTree fsTree;
     private final JFileChooser fileChooser;
     private Action openFile, newFile, saveFile, saveAs, saveAll, cut, copy, paste, undo, redo,
-            refreshTree, zoomIn, zoomOut, nextTab, prevTab, closeTab, reloadFile, buildRunMain, buildRunCurrent,
-            buildMain, buildCurrent, runMain, runCurrent, setMain, settings;
+            refreshTree, zoomIn, zoomOut, nextTab, prevTab, closeTab, reloadFile, newProject, openProject,
+            buildRunMain, buildRunCurrent, buildMain, buildCurrent, runMain, runCurrent, setMain, settings;
 
     private final static String AUTO_SAVE_SETTING = "gui.auto-save-on-build";
     private final static String AUTO_SAVE_SETTING_DEFAULT = "true";
@@ -80,14 +81,16 @@ public class MainWindow extends JFrame {
     final static String PREV_TAB_TEXT = "Previous tab";
     final static String CLOSE_TAB_TEXT = "Close tab";
     final static String RELOAD_FILE_TEXT = "Reload file";
+    final static String NEW_PROJECT_TEXT = "New Project…";
+    final static String OPEN_PROJECT_TEXT = "Open Project…";
     final static String BUILD_RUN_MAIN_TEXT = "Build and run main file";
     final static String BUILD_MAIN_TEXT = "Build main file";
     final static String RUN_MAIN_TEXT = "Run main file";
     final static String BUILD_RUN_CURR_TEXT = "Build and run current file";
     final static String BUILD_CURR_TEXT = "Build current file";
     final static String RUN_CURR_TEXT = "Run current file";
-    final static String SET_MAIN_TEXT = "Set main file";
-    final static String SETTINGS_TEXT = "Settings";
+    final static String SET_MAIN_TEXT = "Set main file…";
+    final static String SETTINGS_TEXT = "Settings…";
 
     private Path lastBuilt;
     private List<Problem<?>> problems;
@@ -349,6 +352,13 @@ public class MainWindow extends JFrame {
 
         JMenu projectMenu = new JMenu(PROJECT_MENU_TEXT);
         projectMenu.setMnemonic('p');
+        JMenuItem newProject = new JMenuItem(this.newProject);
+        newProject.setMnemonic('n');
+        projectMenu.add(newProject);
+        JMenuItem openProject = new JMenuItem(this.openProject);
+        openProject.setMnemonic('o');
+        projectMenu.add(openProject);
+        projectMenu.addSeparator();
         JMenuItem buildRunMain = new JMenuItem(this.buildRunMain);
         buildRunMain.setMnemonic('r');
         projectMenu.add(buildRunMain);
@@ -738,6 +748,8 @@ public class MainWindow extends JFrame {
             }
 
             this.problemTable.revalidate();
+            this.toggleSplit(false, this.problemsSplit);
+            this.problemsSplit.setDividerLocation(2/3.0);
 
         }
     }
@@ -1164,10 +1176,22 @@ public class MainWindow extends JFrame {
                 }
             }
         };
+        this.newProject = new AbstractAction(NEW_PROJECT_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.createProjectDialog(true);
+            }
+        };
+        this.openProject = new AbstractAction(OPEN_PROJECT_TEXT) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                MainWindow.this.createProjectDialog(false);
+            }
+        };
         this.buildRunMain = new AbstractAction(BUILD_RUN_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                final String main = Settings.INSTANCE.getProperty(Project.PROJECT_MAIN_FILE_KEY, "");
                 if (main.isEmpty())
                     JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not build.",
                             JOptionPane.INFORMATION_MESSAGE);
@@ -1181,7 +1205,7 @@ public class MainWindow extends JFrame {
         this.buildMain = new AbstractAction(BUILD_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                final String main = Settings.INSTANCE.getProperty(Project.PROJECT_MAIN_FILE_KEY, "");
                 if (main.isEmpty())
                     JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not build.",
                             JOptionPane.INFORMATION_MESSAGE);
@@ -1194,7 +1218,7 @@ public class MainWindow extends JFrame {
         this.runMain = new AbstractAction(RUN_MAIN_TEXT) {
             @Override
             public void actionPerformed(ActionEvent e) {
-                final String main = Settings.INSTANCE.getProperty("project.main-file", "");
+                final String main = Settings.INSTANCE.getProperty(Project.PROJECT_MAIN_FILE_KEY, "");
                 if (main.isEmpty())
                     JOptionPane.showMessageDialog(mw, "No main file specified.", "Could not run.",
                             JOptionPane.INFORMATION_MESSAGE);
@@ -1257,7 +1281,7 @@ public class MainWindow extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (fileChooser.showDialog(mw, "Choose") == JFileChooser.APPROVE_OPTION) {
-                    Settings.INSTANCE.setProperty("project.main-file",
+                    Settings.INSTANCE.setProperty(Project.PROJECT_MAIN_FILE_KEY,
                             fileChooser.getSelectedFile().toPath().toAbsolutePath().toString());
                 }
             }
@@ -1314,6 +1338,10 @@ public class MainWindow extends JFrame {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_DOWN_MASK), RELOAD_FILE_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
                 REFRESH_TREE_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK),
+                NEW_PROJECT_TEXT);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK),
+                OPEN_PROJECT_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK), BUILD_RUN_MAIN_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK), BUILD_MAIN_TEXT);
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
@@ -1413,6 +1441,98 @@ public class MainWindow extends JFrame {
         }
 
         SwingUtilities.invokeLater(() -> new EmulatorWindow(this.project.makeEmulator(code), listing));
+    }
+
+    private void createProjectDialog(boolean newProject) {
+        final String firstPrompt  = "Do you want to close this window and open another project?";
+        final String name1        = "Open project";
+        final String name2        = "Create project";
+        final String choiceDef    = "Project path";
+        final String projName     = "Project name (optional)";
+        final String permTxt      = "Permanent";
+        final String browseTxt    = "Browse…";
+        final String selProjDir   = "Select project directory";
+        final String doesNotExist = "Directory has no project file!";
+
+        final int result = JOptionPane.showConfirmDialog(this, firstPrompt, newProject ? name2 : name1,
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (result == JOptionPane.YES_OPTION) {
+            Path[] projectDir = new Path[1];
+            boolean[] permStatus = {true};
+
+            JPanel panel = new JPanel(new BorderLayout());
+            JButton approve = new JButton(newProject ? name2 : name1);
+            approve.setEnabled(false);
+            approve.addActionListener(a -> {
+                JComponent parent = (JComponent) a.getSource();
+                while (!(parent instanceof JOptionPane))
+                    parent = (JComponent) parent.getParent();
+                ((JOptionPane) parent).setValue(approve);
+            });
+
+            JTextField choice = new JTextField();
+            choice.setEditable(false);
+            JCheckBox permanent = new JCheckBox(permTxt, true);
+            JButton browse = new JButton(browseTxt);
+            browse.addActionListener((e1) -> {
+                this.fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                if (this.fileChooser.showDialog(this, selProjDir) == JFileChooser.APPROVE_OPTION) {
+                    projectDir[0] = this.fileChooser.getSelectedFile().toPath().toAbsolutePath();
+                    choice.setText(projectDir[0].toString());
+                    if (Project.findProjectSettings(projectDir[0]) != null && !newProject) {
+                        permanent.setEnabled(true);
+                        permanent.setSelected(permStatus[0]);
+                        permanent.setToolTipText(null);
+                    } else if (!newProject) {
+                        permanent.setEnabled(false);
+                        permStatus[0] = permanent.isSelected();
+                        permanent.setSelected(false);
+                        permanent.setToolTipText(doesNotExist);
+                    }
+                    approve.setEnabled(true);
+                }
+                this.fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+            });
+            JPanel browser = new JPanel(new BorderLayout());
+            browser.setBorder(BorderFactory.createTitledBorder(choiceDef));
+            browser.add(browse, BorderLayout.EAST);
+            browser.add(choice);
+
+            JTextField nameBox = new JTextField();
+            JPanel namePanel = new JPanel(new BorderLayout());
+            namePanel.add(nameBox, BorderLayout.CENTER);
+            namePanel.setBorder(BorderFactory.createTitledBorder(projName));
+
+            panel.add(browser, BorderLayout.NORTH);
+            if (newProject)
+                panel.add(namePanel, BorderLayout.CENTER);
+            panel.add(permanent, BorderLayout.SOUTH);
+            int res = JOptionPane.showOptionDialog(this, panel, newProject ? NEW_PROJECT_TEXT : OPEN_PROJECT_TEXT,
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, new Object[]{"Cancel", approve},
+                    approve);
+            if (res == 1) {
+                ArrayList<String> args = new ArrayList<>(3);
+                if (!permanent.isSelected())
+                    args.add("--temporary");
+                args.add(newProject ? "--new-project" : "--open-project");
+                args.add(projectDir[0].toString());
+                if (!nameBox.getText().trim().isEmpty())
+                    args.add(nameBox.getText());
+
+                this.windowClosing();
+                Settings.INSTANCE.clearUserSet();
+                if (!this.isDisplayable())
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            Main.main(args.toArray(new String[args.size()]));
+                            // I think that's a cardinal sin and I'm sorry
+                        } catch (IOException e1) {
+                            Logger.logThrowable(e1, MainWindow.class, Logger.LogLevel.ERROR);
+                        }
+                    });
+            }
+        }
+
     }
 
     /**

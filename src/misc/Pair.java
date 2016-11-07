@@ -2,7 +2,10 @@ package misc;
 
 import gui.DummyAttributeSet;
 
-import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlSeeAlso;
 import java.util.Objects;
 import java.util.regex.Pattern;
 

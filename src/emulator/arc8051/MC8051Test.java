@@ -13,7 +13,8 @@ import java.nio.file.Paths;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author 5hir0kur0

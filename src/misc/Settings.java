@@ -1,7 +1,12 @@
 package misc;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -161,8 +166,6 @@ public enum Settings {
      */
     public void setProperty(String key, String value) {
         this.settings.setProperty(key, value);
-        if (!defaults.containsKey(key))
-            Logger.log("Property '" + key + "' does not exist!", Settings.class, Logger.LogLevel.WARNING);
     }
 
     /**
@@ -171,8 +174,6 @@ public enum Settings {
      */
     public void setFileProperty(String key, String value) {
         this.settingsFile.setProperty(key, value);
-        if (!defaults.containsKey(key))
-            Logger.log("Property '" + key + "' does not exist!", Settings.class, Logger.LogLevel.WARNING);
     }
 
     /** @see java.util.Properties#load(Reader) */
@@ -206,6 +207,14 @@ public enum Settings {
         tmp.addAll(this.settingsFile.keySet());
         tmp.addAll(this.settings.keySet());
         return tmp.stream().map(Object::toString).collect(Collectors.toSet());
+    }
+
+    /**
+     * Clears all settings set by the user via the settings dialog or
+     * the project file.
+     */
+    public void clearUserSet() {
+        this.settings.clear();
     }
 
     /**

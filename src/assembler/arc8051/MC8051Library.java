@@ -2,18 +2,18 @@ package assembler.arc8051;
 
 import assembler.tokens.Token;
 import assembler.tokens.Tokens;
+import assembler.util.AssemblerSettings;
 import assembler.util.problems.Problem;
 import assembler.util.problems.Problem.Type;
-import assembler.util.AssemblerSettings;
 import assembler.util.problems.TokenProblem;
 import misc.Settings;
-
-import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import static assembler.arc8051.OperandToken8051.OperandType8051;
 
 
 /**

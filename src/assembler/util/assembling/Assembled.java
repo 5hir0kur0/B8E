@@ -5,9 +5,7 @@ import assembler.tokens.Token;
 import assembler.util.problems.Problem;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * @author Noxgrim

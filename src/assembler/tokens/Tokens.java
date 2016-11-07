@@ -1,7 +1,5 @@
 package assembler.tokens;
 
-import java.nio.file.Path;
-
 /**
  * Contains token types that do not expand the normal token type.
  *

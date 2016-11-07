@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -30,6 +29,7 @@ public class Main {
     private static List<Pair<String, Consumer<List<String>>>> CL_OPTIONS;
     private static Path PROJECT_PATH;
     private static boolean PROJECT_PERMANENT;
+    private static boolean PROJECT_CREATE;
     private static Project PROJECT;
     private static MainWindow MAIN_WINDOW;
     private static boolean exitAfterOption = false;
@@ -66,25 +66,36 @@ public class Main {
                 exit = 1;
             }
             System.out.println("Syntax:");
-            System.out.println(" b8e --project NAME");
-            System.out.println("     create new project called NAME");
-            System.out.println(" b8e [--not-permanent] DIRECTORY");
-            System.out.println("     open project in DIRECTORY");
-            System.out.println(" b8e --list-default-settings");
-            System.out.println("     print default settings to stdout");
-            System.out.println(" b8e --assemble FILE [architecture]");
-            System.out.println("     assemble a file without starting the GUI");
-            System.out.println("      FILE           the file to assemble");
-            System.out.println("      [architecture] the assembler's architecture (defaults to \"8051\")");
-            System.out.println(" b8e --settings <setting>...");
-            System.out.println("     set settings to specific values on startup; settings don't have to exist");
-            System.out.println("      <setting>... setting in <key>=<value> format");
-            System.out.println(" b8e --settings-file FILE");
-            System.out.println("     load settings from a specified properties-file");
-            System.out.println(" b8e --open-state-dump FILE");
-            System.out.println("      open specified state dump in a new emulator window");
-            System.out.println(" b8e --emulate FILE");
-            System.out.println("      open specified binary file in a new emulator window");
+            System.out.println(" DIRECTORY");
+            System.out.println("  Same as '--open-project'. Can only be used before the first option or after '--'.");
+            System.out.println(" --open-project DIRECTORY");
+            System.out.println("  open project in DIRECTORY");
+            System.out.println(" --new-project DIRECTORY [name]");
+            System.out.println("  create new project. Projects will save the current settings if a new settings file");
+            System.out.println("  must be created even if they are 'temporary'!");
+            System.out.println("   DIRECTORY Path in which the project file will be created.");
+            System.out.println("             Creates the directory structure if it is not present");
+            System.out.println("   [name]    the name of the future project");
+            System.out.println(" --temporary");
+            System.out.println("  Flag the project as temporary. Temporary projects do not save their settings");
+            System.out.println("  if they are closed");
+            System.out.println(" --list-default-settings");
+            System.out.println("  print default settings to stdout");
+            System.out.println(" --assemble FILE [architecture]");
+            System.out.println("  assemble a file without starting the GUI");
+            System.out.println("   FILE           the file to assemble");
+            System.out.println("   [architecture] the assembler's architecture (defaults to \"8051\")");
+            System.out.println(" --settings <setting>...");
+            System.out.println("  set settings to specific values on startup; settings don't have to exist");
+            System.out.println("   <setting>... setting in <key>=<value> format");
+            System.out.println(" --settings-file FILE");
+            System.out.println("  load settings from a specified properties-file");
+            System.out.println(" --open-state-dump FILE");
+            System.out.println("  open specified state dump in a new emulator window");
+            System.out.println(" --emulate FILE");
+            System.out.println("  open specified binary file in a new emulator window");
+            System.out.println(" --");
+            System.out.println("  end option parsing");
             System.exit(exit);
         }));
         CL_OPTIONS.add(new Pair<>("--list-default-settings", list -> {
@@ -103,24 +114,32 @@ public class Main {
             Settings.INSTANCE.listDefaults(System.out);
             System.exit(0);
         }));
-        CL_OPTIONS.add(new Pair<>("--project", list -> {
-            if (!(list.size() == 1)) {
-                System.err.println("Invalid syntax for '--project' (exactly one argument required)");
+        CL_OPTIONS.add(new Pair<>("--new-project", list -> {
+            if (list.size() < 1 && list.size() > 2) {
+                System.err.println("Invalid syntax for '--project' (usage: '--new-project PATH [name]')");
                 System.exit(3);
             }
             if (list.get(0).trim().isEmpty()) {
                 System.err.println("Invalid project name: " + list.get(0));
                 System.exit(4);
             }
-            PROJECT_PATH = Paths.get(System.getProperty("user.dir"), list.get(0));
-            PROJECT_PERMANENT = true;
+            PROJECT_PATH = Paths.get(list.get(0));
+            PROJECT_CREATE = true;
+            Settings.INSTANCE.setProperty(Project.PROJECT_NAME_KEY, list.size() == 2 && !list.get(1).trim().isEmpty() ?
+                            list.get(1) : Paths.get(list.get(0)).getFileName().toString());
         }));
-        CL_OPTIONS.add(new Pair<>("--not-permanent", list -> {
+        CL_OPTIONS.add(new Pair<>("--open-project", list -> {
             if (list.size() != 1) {
-                System.err.println("Invalid syntax for '--not-permanent' (exactly one argument required)");
-                System.exit(5);
+                System.err.println("Invalid syntax for '--open-project' (exactly one argument required)");
+                System.exit(14);
             }
             PROJECT_PATH = Paths.get(list.get(0));
+        }));
+        CL_OPTIONS.add(new Pair<>("--temporary",list -> {
+            if (list.size() != 0) {
+                System.err.println("Invalid syntax for '--temporary' (no arguments required)");
+                System.exit(5);
+            }
             PROJECT_PERMANENT = false;
         }));
         CL_OPTIONS.add(new Pair<>("--settings", list -> {
@@ -286,17 +305,25 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         Thread.setDefaultUncaughtExceptionHandler(EXCEPTION_HANDLER);
+        PROJECT_CREATE = false;
+        PROJECT_PERMANENT = true;
 
         int i = 0; // argument loop counter
         if (args.length >= 1 && !args[0].startsWith("--")) {
             PROJECT_PATH = Paths.get(args[0]);
-            PROJECT_PERMANENT = true;
             ++i;
+            if (args.length > 1 && !args[1].startsWith("--")) {
+                Logger.log("Unnecessary non-option arguments specified after project directory.", Main.class,
+                        Logger.LogLevel.WARNING);
+            }
         } else {
             PROJECT_PATH = Paths.get(System.getProperty("user.dir"));
-            PROJECT_PERMANENT = false;
         }
         outer: for (; i < args.length; ++i) {
+            if (args[i].equals("--")) {
+                ++i;
+                break;
+            }
             if (args[i].startsWith("--")) {
                 for (Pair<String, Consumer<List<String>>> pair : CL_OPTIONS)
                     if (pair.x.equals(args[i])) {
@@ -309,9 +336,17 @@ public class Main {
                 System.exit(12);
             }
         }
+        if (args.length > i) {
+            PROJECT_PATH = Paths.get(args[i]);
+            ++i;
+            if (args.length > i) {
+                Logger.log("Unnecessary arguments specified after project directory and end of options.", Main.class,
+                        Logger.LogLevel.WARNING);
+            }
+        }
 
         if (!exitAfterOption) {
-            PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT);
+            PROJECT = new Project(PROJECT_PATH, PROJECT_PERMANENT, PROJECT_CREATE);
             setUpLookAndFeel();
             SwingUtilities.invokeLater(() -> MAIN_WINDOW = new MainWindow("B8E: " + PROJECT.getName(), PROJECT));
         }

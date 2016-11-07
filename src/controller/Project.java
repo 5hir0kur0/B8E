@@ -4,6 +4,7 @@ import assembler.Assembler;
 import emulator.Emulator;
 import emulator.RAM;
 import emulator.arc8051.MC8051;
+import misc.Logger;
 import misc.Settings;
 
 import java.io.IOException;
@@ -27,34 +28,42 @@ public class Project implements AutoCloseable {
     private final static String[] PROJECT_SETTINGS_NAMES = {".project.b8e", "project.b8e"};
     final static Charset CHARSET = StandardCharsets.UTF_8;
 
-    Project(Path projectPath, boolean permanent) throws IOException,
+    public static final String PROJECT_NAME_KEY = "project.name";
+    public static final String PROJECT_MAIN_FILE_KEY = "project.main-file";
+
+    Project(Path projectPath, boolean permanent, boolean create) throws IOException,
             IllegalArgumentException {
-        this.permanent = permanent;
         this.projectPath = Objects.requireNonNull(projectPath, "project path must not be null");
-        Path path = null;
-        for (String name : PROJECT_SETTINGS_NAMES) {
-            Path tmp = projectPath.resolve(name);
-            if (Files.exists(tmp)) {
-                path = tmp;
-                break;
+        Path path = Project.findProjectSettings(projectPath);
+        if (null == path) {
+            if (!create) {
+                this.permanent = false; // No new project should be created so the project has to be non-permanent
+                this.projectFile = null;
+                Logger.log("No project file found. Loading non-permanent project.", Project.class, Logger.LogLevel.WARNING);
+            } else {
+                this.projectFile = projectPath.resolve(PROJECT_SETTINGS_NAMES[0]);
+                if (!Files.exists(projectPath)) {
+                    Files.createDirectories(projectPath);
+                    Files.createFile(this.projectFile);
+                    Files.setAttribute(this.projectFile, "dos:hidden", true);
+                    store(); // Write user given properties even if project is temporary (I think that would be
+                             // expected...)
+                }
+                this.permanent = permanent;
             }
-        }
-        if (null == path && this.isPermanent())
-            this.projectFile = projectPath.resolve(PROJECT_SETTINGS_NAMES[0]);
-        else this.projectFile = path;
-        if (projectFile != null)
+        }  else {
+            this.projectFile = path;
+            this.permanent = permanent;
             try (Reader r = Files.newBufferedReader(this.projectFile, CHARSET)) {
                 Settings.INSTANCE.load(r);
             }
+        }
     }
 
     @Override
     public void close() throws IOException {
         if (this.projectFile != null && Files.exists(this.projectFile) && this.isPermanent())
-            Settings.INSTANCE.store(Files.newBufferedWriter(this.projectFile, CHARSET),
-                    "Project File for " + this.getName() + "\n" +
-                    "vim: set syntax=conf"); // Write Vim modeline. Only takes effect if the 'modeline' option is set.
-                                             // (Deactivated by default on Debian systems.)
+            store();
     }
 
     public TextFile requestResource(Path path, boolean create) throws IOException {
@@ -83,8 +92,23 @@ public class Project implements AutoCloseable {
     }
 
     public String getName() {
-        return Settings.INSTANCE.getProperty("project.name", this.projectPath.getFileName().toString() +
-                (this.permanent ? "" : " [temporary]"),
-                s -> !s.trim().isEmpty());
+        return Settings.INSTANCE.getProperty(PROJECT_NAME_KEY, this.projectPath.getFileName().toString(),
+                s -> !s.trim().isEmpty()) + (this.isPermanent() ? "" : " [temporary]") ;
     }
+
+    public static Path findProjectSettings(Path projectPath) {
+        for (String name : PROJECT_SETTINGS_NAMES) {
+            Path tmp = projectPath.resolve(name);
+            if (Files.exists(tmp)) {
+                return  tmp;
+            }
+        }
+        return null;
+    }
+     private void store() throws IOException {
+         Settings.INSTANCE.store(Files.newBufferedWriter(this.projectFile, CHARSET),
+                 " Project File for " + this.getName() + "\n" +
+                 " vim: ft=cfg"); // Write Vim modeline. Only takes effect if the 'modeline' option is set.
+                                 // (Deactivated by default on Debian systems.)
+     }
 }

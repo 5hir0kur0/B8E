@@ -1,7 +1,7 @@
 package gui;
 
 import javax.xml.bind.annotation.adapters.XmlAdapter;
-import java.awt.*;
+import java.awt.Color;
 
 /**
  * (inspired by <a href="https://jaxb.java.net/guide/XML_layout_and_in_memory_data_layout.html">

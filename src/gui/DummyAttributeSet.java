@@ -2,13 +2,13 @@ package gui;
 
 import javax.swing.text.AttributeSet;
 import javax.swing.text.MutableAttributeSet;
-import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-import java.awt.*;
+import java.awt.Color;
+
 import static javax.swing.text.StyleConstants.*;
 
 /**
