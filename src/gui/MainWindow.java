@@ -1031,6 +1031,7 @@ public class MainWindow extends JFrame {
         final MainWindow mw = this;
 
         this.openFile = new AbstractAction(OPEN_FILE_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 if (mw.fileChooser.showOpenDialog(mw) == JFileChooser.APPROVE_OPTION) {
                     final Path file = mw.fileChooser.getSelectedFile().toPath();
@@ -1039,12 +1040,14 @@ public class MainWindow extends JFrame {
             }
         };
         this.newFile = new AbstractAction(NEW_FILE_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 final LineNumberSyntaxPane syntaxPane = new LineNumberSyntaxPane(DEFAULT_FILE_EXTENSION);
                 mw.openTab(syntaxPane, null, "(untitled)");
             }
         };
         this.saveFile = new AbstractAction(SAVE_FILE_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.saveFile(mw.jTabbedPane.getSelectedIndex());
@@ -1055,11 +1058,13 @@ public class MainWindow extends JFrame {
             }
         };
         this.saveAll = new AbstractAction(SAVE_ALL_FILES_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 mw.saveAllFiles();
             }
         };
         this.saveAs = new AbstractAction(SAVE_FILE_AS_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.saveFileAs(mw.jTabbedPane.getSelectedIndex());
@@ -1070,6 +1075,7 @@ public class MainWindow extends JFrame {
             }
         };
         this.undo = new AbstractAction(UNDO_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.getCurrentFile().y.undo();
@@ -1079,6 +1085,7 @@ public class MainWindow extends JFrame {
             }
         };
         this.redo = new AbstractAction(REDO_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.getCurrentFile().y.redo();
@@ -1088,6 +1095,7 @@ public class MainWindow extends JFrame {
             }
         };
         this.copy = new AbstractAction(COPY_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.getCurrentFile().y.copy();
@@ -1097,6 +1105,7 @@ public class MainWindow extends JFrame {
             }
         };
         this.cut = new AbstractAction(CUT_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.getCurrentFile().y.cut();
@@ -1106,6 +1115,7 @@ public class MainWindow extends JFrame {
             }
         };
         this.paste = new AbstractAction(PASTE_TEXT) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     mw.getCurrentFile().y.paste();

@@ -183,6 +183,12 @@ public abstract class Directive {
      *
      * @param args
      *      the arguments of the directive.
+     * @param p
+     *      a {@link Problem} that already contains basic information like
+     *      line and file and will be filled with error information and
+     *      added to the provided Problem List if a Problem occurs.
+     * @param problems
+     *      occurring {@link Problem}s will be added to this {@link List}.
      *
      * @return
      *      whether the directive was performed

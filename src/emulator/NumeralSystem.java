@@ -1,8 +1,8 @@
 package emulator;
 
 /**
- * This class represents a numeral system (binary, decimal or hexadecimal) and provides means of converting between
- * different numeral systems.<br>
+ * This class represents a numeral system (binary, octal, decimal or hexadecimal) and provides means of converting
+ * between different numeral systems.<br>
  *
  * Signed numbers are not supported.<br>
  *

@@ -48,10 +48,10 @@ public class Assembled8051 implements Assembled {
         for (int i = 1; i < this.tokens.length; i++) {
             if (this.tokens[i] instanceof OperandToken8051) {
                 OperandToken8051 token = (OperandToken8051) this.tokens[i];
-                if (token.getValue().equals("c") || token.getValue().equals("c")) {
+                if (token.getValue().equals("a") || token.getValue().equals("c")) {
                     convertible.add(i-1);       // Without mnemonic name
-                    if (convertible.size() < 3) // Max operand length of all mnemonics: 3
-                        break;                  // (all of them contain at least 1 label)
+                    if (convertible.size() >= 2) // Max operand length of all mnemonics: 3 Effective: 2
+                        break;                   // (all of them contain at least 1 jump label at the end)
                 }
             } else
                 throw new IllegalArgumentException("Expected a OperandToken here instead of " + this.tokens[i]);
@@ -98,8 +98,8 @@ public class Assembled8051 implements Assembled {
             }
             // Test minimum operands.
             if (mnemonicCache.getMinimumOperands() > tokens.length-1) {
-                problems.add(new TokenProblem("Found " + (tokens.length-1) + " operands but mnemonic must have at " +
-                        "least " + mnemonicCache.getMinimumOperands() +
+                problems.add(new TokenProblem("Found " + (tokens.length-1) + " operand" + (tokens.length == 2?"":"s") +
+                        " but mnemonic must have at least " + mnemonicCache.getMinimumOperands() +
                         " operand" + (mnemonicCache.getMinimumOperands() != 1 ? "s" : "" ) + "!",
                         Problem.Type.ERROR, file, tokens[0]));
                 isStatic = true;
@@ -201,6 +201,7 @@ public class Assembled8051 implements Assembled {
         return labels.length > 0;
     }
 
+    @Override
     public LabelToken[] getLabels() {
         return labels;
     }
