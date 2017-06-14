@@ -674,7 +674,7 @@ public class Preprocessor8051 implements Preprocessor {
                             conditionState = COND_WAS_ACTIVE;
                         return true;
                     } else
-                        problems.add(new PreprocessingProblem("'elif' directive cannot be used after a 'then' " +
+                        problems.add(new PreprocessingProblem("'elif' directive cannot be used after a 'else' " +
                                 "directive!", Problem.Type.ERROR, currentFile, line, "elif"));
                     return false;
                 }
@@ -696,8 +696,8 @@ public class Preprocessor8051 implements Preprocessor {
 
                         return  true;
                     } else
-                        problems.add(new PreprocessingProblem("'else' directive cannot be after another 'then' " +
-                                "directive!", Problem.Type.ERROR, currentFile, line, "else"));
+                        problems.add(new PreprocessingProblem("'else' directive cannot be used after another " +
+                                "'else' directive!", Problem.Type.ERROR, currentFile, line, "else"));
                     return false;
                 }
             },
@@ -723,6 +723,9 @@ public class Preprocessor8051 implements Preprocessor {
             },
     };
 
+    /**
+     * Constructs a new Preprocessor.
+     */
     public Preprocessor8051() {
         problems = new LinkedList<>();
         output = new ArrayList<>(50);
@@ -1616,7 +1619,7 @@ public class Preprocessor8051 implements Preprocessor {
      * <br>
      * This method supports querying a setting by using the <code>'--setting'</code>
      * or <code>'-s'</code> option in front of the left operand of a operation.<br>
-     * All non setting operands must be valid doubles.<br>
+     * All non-setting operands must be valid doubles.<br>
      * <br>
      * Supported evaluation operators:
      * <table>
@@ -1660,6 +1663,28 @@ public class Preprocessor8051 implements Preprocessor {
      *         <td>Equals <code>true</code> if the operand is <i>unequal</i> to <code>0</code>.<br>
      *             If the operand is a setting the value equals <code>true</code> if the value
      *             of the setting equals <code>"true"</code>, <code>false</code> otherwise.</td>
+     *     </tr>
+     * </table>
+     * Options:<br>
+     * <i>Options must be specified before the first operand and only affect the active operation.</i>
+     * <table>
+     *     <tr><th>Option</th><th>Description</th></tr>
+     *     <tr>
+     *         <td><code>'--setting', '-s'</code></td>
+     *         <td>Signals that the following operator should be treated as a setting instead of a
+     *             number.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'--ignore-errors', '-i'</code></td>
+     *         <td>The following operation will not yield in an problem if it would otherwise. This can
+     *             be very practical if the operation contains things that could be undefined like unset
+     *             values or unknown settings. E.g.: <code>if -i debug</code>
+     *             The absence of a value automatically yields in <code>false</code>.</td>
+     *     </tr>
+     *     <tr>
+     *         <td><code>'--ignore-errors-default-true', '-I'</code></td>
+     *         <td>The same as <code>'--ignore-errors'</code> but yield in <code>true</code> if the value
+     *             is absent.</td>
      *     </tr>
      * </table>
      * Boolean operations can be logically connected with these conjunctions:

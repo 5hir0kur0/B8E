@@ -9,9 +9,9 @@ import java.util.Objects;
  */
 public abstract class OperandToken extends Token {
 
-    /** Type of the operand. Should be named via <code>final</code> variables. */
+    /** Type of the operand. */
     protected Enum operandType;
-    /** Representation of the . */
+    /** Representation of the operand. */
     protected Enum operandRepresentation;
 
     /**

@@ -20,7 +20,7 @@ class Tokenizer {
 
     private Tokenizer(List<Token> tokenList) {
         this.tokens = new ArrayList<>(tokenList.size());
-        tokenList.forEach(this.tokens::add);
+        this.tokens.addAll(tokenList);
         this.tokenIterator = tokens.listIterator();
         checkIntegrity();
     }
@@ -175,6 +175,7 @@ class Tokenizer {
     /**
      * Check whether there are illegal sequences of operators in '{@code tokens}'.
      * @throws IllegalArgumentException
+     *
      */
     private void checkIntegrity() throws IllegalArgumentException {
         resetIndex();

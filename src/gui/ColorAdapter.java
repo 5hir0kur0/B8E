@@ -10,9 +10,11 @@ import java.awt.Color;
  * @author 5hir0kur0
  */
 class ColorAdapter extends XmlAdapter<String, Color> {
+    @Override
     public Color unmarshal(String s) {
         return new Color(Long.valueOf(s.substring(1), 16).intValue(), true);
     }
+    @Override
     public String marshal(Color c) {
         return c == null ? null : "#"+Integer.toHexString(c.getRGB()).toUpperCase();
     }

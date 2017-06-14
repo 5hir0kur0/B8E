@@ -19,6 +19,10 @@ import java.util.List;
  */
 public class Listing {
 
+    /**
+     * A List that contains {@link ListingElement}s
+     * of this listing.
+     */
     private List<ListingElement> elements;
 
     public Listing(List<? extends Assembled> assembled, int addressLength) {
@@ -33,10 +37,24 @@ public class Listing {
             elements.add(new ListingElement(a, addressLength, addressNS, codeNS));
     }
 
+    /**
+     * @return
+     *      the {@link ListingElement}s of this Listing.
+     */
     public List<ListingElement> getElements() {
         return Collections.unmodifiableList(elements);
     }
 
+    /**
+     * Finds a {@link ListingElement} at a specific address.
+     *
+     * @param address
+     *      the address to be searched for.
+     *
+     * @return
+     *      the ListingElement or null if no matching element was
+     *      found.
+     */
     public ListingElement getFromAddress(long address) {
         for (ListingElement e : elements)
             if (e.isInBounds(address))
@@ -44,6 +62,15 @@ public class Listing {
         return null;
     }
 
+    /**
+     * Write a listing to a file.
+     *
+     * @param w
+     *      the Writer the Listing will be written to.
+     *
+     * @throws IOException
+     *      if an I/O error occurs while using <code>w</code>.
+     */
     public void writeAll(Writer w) throws IOException {
         int maxLabelLength = 0, maxCodesLength = 0, maxLineLNLength = 0, addressLength = 0;
 
@@ -106,18 +133,41 @@ public class Listing {
     }
 
     public static class ListingElement implements Comparable<ListingElement> {
+
+        /** The bytes in the code memory corresponding to this ListingElement. */
         private final String codes;
+        /** The address in the code memory. */
         private final long address;
+        /** The address in the code memory as a String. */
         private final String addressStr;
 
+        /** The line number of the ListingElement. */
         private final int line;
+        /** The labels of this ListingElement. */
         private final String labels;
+        /** The mnemonics and operands of this ListingElement. */
         private final String lineString;
+        /** The Path of the file. */
         private final String path;
 
+        /** The length of the codes. */
         private final int length;
 
-        public ListingElement(Assembled a, int addressLength, NumeralSystem addressNS, NumeralSystem codeNS) {
+        /**
+         * Creates a new ListingElement.
+         *
+         * @param a
+         *      the {@link Assembled} used as a reference.
+         * @param addressLength
+         *      the maximum length of a address (size of the code memory).
+         *      Is used to determine number of characters used to represent
+         *      the address in the listing.
+         * @param addressNS
+         *      the number system of the address. See {@link NumeralSystem}.
+         * @param codeNS
+         *      the numeral system of the codes.
+         */
+        private ListingElement(Assembled a, int addressLength, NumeralSystem addressNS, NumeralSystem codeNS) {
             Token[] tokens = a.getTokens();
             byte[] codes = a.getCodes();
 
@@ -196,22 +246,42 @@ public class Listing {
             this.labels = sb.toString();
         }
 
+        /**
+         * @return
+         *      the codes (data in the code memory).
+         */
         public String getCodes() {
             return codes;
         }
 
+        /**
+         * @return
+         *      the address of the element as a String.
+         */
         public String getAddress() {
             return addressStr;
         }
 
+        /**
+         * @return
+         *      the address of the element as a long.
+         */
         public long getAddressAsLong() {
             return this.address;
         }
 
+        /**
+         * @return
+         *      the labels of the element.
+         */
         public String getLabels() {
             return labels;
         }
 
+        /**
+         * @return
+         *      the line number of the element.
+         */
         public int getLine() {
             return line;
         }
@@ -228,6 +298,14 @@ public class Listing {
             return length;
         }
 
+        /**
+         * Checks whether a address is within the addresses 'occupied'
+         * by this element (the address of the element plus the number
+         * of codes).
+         *
+         * @param address
+         *      the address to be searched for.
+         */
         public boolean isInBounds(long address) {
             return this.address <= address && this.address + length > address;
         }

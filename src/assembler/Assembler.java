@@ -29,6 +29,12 @@ public interface Assembler {
      */
     byte[] assemble(Path source, Path directory, List<Problem<?>> problems);
 
+    /**
+     * @return
+     *      the corresponding <code>Listing</code> for the last assembling.
+     *
+     * @see assembler.util.Listing
+     */
     Listing getListing();
 
     /**
@@ -44,6 +50,17 @@ public interface Assembler {
      */
     byte[] getResult();
 
+    /**
+     *
+     * @param modelName
+     *      the model to be specified.
+     *      Currently Supported models:
+     *      <ul>
+     *          <li>8051: standard for all MCs of the 8051 family</li>
+     *      </ul>
+     * @return
+     *      the specified <code>Assembler</code>
+     */
     static Assembler of(final String modelName) {
 
         switch (modelName) {

@@ -360,7 +360,7 @@ public class AssemblerSettings {
     public static final String STOP_ASSEMBLER = "assembler.stop.assembler";
 
 
-    /**
+    /*
      * Initialize all settings that are used by the assembler.
      */
     static {
@@ -458,6 +458,8 @@ public class AssemblerSettings {
     };
 
     /**
+     * @param x
+     *      the String to parse to a Problem.Type from.
      * @return
      *      a Problem Type derived from a String or else {@code null}.
      *
@@ -465,7 +467,7 @@ public class AssemblerSettings {
      * @see #STOP_TOKENIZER
      * @see #STOP_PREPROCESSOR
      */
-    public static final Problem.Type getStopPoint(String x) {
+    public static Problem.Type getStopPoint(String x) {
         try {
             return Problem.Type.valueOf(x);
         } catch (IllegalArgumentException e) {

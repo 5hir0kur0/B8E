@@ -24,17 +24,23 @@ import java.util.*;
  */
 public class Assembler8051 implements Assembler {
 
+    /** The associated preprocessor. */
     private Preprocessor8051 preprocessor;
+    /** The associated preprocessor. */
     private Tokenizer8051  tokenizer;
 
+    /** Holds the result of the last assembling. */
     private byte[] result;
+    /** Whether the last assembling was successful. */
     private boolean successful;
+    /** The {@link assembler.util.Listing} of the last assembling. */
     private Listing listing;
 
     static {
         AssemblerSettings.init(); // Load settings
     }
 
+    /** Constructs a new Assembler for the 8051 architecture. */
     public Assembler8051() {
         this.preprocessor  = new Preprocessor8051();
         this.tokenizer = new Tokenizer8051();
