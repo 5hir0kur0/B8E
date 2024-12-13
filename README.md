@@ -1,4 +1,4 @@
-# B8E: Basic 8051 Emulator (and Assembler)
+# B8E: Basic 8051 Emulator (and Assembler) – Archive
 
 B8E (pronounced /ˈbeɪ.ti/) is a simple emulator / assembler for the [Intel 8051](https://en.wikipedia.org/wiki/Intel_MCS-51) micro controller architecture.
 We (@Noxgrim and @5hir0kur0) made this as a project for our IT class in high school.
@@ -11,7 +11,7 @@ We (@Noxgrim and @5hir0kur0) made this as a project for our IT class in high sch
 - Storing/Resuming Emulator State
 - Intel-HEX Output of the Assembled Binary
 
-Take a look at the Wiki for more documentation.
+Take a look at the [Wiki](https://github.com/5hir0kur0/B8E/wiki) for more documentation.
 
 # Screenshots
 Main Window:
